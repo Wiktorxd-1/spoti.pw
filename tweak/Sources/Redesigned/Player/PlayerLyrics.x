@@ -243,7 +243,7 @@ BOOL SGRPlayerLyricsAvailable(void) {
     if (!track) return NO;
     if (SGKaraokeLinesForTrack(track)) return YES;
     SGKaraokeRequestLyrics(track);
-    return NO;
+    return YES;
 }
 
 BOOL SGRPlayerLyricsOpen(void) {
@@ -463,14 +463,10 @@ static void replace(void) {
     NSString *trackID = [track hasPrefix:@"spotify:track:"] ? [track substringFromIndex:@"spotify:track:".length] : nil;
     if (trackID) SGKaraokeRequestLyrics(trackID);
     // Lyrics arrive a moment after the track does, and nothing announces them: the glyph is asked again
-    // while they would be coming, and the lines already up wait out the same grace before they go.
+    // while they would be coming.
     for (NSNumber *delay in @[@1, @(kLyricsGrace)]) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay.doubleValue * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             SGRPlayerLyricsChanged();
-            if (sg_open && delay.doubleValue >= kLyricsGrace && !SGRPlayerLyricsAvailable()) {
-                SGLog(@"redesign player: no lyrics for the track that came on, the cover is back");
-                setOpen(NO, YES);
-            }
         });
     }
 }

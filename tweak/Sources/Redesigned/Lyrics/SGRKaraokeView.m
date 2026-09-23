@@ -1076,6 +1076,7 @@ typedef struct {
     CFTimeInterval _clockTime;
     BOOL _sweepsEstimates;   // the Lyrics page's "Simulate word-by-word timing", read once like the credit
     BOOL _plain;             // the song has no timing at all: every line lit, nothing follows the clock
+    UILabel *_emptyLabel;
     NSDictionary<NSNumber *, NSArray<SGLyricsMeaning *> *> *_meanings;   // Genius's, by line
     NSUInteger _meaningsAsked;
 }
@@ -1135,6 +1136,14 @@ typedef struct {
     _crediting = SGFlag(SGKeyLyricsCredit, NO);
     _sweepsEstimates = SGFlag(SGKeyLyricsSimulateWords, NO);
     [self addSubview:_credit];
+    _emptyLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    _emptyLabel.text = @"No lyrics found";
+    _emptyLabel.font = [UIFont systemFontOfSize:22 weight:UIFontWeightMedium];
+    _emptyLabel.textColor = [UIColor colorWithWhite:1 alpha:0.45];
+    _emptyLabel.textAlignment = NSTextAlignmentCenter;
+    _emptyLabel.numberOfLines = 0;
+    _emptyLabel.hidden = YES;
+    [self addSubview:_emptyLabel];
     [self addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapped:)]];
     [self addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(held:)]];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerTransitionChanged:) name:SGPlayerTransitionNotification object:nil];
@@ -1302,6 +1311,7 @@ typedef struct {
     [super layoutSubviews];
     [self alignFade];
     _scroll.contentSize = self.bounds.size;
+    if (_emptyLabel) _emptyLabel.frame = self.bounds;
     [_credit sizeToFit];
     _credit.frame = CGRectMake(_margin, self.bounds.size.height - _credit.bounds.size.height - kCreditBottom,
                                _credit.bounds.size.width, _credit.bounds.size.height);
@@ -1711,7 +1721,9 @@ typedef struct {
             SGKaraokeRequestLyrics(track);
         }
     }
-    [self setShowing:_tops != nil];
+    BOOL hasLines = _tops.count > 0;
+    _emptyLabel.hidden = hasLines || (track == nil);
+    [self setShowing:hasLines || (track != nil)];
     // The source is settled a moment after the lines are, so it is asked for until it answers.
     if (_crediting && _lines && !_credit.text.length) [self creditTo:SGLyricsCreditFor(track)];
     if (!_tops) return;
