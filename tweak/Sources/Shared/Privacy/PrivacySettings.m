@@ -8,7 +8,17 @@ SGModSection *SGPrivacySection(void) {
 }
 
 SGModSection *SGPrivacyCountersSection(void) {
-    return countersSection();
+    NSMutableArray<SGModRow *> *counts = [NSMutableArray array];
+    for (NSString *label in SGBlockedLabels()) {
+        [counts addObject:SGStatRow(label, ^NSString *{
+            return @(SGBlockedCount(label)).stringValue;
+        })];
+    }
+    [counts addObject:SGStatRow(@"Total", ^NSString *{
+        return @(SGBlockedCount(nil)).stringValue;
+    })];
+    [counts addObject:SGActionRow(@"Reset the telemetry counters", nil, ^{ SGResetBlocked(); })];
+    return SGSection(@"Telemetry blocked so far", counts);
 }
 
 // Every switch here forces a flag Spotify ships on to off, so the titles name the hiding: on hides
@@ -32,31 +42,15 @@ static UIViewController *tipsPage(void) {
     ] footer:nil];
 }
 
-static SGModSection *countersSection(void) {
-    NSMutableArray<SGModRow *> *counts = [NSMutableArray array];
-    for (NSString *label in SGBlockedLabels()) {
-        [counts addObject:SGStatRow(label, ^NSString *{
-            return @(SGBlockedCount(label)).stringValue;
-        })];
-    }
-    [counts addObject:SGStatRow(@"Total", ^NSString *{
-        return @(SGBlockedCount(nil)).stringValue;
-    })];
-    [counts addObject:SGActionRow(@"Reset the telemetry counters", nil, ^{ SGResetBlocked(); })];
-    return SGSection(@"Telemetry blocked so far", counts);
-}
-
 // The switches first and what they have stopped last, so the counters bury no setting.
 UIViewController *SGPrivacySettingsPage(void) {
     return [[SGModPage alloc] initWithTitle:@"Privacy & clutter" intro:SGRestartNote sections:@[
-        SGSection(@"Privacy", @[
-            SGWithSymbol(SGSwitchRow(@"Block telemetry", @"Spotify's own events still go out, since Recents is built from them", SGKeyBlockTelemetry), @"antenna.radiowaves.left.and.right.slash"),
-        ]),
+        SGPrivacySection(),
         SGSection(@"Clutter", @[
             SGWithSymbol(SGOptionRow(@"Hide the video carousel in Search", nil, SGKeyHideSearchVideos), @"play.rectangle.on.rectangle"),
             SGWithSymbol(SGOptionRow(@"Hide social proof in Search", nil, SGKeyHideSocialProof), @"person.2"),
             SGWithSymbol(SGPageRow(@"Tips", ^UIViewController *{ return tipsPage(); }), @"lightbulb"),
         ]),
-        countersSection(),
+        SGPrivacyCountersSection(),
     ] footer:nil];
 }
