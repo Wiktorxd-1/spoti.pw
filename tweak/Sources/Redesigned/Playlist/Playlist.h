@@ -28,6 +28,8 @@ void SGRPlaylistTakeCuration(UIView *cell);
 // And keeps Spotify's own Sort button from the header's find-on-page toolbar, which sorts the same list
 // and, unlike the pill, is in the header rather than in a cell the list reuses.
 void SGRPlaylistTakeSort(UIView *page, UIView *button);
+// And keeps Spotify's own Find in Playlist search field/button from the header's toolbar.
+void SGRPlaylistTakeSearch(UIView *page, UIView *button);
 
 // The playlist page `view` is on, or nil: SPTFreeTierPlaylistEncoreHeaderViewController's own view, the one
 // the tree names PL.Header, for anything under the header, and FTPViewController's view for the list.

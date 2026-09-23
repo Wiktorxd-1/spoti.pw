@@ -42,7 +42,7 @@ static const CGFloat kMinHero = 120, kMinCover = 80;
 
 static char kCoverKey, kMetaKey, kPlayKey, kLayoutKey, kToolbarKey, kScrimKey, kBarScrimKey;
 static char kShuffleKey, kAddKey, kDownloadKey, kInfoKey, kBlockHeightKey, kBlockWatchedKey;
-static char kHeroKey, kHeroHeightKey, kRestPlaneKey, kRowKey, kRowWatchedKey, kMoreKey, kCreatorKey, kPinnedMoreKey, kSortKey;
+static char kHeroKey, kHeroHeightKey, kRestPlaneKey, kRowKey, kRowWatchedKey, kMoreKey, kCreatorKey, kPinnedMoreKey, kSortKey, kSearchKey;
 
 #pragma mark - finding things
 
@@ -336,10 +336,11 @@ static void showPlaylist(SGRHeaderInfo *info, UIView *block, UIView *root, id mo
     [info showCreatorLink:SGRFindByIdentifier(block, @"Components.PlaylistHeader.collaboratorsButton", &kCreatorKey)];
 
     // More, pinned over the page rather than left in the block, which is concealed and scrolls away; and
-    // Spotify's own Sort, from the find-on-page toolbar this header conceals, for the ⋯ sheet to fire.
+    // Spotify's own Sort and Search, from the find-on-page toolbar this header conceals, for the ⋯ sheet to fire.
     UIView *page = SGRPlaylistPageOf(root);
     SGRPinnedMore(page, &kPinnedMoreKey, SGRFindByIdentifier(block, @"Components.UI.ContextMenuButton*", &kMoreKey));
     SGRPlaylistTakeSort(page, SGRFindByIdentifier(root, @"Components.Header.UI.Toolbar.Button", &kSortKey));
+    SGRPlaylistTakeSearch(page, SGRFindByIdentifier(root, @"Components.Header.UI.Toolbar.SearchField", &kSearchKey));
 
     static BOOL logged;
     if (!logged && info.window && (title || play)) {
@@ -418,6 +419,8 @@ static void applyToolbar(UIView *headerRoot) {
     UIView *field = SGRFindByIdentifier(toolbar, @"Components.Header.UI.Toolbar.SearchField", &kFieldKey);
     glassUp(field, &kFieldGlassKey);
     glassUp(SGRFindByIdentifier(toolbar, @"Components.Header.UI.Toolbar.ButtonContainer", &kSortBoxKey), &kSortGlassKey);
+    UIView *page = SGRPlaylistPageOf(headerRoot);
+    if (page && field) SGRPlaylistTakeSearch(page, field);
     static BOOL logged;
     if (!logged && field.window) {
         logged = YES;

@@ -1,10 +1,10 @@
-// Playlist redesign: Sort and Mix on the playlist's ⋯ sheet, where the rest of Spotify's curation row
+// Playlist redesign: Search, Sort and Mix on the playlist's ⋯ sheet, where the rest of Spotify's curation row
 // already is.
 //
 // Spotify puts seven pills over the first track -- Add, Mix, Notes, Video, Edit, Sort, Name & details
-// (own-playlist/01.txt:33) -- and the Music app has none of them: its playlist sorts from its own ⋯ menu.
-// So PlaylistRows.x closes the row up and these two rows stand in its place, because Sort and Mix are the
-// only two of the seven the ⋯ menu does not already offer.
+// (own-playlist/01.txt:33) -- and the Music app has none of them: its playlist searches and sorts from its
+// own ⋯ menu. So PlaylistRows.x closes the row up and these rows stand in its place, because Search, Sort
+// and Mix are what the ⋯ menu does not already offer.
 //
 // **Why these are rows of the mod's own and not rows of Spotify's menu.** The sheet is
 // ContextMenu_InternalImpl.ContextMenuViewController, a table whose rows come from Swift item factories
@@ -43,7 +43,7 @@ static NSString *const kMixIdentifier = @"ListPlatform.ToolbarActions.MixButton"
 // takes the sheet's side margin and row height rather than the Kit's tokens, as Speed and pitch does.
 static const CGFloat kRowHeight = 56, kSideMargin = 16, kGlyphSide = 24, kGlyphGap = 16;
 
-static char kToolbarKey, kSortKey, kBlockKey, kDecidedKey;
+static char kToolbarKey, kSortKey, kSearchKey, kBlockKey, kDecidedKey;
 
 #pragma mark - Spotify's pills
 
@@ -88,15 +88,20 @@ static NSString *pillWord(UIView *pill) {
     return word ?: pill.accessibilityLabel;
 }
 
-// The two pills of the row, in the order they are to read on the sheet. Either may be missing: a playlist
+// The pills of the row, in the order they are to read on the sheet. Any may be missing: a playlist
 // of someone else's has no Mix, and a build without sorting has no Sort.
 static BOOL isSortGlyph(NSString *glyph) {
     NSString *name = glyph.lowercaseString;
     return [name containsString:@"sort"] || [name containsString:@"arrowupdown"] || [name containsString:@"filter"];
 }
 
-static void pillsIn(UIView *toolbar, UIView **sort, UIView **mix) {
-    __block UIView *foundSort = nil, *foundMix = nil;
+static BOOL isSearchGlyph(NSString *glyph) {
+    NSString *name = glyph.lowercaseString;
+    return [name containsString:@"search"] || [name containsString:@"find"] || [name containsString:@"magnif"];
+}
+
+static void pillsIn(UIView *toolbar, UIView **search, UIView **sort, UIView **mix) {
+    __block UIView *foundSearch = nil, *foundSort = nil, *foundMix = nil;
     __block NSMutableArray<NSString *> *seen = [NSMutableArray array];
     SGForEachView(toolbar, ^(UIView *v) {
         NSString *identifier = v.accessibilityIdentifier;
@@ -107,17 +112,23 @@ static void pillsIn(UIView *toolbar, UIView **sort, UIView **mix) {
             foundMix = v;
             return;
         }
+        if (!foundSearch && ([identifier containsString:@"Search"] || [identifier containsString:@"Find"])) {
+            foundSearch = v;
+            return;
+        }
         NSString *glyph = pillGlyph(v);
         if (glyph) [seen addObject:[NSString stringWithFormat:@"%@=%@", pillWord(v) ?: identifier, glyph]];
         if (!foundSort && isSortGlyph(glyph)) foundSort = v;
+        if (!foundSearch && isSearchGlyph(glyph)) foundSearch = v;
     });
     // Said once, so a build that renames the sort glyph says what it calls it instead of going quiet.
     static BOOL logged;
     if (!logged && seen.count) {
         logged = YES;
-        SGLog(@"redesign playlist: the curation pills draw %@; sort %@", [seen componentsJoinedByString:@", "],
-              foundSort ? @"found" : @"NOT FOUND");
+        SGLog(@"redesign playlist: the curation pills draw %@; sort %@, search %@", [seen componentsJoinedByString:@", "],
+              foundSort ? @"found" : @"NOT FOUND", foundSearch ? @"found" : @"NOT FOUND");
     }
+    *search = foundSearch;
     *sort = foundSort;
     *mix = foundMix;
 }
@@ -125,6 +136,12 @@ static void pillsIn(UIView *toolbar, UIView **sort, UIView **mix) {
 void SGRPlaylistTakeSort(UIView *page, UIView *button) {
     if (page && button && objc_getAssociatedObject(page, &kSortKey) != button) {
         objc_setAssociatedObject(page, &kSortKey, button, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+}
+
+void SGRPlaylistTakeSearch(UIView *page, UIView *button) {
+    if (page && button && objc_getAssociatedObject(page, &kSearchKey) != button) {
+        objc_setAssociatedObject(page, &kSearchKey, button, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 }
 
@@ -137,13 +154,13 @@ void SGRPlaylistTakeCuration(UIView *cell) {
     UIView *page = toolbar ? SGRPlaylistPageOf(cell) : nil;
     if (!page || objc_getAssociatedObject(page, &kToolbarKey) == toolbar) return;
     objc_setAssociatedObject(page, &kToolbarKey, toolbar, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    UIView *sort = nil, *mix = nil;
-    pillsIn(toolbar, &sort, &mix);
+    UIView *search = nil, *sort = nil, *mix = nil;
+    pillsIn(toolbar, &search, &sort, &mix);
     static BOOL logged;
     if (!logged) {
         logged = YES;
-        SGLog(@"redesign playlist: the curation row is the page's, sort %@, mix %@",
-              sort ? pillWord(sort) : @"not found", mix ? pillWord(mix) : @"not found");
+        SGLog(@"redesign playlist: the curation row is the page's, search %@, sort %@, mix %@",
+              search ? pillWord(search) : @"not found", sort ? pillWord(sort) : @"not found", mix ? pillWord(mix) : @"not found");
     }
 }
 
@@ -213,19 +230,20 @@ void SGRPlaylistTakeCuration(UIView *cell) {
 
 @interface SGRMenuBlock : UIView
 @property (nonatomic, weak) UIViewController *menu;
-- (void)showSort:(UIView *)sort mix:(UIView *)mix;
+- (void)showSearch:(UIView *)search sort:(UIView *)sort mix:(UIView *)mix;
 - (CGFloat)wantedHeight;
 @end
 
 @implementation SGRMenuBlock {
-    SGRMenuRow *_sort, *_mix;
+    SGRMenuRow *_search, *_sort, *_mix;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
     if (!(self = [super initWithFrame:frame])) return nil;
+    _search = [[SGRMenuRow alloc] initWithFrame:CGRectZero];
     _sort = [[SGRMenuRow alloc] initWithFrame:CGRectZero];
     _mix = [[SGRMenuRow alloc] initWithFrame:CGRectZero];
-    for (SGRMenuRow *row in @[_sort, _mix]) {
+    for (SGRMenuRow *row in @[_search, _sort, _mix]) {
         row.hidden = YES;
         [row addTarget:self action:@selector(sgr_rowTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self addSubview:row];
@@ -234,13 +252,16 @@ void SGRPlaylistTakeCuration(UIView *cell) {
 }
 
 // The glyphs are the system's rather than Spotify's: Encore draws its own into a view of its own, and a
-// copy of one is a snapshot to keep right, where these two say the same thing on every build. The words
+// copy of one is a snapshot to keep right, where these rows say the same thing on every build. The words
 // stay Spotify's, so the rows are in the app's language.
-- (void)showSort:(UIView *)sort mix:(UIView *)mix {
+- (void)showSearch:(UIView *)search sort:(UIView *)sort mix:(UIView *)mix {
+    _search.pill = search;
     _sort.pill = sort;
     _mix.pill = mix;
-    if (sort) [_sort showWord:pillWord(sort) symbol:@"arrow.up.arrow.down"];
-    if (mix) [_mix showWord:pillWord(mix) symbol:@"slider.horizontal.3"];
+    if (search) [_search showWord:pillWord(search) ?: @"Find in playlist" symbol:@"magnifyingglass"];
+    if (sort) [_sort showWord:pillWord(sort) ?: @"Sort" symbol:@"arrow.up.arrow.down"];
+    if (mix) [_mix showWord:pillWord(mix) ?: @"Mix" symbol:@"slider.horizontal.3"];
+    _search.hidden = search == nil;
     _sort.hidden = sort == nil;
     _mix.hidden = mix == nil;
     [self setNeedsLayout];
@@ -248,14 +269,14 @@ void SGRPlaylistTakeCuration(UIView *cell) {
 
 - (CGFloat)wantedHeight {
     CGFloat height = 0;
-    for (SGRMenuRow *row in @[_sort, _mix]) height += row.hidden ? 0 : kRowHeight;
+    for (SGRMenuRow *row in @[_search, _sort, _mix]) height += row.hidden ? 0 : kRowHeight;
     return height;
 }
 
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGFloat y = 0;
-    for (SGRMenuRow *row in @[_sort, _mix]) {
+    for (SGRMenuRow *row in @[_search, _sort, _mix]) {
         if (row.hidden) continue;
         row.frame = CGRectMake(0, y, self.bounds.size.width, kRowHeight);
         y += kRowHeight;
@@ -336,7 +357,7 @@ static void install(UIViewController *menu) {
         BOOL headerFree = !table.tableHeaderView || table.tableHeaderView.bounds.size.height < 1;
         inFooter = !headerFree;
         if (inFooter && table.tableFooterView && table.tableFooterView.bounds.size.height >= 1) {
-            SGLog(@"redesign playlist: the sheet's header and footer are both Spotify's, sort and mix left out");
+            SGLog(@"redesign playlist: the sheet's header and footer are both Spotify's, search, sort and mix left out");
             objc_setAssociatedObject(menu, &kDecidedKey, NSNull.null, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
             return;
         }
@@ -346,13 +367,13 @@ static void install(UIViewController *menu) {
         objc_setAssociatedObject(menu, &kBlockKey, block, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 
-    // Sort is Spotify's own header button where the page has one -- one identifier, in the header, never
-    // reused -- and the curation pill only where it has not, which is how it was found before the header's
-    // button was (device 2026-09-20: the pill's glyph did not answer and the row went missing).
-    UIView *sort = nil, *mix = nil;
-    pillsIn(objc_getAssociatedObject(page, &kToolbarKey), &sort, &mix);
+    // Sort and Search are Spotify's own header controls where the page has them -- one identifier, in the
+    // header, never reused -- and the curation pills only where it has not.
+    UIView *search = nil, *sort = nil, *mix = nil;
+    pillsIn(objc_getAssociatedObject(page, &kToolbarKey), &search, &sort, &mix);
     sort = objc_getAssociatedObject(page, &kSortKey) ?: sort;
-    [block showSort:sort mix:mix];
+    search = objc_getAssociatedObject(page, &kSearchKey) ?: search;
+    [block showSearch:search sort:sort mix:mix];
     // Nothing to show yet is not an answer: the page fills in as it lays out, and the next pass is asked
     // again rather than the sheet being written off.
     CGFloat height = [block wantedHeight];
@@ -368,7 +389,7 @@ static void install(UIViewController *menu) {
     static BOOL logged;
     if (!logged) {
         logged = YES;
-        SGLog(@"redesign playlist: the ⋯ sheet took %.0fpt of sort and mix in its %@", height,
+        SGLog(@"redesign playlist: the ⋯ sheet took %.0fpt of search, sort and mix in its %@", height,
               inFooter ? @"footer" : @"header");
     }
 }
