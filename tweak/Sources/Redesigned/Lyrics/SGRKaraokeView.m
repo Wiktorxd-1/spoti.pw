@@ -13,6 +13,7 @@
 #import "MeaningSheet.h"
 #import "Shared/LyricsSources/LyricsSources.h"
 #import "Shared/Player/PlayerEvents.h"
+#import "Shared/Player/PlayerState.h"
 #import "Shared/Haptics/Haptics.h"
 #import "Redesigned/Kit/SGRTokens.h"
 
@@ -1030,7 +1031,7 @@ typedef struct {
     NSInteger start, end, line;
 } SGRKaraokeBreak;
 
-@interface SGRKaraokeView () <UIScrollViewDelegate>
+@interface SGRKaraokeView () <UIScrollViewDelegate, SGPlayerStateObserver>
 @end
 
 @implementation SGRKaraokeView {
@@ -1079,6 +1080,29 @@ typedef struct {
     NSUInteger _meaningsAsked;
 }
 
+- (void)updateIdleTimer {
+    SPTPlayerState *state = SGPlayerState();
+    BOOL playing = state && !state.isPaused && state.isPlaying;
+    BOOL keepAwake = self.window != nil && _showing && playing;
+    if (UIApplication.sharedApplication.isIdleTimerDisabled != keepAwake) {
+        UIApplication.sharedApplication.idleTimerDisabled = keepAwake;
+    }
+}
+
+- (void)playerStateDidChange:(SPTPlayerState *)state {
+    [self updateIdleTimer];
+    if (state.isPaused) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            SPTPlayerState *curr = SGPlayerState();
+            if (curr.isPaused && !self->_browsing) {
+                self->_link.paused = YES;
+            }
+        });
+    } else {
+        if (_link.paused) _link.paused = NO;
+    }
+}
+
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
@@ -1120,11 +1144,13 @@ typedef struct {
     // away rather than by the view going: see scheduleLink.
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(scheduleLink) name:UIApplicationDidBecomeActiveNotification object:nil];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(scheduleLink) name:UIApplicationWillResignActiveNotification object:nil];
+    SGAddPlayerStateObserver(self);
     return self;
 }
 
 - (void)dealloc {
     [NSNotificationCenter.defaultCenter removeObserver:self];
+    UIApplication.sharedApplication.idleTimerDisabled = NO;
     free(_spans);
     free(_breaks);
 }
@@ -1185,6 +1211,7 @@ typedef struct {
 // Lines are placed for a content offset of 0, so following the song means scrolling back to 0.
 // While the user browses, placement stands still and every line is sharp.
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
+    if (_link.paused) _link.paused = NO;
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(followSong) object:nil];
     _browsing = YES;
     for (SGRKaraokeLineView *view in _shown.allValues) view.blur = 0;
@@ -1204,6 +1231,7 @@ typedef struct {
 }
 
 - (void)followSong {
+    if (_link.paused) _link.paused = NO;
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(followSong) object:nil];
     if (!_browsing) return;
     _browsing = NO;
@@ -1219,6 +1247,7 @@ typedef struct {
         [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(followSong) object:nil];
         _browsing = NO;
     }
+    [self updateIdleTimer];
     [self scheduleLink];
 }
 
@@ -1620,6 +1649,7 @@ typedef struct {
     _showing = showing;
     self.hidden = !showing;
     _credit.hidden = !showing || !_credit.text.length;
+    [self updateIdleTimer];
     for (UIView *sibling in self.superview.subviews) {
         if (sibling != self) sibling.alpha = showing ? 0 : 1;
     }

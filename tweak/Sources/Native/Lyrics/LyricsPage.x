@@ -54,6 +54,11 @@ static UIView *clearAncestors(UIView *view) {
     // Full bleed, so the shape is spelled out: a fresh pane does not promise square corners.
     SGShapeGlass(glass, 0, NO);
 }
+
+- (void)didMoveToWindow {
+    %orig;
+    UIApplication.sharedApplication.idleTimerDisabled = self.window != nil;
+}
 %end
 
 %ctor {

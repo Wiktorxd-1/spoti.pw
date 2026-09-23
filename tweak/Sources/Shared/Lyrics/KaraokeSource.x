@@ -6,6 +6,7 @@
 // hands the lines over.
 #import "Core/SGCore.h"
 #import "Lyrics.h"
+#import "LyricsCache.h"
 #import "Shared/LockScreenLyrics/LockScreenLyrics.h"
 #import "Shared/LyricsSources/LyricsSources.h"
 #import "Shared/Player/PlayerState.h"
@@ -89,6 +90,9 @@ static void keep(NSString *track, NSArray<SGKaraokeLine *> *lines) {
         }
     }
     sg_lyrics[track] = lines;
+    if (track.length && lines.count) {
+        SGLyricsCacheStore(track, lines, SGLyricsCreditFor(track));
+    }
 }
 
 void SGKaraokeKeepLines(NSString *track, NSArray<SGKaraokeLine *> *lines) {
@@ -119,7 +123,17 @@ static void completed(NSURLSessionTask *task, NSError *error) {
 }
 
 NSArray<SGKaraokeLine *> *SGKaraokeLinesForTrack(NSString *trackID) {
-    return trackID ? sg_lyrics[trackID] : nil;
+    if (!trackID) return nil;
+    NSArray<SGKaraokeLine *> *lines = sg_lyrics[trackID];
+    if (lines) return lines;
+    lines = SGLyricsCacheGet(trackID);
+    if (lines) {
+        sg_lyrics[trackID] = lines;
+        NSString *credit = SGLyricsCacheCredit(trackID);
+        if (credit.length) SGLyricsSetCredit(trackID, credit);
+        return lines;
+    }
+    return nil;
 }
 
 // Main queue only. The track stays asked for through the pause, so the readers asking on every tick
@@ -187,6 +201,13 @@ void SGKaraokeAskSpotifyForTiming(NSString *trackID) {
 
 void SGKaraokeRequestLyrics(NSString *trackID) {
     if (!trackID || sg_lyrics[trackID] || [sg_requested containsObject:trackID]) return;
+    NSArray<SGKaraokeLine *> *cached = SGLyricsCacheGet(trackID);
+    if (cached.count) {
+        keep(trackID, cached);
+        NSString *credit = SGLyricsCacheCredit(trackID);
+        if (credit.length) SGLyricsSetCredit(trackID, credit);
+        return;
+    }
     if (!sg_ownSources) {
         requestFromSpotify(trackID);
         return;
