@@ -251,6 +251,17 @@ void SGRPlaylistTakeCuration(UIView *cell) {
     return self;
 }
 
+static NSString *searchWordFor(UIView *search) {
+    NSString *word = pillWord(search);
+    if (!word.length || [word.lowercaseString containsString:@"this page"] || [word.lowercaseString isEqualToString:@"search"] || [word.lowercaseString isEqualToString:@"find"]) {
+        return @"Find in playlist";
+    }
+    if ([word.lowercaseString containsString:@"liked songs"] && ![word.lowercaseString hasPrefix:@"find in"]) {
+        return @"Find in Liked Songs";
+    }
+    return word;
+}
+
 // The glyphs are the system's rather than Spotify's: Encore draws its own into a view of its own, and a
 // copy of one is a snapshot to keep right, where these rows say the same thing on every build. The words
 // stay Spotify's, so the rows are in the app's language.
@@ -258,7 +269,7 @@ void SGRPlaylistTakeCuration(UIView *cell) {
     _search.pill = search;
     _sort.pill = sort;
     _mix.pill = mix;
-    if (search) [_search showWord:pillWord(search) ?: @"Find in playlist" symbol:@"magnifyingglass"];
+    if (search) [_search showWord:searchWordFor(search) symbol:@"magnifyingglass"];
     if (sort) [_sort showWord:pillWord(sort) ?: @"Sort" symbol:@"arrow.up.arrow.down"];
     if (mix) [_mix showWord:pillWord(mix) ?: @"Mix" symbol:@"slider.horizontal.3"];
     _search.hidden = search == nil;

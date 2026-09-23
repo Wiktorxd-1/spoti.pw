@@ -363,16 +363,63 @@ void SGRClearCellPaint(UIView *cell) {
     clearPaint(cell, cell, cell.bounds.size.width * kPaintedShare);
 }
 
+static BOOL fireGesture(UIGestureRecognizer *gr) {
+    if (!gr.isEnabled) return NO;
+    NSArray *targets = nil;
+    @try {
+        targets = [gr valueForKey:@"targets"];
+    } @catch (id ex) {}
+    BOOL fired = NO;
+    if ([targets isKindOfClass:NSArray.class]) {
+        for (id t in targets) {
+            id target = nil;
+            SEL action = NULL;
+            @try {
+                target = [t valueForKey:@"target"];
+                id actVal = [t valueForKey:@"action"];
+                if ([actVal isKindOfClass:NSString.class]) action = NSSelectorFromString(actVal);
+                else if ([actVal isKindOfClass:NSValue.class]) action = [actVal pointerValue];
+            } @catch (id ex) {}
+            if (target && action && [target respondsToSelector:action]) {
+                #pragma clang diagnostic push
+                #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                [target performSelector:action withObject:gr];
+                #pragma clang diagnostic pop
+                fired = YES;
+            }
+        }
+    }
+    return fired;
+}
+
 // The way a tap on Spotify's own button would fire it: the first control under it, through the actions
-// it registered, and through accessibility for an Encore control that reads its touches from a gesture
-// recognizer instead -- which is every one of Spotify's own Swift controls.
+// it registered, gesture recognizers, textfield focus, or through accessibility for an Encore control.
 void SGRActivate(UIView *source) {
     if (!source) return;
+    __block UITextField *textField = nil;
     __block UIControl *control = nil;
+    __block BOOL gestureFired = NO;
+
     SGForEachView(source, ^(UIView *v) {
+        if (!textField && [v isKindOfClass:UITextField.class]) textField = (UITextField *)v;
         if (!control && [v isKindOfClass:UIControl.class]) control = (UIControl *)v;
+        if (!gestureFired) {
+            for (UIGestureRecognizer *gr in v.gestureRecognizers) {
+                if ([gr isKindOfClass:UITapGestureRecognizer.class]) {
+                    gestureFired = fireGesture(gr) || gestureFired;
+                }
+            }
+        }
     });
+
+    if (textField) {
+        [textField becomeFirstResponder];
+        [textField sendActionsForControlEvents:UIControlEventEditingDidBegin];
+        if (gestureFired) return;
+    }
+    if (gestureFired) return;
     if (control && SGRFire(control)) return;
+
     id target = control ?: source;
     static NSMutableSet<NSString *> *logged;
     if (!logged) logged = [NSMutableSet set];

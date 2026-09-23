@@ -340,7 +340,10 @@ static void showPlaylist(SGRHeaderInfo *info, UIView *block, UIView *root, id mo
     UIView *page = SGRPlaylistPageOf(root);
     SGRPinnedMore(page, &kPinnedMoreKey, SGRFindByIdentifier(block, @"Components.UI.ContextMenuButton*", &kMoreKey));
     SGRPlaylistTakeSort(page, SGRFindByIdentifier(root, @"Components.Header.UI.Toolbar.Button", &kSortKey));
-    SGRPlaylistTakeSearch(page, SGRFindByIdentifier(root, @"Components.Header.UI.Toolbar.SearchField", &kSearchKey));
+    UIView *searchField = SGRFindByIdentifier(root, @"Components.Header.UI.Toolbar.SearchField", &kSearchKey);
+    if (!searchField) searchField = SGRFindByIdentifier(root, @"*SearchField*", NULL);
+    if (!searchField) searchField = SGRFindByIdentifier(root, @"*Search*", NULL);
+    SGRPlaylistTakeSearch(page, searchField);
 
     static BOOL logged;
     if (!logged && info.window && (title || play)) {
