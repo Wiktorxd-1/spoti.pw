@@ -257,12 +257,52 @@ static UIColor *tintOf(CGImageRef image, UIColor *surface) {
     return [UIColor colorWithRed:mixed[0] green:mixed[1] blue:mixed[2] alpha:1];
 }
 
+static NSCache *paletteCache(void) {
+    static NSCache *cache;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        cache = [NSCache new];
+        cache.countLimit = 64;
+    });
+    return cache;
+}
+
+static NSCache *tintCache(void) {
+    static NSCache *cache;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        cache = [NSCache new];
+        cache.countLimit = 64;
+    });
+    return cache;
+}
+
+static NSString *paletteKey(UIImage *image, SGRPaletteRequest request, CGFloat ceiling, CGFloat flowCeiling) {
+    return [NSString stringWithFormat:@"%p_%dx%d_%d_%d_%.2f_%.2f",
+            image, (int)request.backdropSize.width, (int)request.backdropSize.height,
+            request.amoled, request.flow, ceiling, flowCeiling];
+}
+
+static NSString *tintKey(UIImage *image, UIColor *surface) {
+    return [NSString stringWithFormat:@"%p_%p", image, surface];
+}
+
 @implementation SGRPalette
 
 + (void)paletteForImage:(UIImage *)image request:(SGRPaletteRequest)request completion:(void (^)(SGRPalette *palette))completion {
     if (!completion) return;
+    if (!image) {
+        completion(nil);
+        return;
+    }
     CGFloat ceiling = SGRIncreaseContrast() ? kMaxLuminanceContrast : kMaxLuminance;
     CGFloat flowCeiling = SGRIncreaseContrast() ? kMaxLuminance : kFlowLuminanceMax;
+    NSString *key = paletteKey(image, request, ceiling, flowCeiling);
+    SGRPalette *cached = [paletteCache() objectForKey:key];
+    if (cached) {
+        completion(cached);
+        return;
+    }
     dispatch_async(paletteQueue(), ^{
         SGRPalette *palette = nil;
         CGImageRef cg = image.CGImage;
@@ -291,6 +331,7 @@ static UIColor *tintOf(CGImageRef image, UIColor *surface) {
                     if (blurred) palette.dissolve = finished(blurred, NO, 0, kFadeFrom, 0, kDissolveOpaque, 1);
                     CGImageRelease(blurred);
                 }
+                [paletteCache() setObject:palette forKey:key];
                 static dispatch_once_t once;
                 double ms = (CFAbsoluteTimeGetCurrent() - start) * 1000;
                 dispatch_once(&once, ^{ SGLog(@"redesign kit: first palette %@ from %zux%zu in %.1f ms", palette.fieldColor, CGImageGetWidth(cg), CGImageGetHeight(cg), ms); });
@@ -303,9 +344,20 @@ static UIColor *tintOf(CGImageRef image, UIColor *surface) {
 
 + (void)tintForImage:(UIImage *)image surface:(UIColor *)surface completion:(void (^)(UIColor *tint))completion {
     if (!completion) return;
+    if (!image) {
+        completion(nil);
+        return;
+    }
+    NSString *key = tintKey(image, surface);
+    UIColor *cached = [tintCache() objectForKey:key];
+    if (cached) {
+        completion(cached);
+        return;
+    }
     dispatch_async(paletteQueue(), ^{
         CGImageRef cg = image.CGImage;
         UIColor *tint = cg && CGImageGetWidth(cg) && CGImageGetHeight(cg) ? tintOf(cg, surface) : nil;
+        if (tint) [tintCache() setObject:tint forKey:key];
         static dispatch_once_t once;
         if (tint) dispatch_once(&once, ^{ SGLog(@"redesign kit: first tint %@", tint); });
         dispatch_async(dispatch_get_main_queue(), ^{ completion(tint); });

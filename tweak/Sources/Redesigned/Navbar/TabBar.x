@@ -129,7 +129,14 @@ static UIImage *glyphOf(UIView *item, BOOL active) {
         }
     }
     // Tabs of the mod's own draw a UIImageView, or an icon Encore would not draw off screen.
-    return size.width >= 2 ? renderLayer(live.layer, size) : nil;
+    static NSCache<NSString *, UIImage *> *liveCache;
+    if (!liveCache) liveCache = [NSCache new];
+    NSString *liveKey = [NSString stringWithFormat:@"%p_%@", live, NSStringFromCGSize(size)];
+    UIImage *cachedLive = [liveCache objectForKey:liveKey];
+    if (cachedLive) return cachedLive;
+    UIImage *img = size.width >= 2 ? renderLayer(live.layer, size) : nil;
+    if (img) [liveCache setObject:img forKey:liveKey];
+    return img;
 }
 
 #pragma mark - passing a tap on
