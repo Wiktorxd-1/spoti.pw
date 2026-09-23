@@ -154,7 +154,24 @@ static CGRect untransformed(UIView *view, UIView *host) {
 static SGRLyricsLayout layoutIn(UIView *host) {
     SGRLyricsLayout l = {0};
     UIView *info = sg_info.viewIfLoaded, *duration = sg_duration.viewIfLoaded, *title = sg_titleElement;
-    if (!host || host.bounds.size.height < kLivingHeight || !info || !duration) return l;
+    if (!host || host.bounds.size.height < 150) return l;
+
+    if (SGRPlayerIsLandscape(host)) {
+        CGRect coverFrame = SGRPlayerLandscapeCoverFrame(host);
+        CGRect rightPane = SGRPlayerLandscapeRightPaneFrame(host);
+        if (CGRectIsEmpty(coverFrame) || CGRectIsEmpty(rightPane)) return l;
+        l.cover = coverFrame;
+        l.thumb = coverFrame;
+        CGFloat linesTop = rightPane.origin.y + 60;
+        CGFloat linesH = MAX(60, rightPane.size.height - 60 - 48);
+        l.stage = CGRectMake(rightPane.origin.x, linesTop, rightPane.size.width, linesH);
+        l.lift = 0;
+        l.shift = 0;
+        l.ok = l.stage.size.height > 40;
+        return l;
+    }
+
+    if (!info || !duration) return l;
     CGRect area = SGRPlayerArtworkAreaIn(host), cover = SGRPlayerCoverFrameIn(host);
     if (CGRectIsNull(area) || CGRectIsNull(cover)) return l;
     CGRect row = untransformed(info, host), bar = untransformed(duration, host);
