@@ -33,6 +33,7 @@ jobs:
           repository: theos/theos
           path: theos
           submodules: recursive
+          fetch-depth: 1
 
       - name: Install tools
         run: |

@@ -39,6 +39,7 @@ jobs:
           repository: theos/theos
           path: theos
           submodules: recursive
+          fetch-depth: 1
 
       - name: Install tools
         run: brew install make dpkg ldid
@@ -53,7 +54,7 @@ jobs:
           echo "$SG_FLAG_LIST" | base64 -d | gunzip > tweak/Sources/Shared/Flags/SGFlagList.m
 
       - name: Build
-        run: env -u MAKELEVEL gmake -C tweak clean package
+        run: env -u MAKELEVEL gmake -j$(sysctl -n hw.ncpu 2>/dev/null || echo 4) -C tweak clean package
 
       - name: Attach to the release
         env:

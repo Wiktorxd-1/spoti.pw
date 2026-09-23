@@ -54,10 +54,12 @@ if [ -n "$ICON" ]; then
     || { echo "cyan has no Pillow for --icon -> uv tool install --force --with pillow 'cyan @ git+https://github.com/asdfzxcvbn/pyzule-rw'" >&2; exit 1; }
 fi
 
+NCPU="$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)"
+
 APP_DIR="$(unzip -Z1 "$IN" | grep -oE '^Payload/[^/]+\.app/' | sort -u | head -1)"
 [ -n "$APP_DIR" ] || { echo "no Payload/*.app in $IN" >&2; exit 1; }
-SPOTIFY_VERSION="$(unzip -p "$IN" "${APP_DIR}Info.plist" > "$ROOT/out/.info.plist" && plutil -extract CFBundleShortVersionString raw -o - "$ROOT/out/.info.plist")"
-rm -f "$ROOT/out/.info.plist"
+unzip -p "$IN" "${APP_DIR}Info.plist" > "$ROOT/out/.info.plist"
+SPOTIFY_VERSION="$(plutil -extract CFBundleShortVersionString raw -o - "$ROOT/out/.info.plist")"
 # The name carries the mod's version, not Spotify's: it is the one the About page shows and the one
 # worth telling builds apart by. version.txt is read the way tweak/Makefile reads it, so a build from
 # a fork left behind by a release is named for the version it really is.
@@ -68,7 +70,7 @@ echo "==> spoti.pw $MOD_VERSION on Spotify $SPOTIFY_VERSION -> $OUT"
 
 # The flag table is generated rather than committed, so it always matches the IPA being built.
 if [ ! -f "$ROOT/tweak/Sources/Shared/Flags/SGFlagList.m" ]; then
-  echo "==> extracting the flag table (once, about 40 s)"
+  echo "==> extracting the flag table (once)"
   "$ROOT/scripts/extract-flags.py" "$IN"
 fi
 
@@ -81,7 +83,7 @@ if ! xcrun -sdk iphoneos --find clang >/dev/null 2>&1; then
          TARGET_STRIP=strip TARGET_LIPO=lipo TARGET_CODESIGN_ALLOCATE=codesign_allocate TARGET_LIBTOOL=libtool
 fi
 # Theos builds its Swift support tools only at MAKELEVEL 0, and `make release` hands this script MAKELEVEL 1.
-env -u MAKELEVEL gmake -C "$ROOT/tweak" clean package >/dev/null
+env -u MAKELEVEL gmake -j"$NCPU" -C "$ROOT/tweak" clean package >/dev/null
 TWEAK_DEB="$(ls -t "$ROOT"/tweak/packages/*.deb | head -1)"
 echo "    $TWEAK_DEB"
 
@@ -91,11 +93,11 @@ FILES=("$TWEAK_DEB")
 # The Live Activity (Shared/LiveActivity) draws in a widget extension of its own.
 if xcrun --sdk iphoneos --find swiftc >/dev/null 2>&1; then
   EXT_DIR="$ROOT/out/extension"
-  unzip -p "$IN" "${APP_DIR}Info.plist" > "$ROOT/out/.info.plist"
   "$ROOT/scripts/build-extension.sh" "$ROOT/out/.info.plist" "$EXT_DIR"
   rm -f "$ROOT/out/.info.plist"
   FILES+=("$EXT_DIR/SpotifyGlassLiveActivity.appex")
 else
+  rm -f "$ROOT/out/.info.plist"
   echo "==> no Xcode selected: building without the Live Activity extension"
 fi
 

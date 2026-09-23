@@ -26,7 +26,25 @@ def extract_binary(ipa):
     return tmp / name
 
 
-def segments(binary):
+def segments(data, binary):
+    if len(data) >= 32:
+        magic = struct.unpack_from('<I', data, 0)[0]
+        if magic in (0xfeedfacf, 0xfeedface):
+            ncmds = struct.unpack_from('<I', data, 16)[0]
+            off = 32 if magic == 0xfeedfacf else 28
+            segs = []
+            for _ in range(ncmds):
+                if off + 8 > len(data): break
+                cmd, cmdsize = struct.unpack_from('<II', data, off)
+                if cmd == 0x19:  # LC_SEGMENT_64
+                    vmaddr, vmsize, fileoff, filesize = struct.unpack_from('<QQQQ', data, off + 24)
+                    segs.append((vmaddr, fileoff, filesize))
+                elif cmd == 0x1:  # LC_SEGMENT
+                    vmaddr, vmsize, fileoff, filesize = struct.unpack_from('<IIII', data, off + 20)
+                    segs.append((vmaddr, fileoff, filesize))
+                off += cmdsize
+            if segs:
+                return segs
     text = subprocess.run(['otool', '-l', binary], capture_output=True, text=True).stdout
     segs = []
     for m in re.finditer(r'segname (\S+)\n\s+vmaddr 0x([0-9a-f]+)\n\s+vmsize 0x[0-9a-f]+\n\s+fileoff (\d+)\n\s+filesize (\d+)', text):
@@ -37,17 +55,23 @@ def segments(binary):
 class Binary:
     def __init__(self, path):
         self.data = open(path, 'rb').read()
-        self.segs = segments(path)
+        self.segs = segments(self.data, path)
         self.keys = {}
-        for line in subprocess.run(['strings', '-t', 'x', '-n', '8', path], capture_output=True, text=True).stdout.splitlines():
-            m = re.match(r'\s*([0-9a-f]+) (ios-[a-z0-9-]+\.[A-Za-z0-9_.-]+)$', line)
-            if m:
-                self.keys[BASE + int(m.group(1), 16)] = m.group(2)
+        for m in re.finditer(rb'ios-[a-z0-9-]+\.[A-Za-z0-9_.-]+(?=\x00)', self.data):
+            file_off = m.start()
+            for vm, off, size in self.segs:
+                if off <= file_off < off + size:
+                    self.keys[vm + (file_off - off)] = m.group(0).decode('ascii')
+                    break
         self.thunks = []
-        for line in subprocess.run(['nm', '-n', path], capture_output=True, text=True).stdout.splitlines():
-            m = re.match(r'^([0-9a-f]+) [tT] -\[\S+ initWithConfigurationProvider:\]$', line)
-            if m:
-                self.thunks.append(int(m.group(1), 16))
+        proc = subprocess.run(['nm', '-arch', 'arm64', '-n', path], capture_output=True, text=True)
+        if not proc.stdout:
+            proc = subprocess.run(['nm', '-n', path], capture_output=True, text=True)
+        for line in proc.stdout.splitlines():
+            if 'initWithConfigurationProvider:' in line:
+                m = re.match(r'^([0-9a-f]+) [tT]', line)
+                if m:
+                    self.thunks.append(int(m.group(1), 16))
 
     def offset(self, addr):
         for vm, off, size in self.segs:
@@ -56,7 +80,10 @@ class Binary:
         return None
 
     def insn(self, addr):
-        return struct.unpack_from('<I', self.data, addr - BASE)[0]
+        off = addr - BASE
+        if 0 <= off <= len(self.data) - 4:
+            return int.from_bytes(self.data[off:off+4], 'little')
+        return 0
 
     def cstring(self, addr):
         off = self.offset(addr)
