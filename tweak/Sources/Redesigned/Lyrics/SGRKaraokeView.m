@@ -1480,6 +1480,7 @@ typedef struct {
     view = [[SGRKaraokeLineView alloc] initWithLine:_lines[index] width:_builtWidth - 2 * _margin style:_style under:nil
                                             blurred:_maxBlur > 0 && !_plain sweepsEstimates:_sweepsEstimates];
     if (_plain) [view showPlain];
+    else if ([self isSung:index]) view.active = YES;
     [view markMeaning:_meanings[@(index)]];
     [_scroll addSubview:view];
     _shown[@(index)] = view;
@@ -1649,6 +1650,10 @@ typedef struct {
         _track = track;
         _lines = nil;
         _builtWidth = 0;
+        _clock = 0;
+        _reported = -1;
+        _clockTime = 0;
+        _stillSince = 0;
         [self creditTo:nil];
         [self dropLineViews];
         [self offerExtras];
@@ -1659,6 +1664,10 @@ typedef struct {
         SGLog(@"karaoke: timed lines of %@ came in over the plain text", track);
         _lines = nil;
         _builtWidth = 0;
+        _clock = 0;
+        _reported = -1;
+        _clockTime = 0;
+        _stillSince = 0;
         [self creditTo:nil];
         [self dropLineViews];
     }

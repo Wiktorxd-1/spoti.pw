@@ -10,6 +10,7 @@ NSString *SGURIString(id uri) {
 
 static NSHashTable<id<SGPlayerStateObserver>> *sg_stateObservers;
 static SPTPlayerState *sg_playerState;
+static __weak id sg_activePlayer;
 static NSString *sg_stateKey;
 // Set once the now playing platform has reported; the mod's own observer on the player stands down.
 static BOOL sg_platformReported = NO;
@@ -22,6 +23,10 @@ void SGAddPlayerStateObserver(id<SGPlayerStateObserver> observer) {
 
 SPTPlayerState *SGPlayerState(void) {
     return sg_playerState;
+}
+
+id SGPlayer(void) {
+    return sg_activePlayer;
 }
 
 // What an observer is told about; the state object itself is new with every position report.
@@ -64,6 +69,7 @@ static SGPlayerObserver *sg_ownObserver;
 
 %hook _TtC23NowPlaying_PlatformImpl28StatefulPlayerImplementation
 - (void)player:(id)player stateDidChange:(id)state {
+    if (player) sg_activePlayer = player;
     %orig;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
@@ -76,7 +82,13 @@ static SGPlayerObserver *sg_ownObserver;
 // Observers are added from several threads as the app starts; the first player seen is the one
 // watched, the way KaraokeSource.x takes the first player the app asks.
 %hook SPTEsperantoPlayer
+- (id)init {
+    id res = %orig;
+    if (!sg_activePlayer) sg_activePlayer = res;
+    return res;
+}
 - (void)addPlayerObserver:(id)observer {
+    if (!sg_activePlayer) sg_activePlayer = self;
     %orig;
     id player = self;
     static dispatch_once_t once;

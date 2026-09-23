@@ -206,13 +206,15 @@ void SGKaraokeRequestLyrics(NSString *trackID) {
     });
 }
 
-id SGKaraokePlayer(void) {
-    return sg_player;
+static SPTPlayerState *playerState(void) {
+    id player = sg_player ?: SGPlayer();
+    if (player && !sg_player) sg_player = player;
+    SPTPlayerState *state = [player respondsToSelector:@selector(state)] ? [(id<SPTPlayer>)player state] : nil;
+    return state ?: SGPlayerState();
 }
 
-static SPTPlayerState *playerState(void) {
-    id player = sg_player;
-    return [player respondsToSelector:@selector(state)] ? [(id<SPTPlayer>)player state] : nil;
+id SGKaraokePlayer(void) {
+    return sg_player ?: SGPlayer();
 }
 
 NSString *SGKaraokePlayingTrack(void) {
@@ -228,7 +230,7 @@ NSInteger SGKaraokePositionMs(void) {
 }
 
 void SGKaraokeSeek(NSInteger ms) {
-    id player = sg_player;
+    id player = SGKaraokePlayer();
     if (![player respondsToSelector:@selector(seekTo:)]) return;
     [(id<SPTPlayer>)player seekTo:ms / 1000.0];
 }
@@ -279,6 +281,15 @@ static void prefetch(SPTPlayerTrack *track, NSString *trackID, SPTPlayerState *s
 }
 
 %hook SPTEsperantoPlayer
+- (id)init {
+    id res = %orig;
+    if (!sg_player) sg_player = res;
+    return res;
+}
+- (void)addPlayerObserver:(id)observer {
+    if (!sg_player) sg_player = self;
+    %orig;
+}
 - (id)state {
     if (!sg_player) sg_player = self;
     SPTPlayerState *state = %orig;
