@@ -240,7 +240,10 @@ static void placeTitleRow(SGRLyricsLayout l) {
 
 BOOL SGRPlayerLyricsAvailable(void) {
     NSString *track = SGKaraokePlayingTrack();
-    return track != nil && SGKaraokeLinesForTrack(track) != nil;
+    if (!track) return NO;
+    if (SGKaraokeLinesForTrack(track)) return YES;
+    SGKaraokeRequestLyrics(track);
+    return NO;
 }
 
 BOOL SGRPlayerLyricsOpen(void) {
@@ -453,6 +456,8 @@ static void replace(void) {
     NSString *track = SGURIString(state.track.URI);
     if (!track || [track isEqualToString:_track]) return;
     _track = track;
+    NSString *trackID = [track hasPrefix:@"spotify:track:"] ? [track substringFromIndex:@"spotify:track:".length] : nil;
+    if (trackID) SGKaraokeRequestLyrics(trackID);
     // Lyrics arrive a moment after the track does, and nothing announces them: the glyph is asked again
     // while they would be coming, and the lines already up wait out the same grace before they go.
     for (NSNumber *delay in @[@1, @(kLyricsGrace)]) {

@@ -96,22 +96,15 @@ UIColor *SGRFieldColorFor(UIColor *color) {
     return color ? fieldColorFor(color, SGRIncreaseContrast() ? kMaxLuminanceContrast : kMaxLuminance) : SGRNeutralField();
 }
 
-// The artwork squeezed into a small square, whatever its aspect, and the bottom rows of that averaged
-// by coverage. A bitmap context keeps its rows top to bottom, so the last rows are the bottom edge.
-static UIColor *edgeColorOf(CGImageRef image) {
-    CGContextRef context = newBitmap(kSample, kSample);
-    if (!context) return nil;
-    CGContextSetInterpolationQuality(context, kCGInterpolationMedium);
-    CGContextDrawImage(context, CGRectMake(0, 0, kSample, kSample), image);
-    const uint8_t *px = CGBitmapContextGetData(context);
+static UIColor *edgeColorOf(const uint8_t *px) {
+    if (!px) return nil;
     double r = 0, g = 0, b = 0, coverage = 0;
-    for (size_t y = kSample - kEdgeRows; px && y < kSample; y++) {
+    for (size_t y = kSample - kEdgeRows; y < kSample; y++) {
         for (size_t x = 0; x < kSample; x++) {
             const uint8_t *p = px + (y * kSample + x) * 4;
             r += p[0], g += p[1], b += p[2], coverage += p[3];
         }
     }
-    CGContextRelease(context);
     // Premultiplied, so the sums over the summed alpha are the average of what is actually there.
     if (coverage < 1) return nil;
     return [UIColor colorWithRed:r / coverage green:g / coverage blue:b / coverage alpha:1];
@@ -220,14 +213,8 @@ static UIColor *flowColorFor(const CGFloat linear[3], CGFloat ceiling) {
     return [UIColor colorWithRed:toEncoded(MIN(1, lr * k)) green:toEncoded(MIN(1, lg * k)) blue:toEncoded(MIN(1, lb * k)) alpha:1];
 }
 
-// The artwork's main colour in each quarter, then over the whole of it: the field keeps the artwork's
-// colours roughly where the artwork has them.
-static NSArray<UIColor *> *flowColorsOf(CGImageRef image, CGFloat ceiling) {
-    CGContextRef context = newBitmap(kSample, kSample);
-    if (!context) return nil;
-    CGContextSetInterpolationQuality(context, kCGInterpolationMedium);
-    CGContextDrawImage(context, CGRectMake(0, 0, kSample, kSample), image);
-    const uint8_t *px = CGBitmapContextGetData(context);
+static NSArray<UIColor *> *flowColorsOf(const uint8_t *px, CGFloat ceiling) {
+    if (!px) return nil;
     size_t half = kSample / 2;
     size_t regions[5][4] = {{0, 0, half, half}, {half, 0, kSample, half}, {0, half, half, kSample}, {half, half, kSample, kSample}, {0, 0, kSample, kSample}};
     NSMutableArray<UIColor *> *colors = [NSMutableArray arrayWithCapacity:5];
@@ -236,7 +223,6 @@ static NSArray<UIColor *> *flowColorsOf(CGImageRef image, CGFloat ceiling) {
         if (!dominantIn(px, regions[i][0], regions[i][1], regions[i][2], regions[i][3], linear)) break;
         [colors addObject:flowColorFor(linear, ceiling)];
     }
-    CGContextRelease(context);
     return colors.count == 5 ? colors : nil;
 }
 
@@ -280,30 +266,36 @@ static UIColor *tintOf(CGImageRef image, UIColor *surface) {
     dispatch_async(paletteQueue(), ^{
         SGRPalette *palette = nil;
         CGImageRef cg = image.CGImage;
-        UIColor *edge = cg && CGImageGetWidth(cg) && CGImageGetHeight(cg) ? edgeColorOf(cg) : nil;
-        if (edge) {
-            CFAbsoluteTime start = CFAbsoluteTimeGetCurrent();
-            palette = [SGRPalette new];
-            palette.edgeColor = edge;
-            palette.fieldColor = fieldColorFor(edge, ceiling);
-            CGSize area = request.backdropSize;
-            if (area.width > 0 && area.height > 0) {
-                size_t width = (size_t)kBackdropWidth, height = (size_t)MIN(kBackdropMaxHeight, round(kBackdropWidth * area.height / area.width));
-                CGImageRef blurred = newBlurred(cg, width, MAX(height, 1), kBackdropSigma);
-                if (blurred) palette.backdrop = finished(blurred, YES, request.amoled ? 0.55 : 0.45, kFadeFrom, 1, 1, 0);
-                CGImageRelease(blurred);
+        CGContextRef sampleCtx = (cg && CGImageGetWidth(cg) && CGImageGetHeight(cg)) ? newBitmap(kSample, kSample) : NULL;
+        if (sampleCtx) {
+            drawFilling(sampleCtx, cg, kSample, kSample);
+            const uint8_t *px = CGBitmapContextGetData(sampleCtx);
+            UIColor *edge = edgeColorOf(px);
+            if (edge) {
+                CFAbsoluteTime start = CFAbsoluteTimeGetCurrent();
+                palette = [SGRPalette new];
+                palette.edgeColor = edge;
+                palette.fieldColor = fieldColorFor(edge, ceiling);
+                CGSize area = request.backdropSize;
+                if (area.width > 0 && area.height > 0) {
+                    size_t width = (size_t)kBackdropWidth, height = (size_t)MIN(kBackdropMaxHeight, round(kBackdropWidth * area.height / area.width));
+                    CGImageRef blurred = newBlurred(cg, width, MAX(height, 1), kBackdropSigma);
+                    if (blurred) palette.backdrop = finished(blurred, YES, request.amoled ? 0.55 : 0.45, kFadeFrom, 1, 1, 0);
+                    CGImageRelease(blurred);
+                }
+                if (request.flow) palette.flowColors = flowColorsOf(px, flowCeiling);
+                if (request.dissolve) {
+                    CGFloat aspect = (CGFloat)CGImageGetHeight(cg) / CGImageGetWidth(cg);
+                    size_t height = (size_t)MIN(kDissolveWidth * 2, MAX(kDissolveWidth / 2, round(kDissolveWidth * aspect)));
+                    CGImageRef blurred = newBlurred(cg, (size_t)kDissolveWidth, height, kDissolveSigma);
+                    if (blurred) palette.dissolve = finished(blurred, NO, 0, kFadeFrom, 0, kDissolveOpaque, 1);
+                    CGImageRelease(blurred);
+                }
+                static dispatch_once_t once;
+                double ms = (CFAbsoluteTimeGetCurrent() - start) * 1000;
+                dispatch_once(&once, ^{ SGLog(@"redesign kit: first palette %@ from %zux%zu in %.1f ms", palette.fieldColor, CGImageGetWidth(cg), CGImageGetHeight(cg), ms); });
             }
-            if (request.flow) palette.flowColors = flowColorsOf(cg, flowCeiling);
-            if (request.dissolve) {
-                CGFloat aspect = (CGFloat)CGImageGetHeight(cg) / CGImageGetWidth(cg);
-                size_t height = (size_t)MIN(kDissolveWidth * 2, MAX(kDissolveWidth / 2, round(kDissolveWidth * aspect)));
-                CGImageRef blurred = newBlurred(cg, (size_t)kDissolveWidth, height, kDissolveSigma);
-                if (blurred) palette.dissolve = finished(blurred, NO, 0, kFadeFrom, 0, kDissolveOpaque, 1);
-                CGImageRelease(blurred);
-            }
-            static dispatch_once_t once;
-            double ms = (CFAbsoluteTimeGetCurrent() - start) * 1000;
-            dispatch_once(&once, ^{ SGLog(@"redesign kit: first palette %@ from %zux%zu in %.1f ms", palette.fieldColor, CGImageGetWidth(cg), CGImageGetHeight(cg), ms); });
+            CGContextRelease(sampleCtx);
         }
         dispatch_async(dispatch_get_main_queue(), ^{ completion(palette); });
     });

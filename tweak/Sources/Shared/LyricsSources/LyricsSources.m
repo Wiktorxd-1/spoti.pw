@@ -314,6 +314,10 @@ static void finish(SGLyricsWalk *walk) {
             @synchronized (sg_missing) { [sg_missing addObject:trackID]; }
         }
     }
+    if (lyrics.karaokeLines.count) {
+        SGKaraokeKeepLines(trackID, lyrics.karaokeLines);
+        SGLyricsSetCredit(trackID, lyrics.provider);
+    }
     SGLog(@"lyrics: %@ ends with %@", trackID, lyrics
           ? [NSString stringWithFormat:@"%lu %@ lines from %@, %lu page lines",
              (unsigned long)lyrics.karaokeLines.count, timingName(lyrics.karaokeLines),

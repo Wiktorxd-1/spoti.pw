@@ -5,7 +5,9 @@
 // unresolved and the pane renders as a plain blur, while the capsule shape, which is the view's
 // own property, still comes out right. Spotify's own Reprise glass builds its effect the same way.
 UIVisualEffect *SGGlassEffect(void) {
-    Class glass = NSClassFromString(@"UIGlassEffect");
+    static Class glass;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ glass = NSClassFromString(@"UIGlassEffect"); });
     if ([glass respondsToSelector:@selector(effectWithStyle:)]) return [glass effectWithStyle:0];
     return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark];
 }
@@ -50,8 +52,12 @@ void SGHideGlassFrom(UIView *host, NSUInteger count) {
 }
 
 void SGShapeGlass(UIView *glass, CGFloat radius, BOOL capsule) {
-    Class config = NSClassFromString(@"UICornerConfiguration");
-    Class cornerRadius = NSClassFromString(@"UICornerRadius");
+    static Class config, cornerRadius;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        config = NSClassFromString(@"UICornerConfiguration");
+        cornerRadius = NSClassFromString(@"UICornerRadius");
+    });
     id shape = nil;
     if (config && [glass respondsToSelector:@selector(setCornerConfiguration:)]) {
         if (capsule && [config respondsToSelector:@selector(capsuleConfiguration)]) {

@@ -1662,10 +1662,15 @@ typedef struct {
         [self creditTo:nil];
         [self dropLineViews];
     }
-    if (!_lines && track && (_lines = SGKaraokeLinesForTrack(track))) {
-        SGLog(@"karaoke: showing %lu lines of %@", (unsigned long)_lines.count, track);
-        [self timeLines];
-        [self setNeedsLayout];
+    if (!_lines && track) {
+        _lines = SGKaraokeLinesForTrack(track);
+        if (_lines) {
+            SGLog(@"karaoke: showing %lu lines of %@", (unsigned long)_lines.count, track);
+            [self timeLines];
+            [self setNeedsLayout];
+        } else {
+            SGKaraokeRequestLyrics(track);
+        }
     }
     [self setShowing:_tops != nil];
     // The source is settled a moment after the lines are, so it is asked for until it answers.

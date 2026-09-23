@@ -12,14 +12,17 @@ __weak UIView *sg_npvBackdropRoot = nil;
     if (color && (sg_lyricsCardRoot || sg_lyricsPageRoot || sg_homeRoot || sg_npvBackdropRoot)) {
         UIView *view = (UIView *)self.delegate;
         if ([view isKindOfClass:UIView.class] && view.layer == self && !SGKeepsColor(view)) {
-            if (SGIsInside(view, sg_lyricsCardRoot) || SGIsInside(view, sg_lyricsPageRoot)) {
+            UIView *match = nil;
+            for (UIView *v = view; v; v = v.superview) {
+                if ([v isKindOfClass:UIVisualEffectView.class]) break;
+                if (v == sg_lyricsCardRoot || v == sg_lyricsPageRoot || v == sg_npvBackdropRoot || v == sg_homeRoot) {
+                    match = v;
+                    break;
+                }
+            }
+            if (match == sg_lyricsCardRoot || match == sg_lyricsPageRoot || match == sg_npvBackdropRoot) {
                 color = NULL;
-            } else if (SGIsInside(view, sg_npvBackdropRoot)) {
-                // The album colour arrives on the plane per track, outside any layout pass.
-                color = NULL;
-            } else if (SGIsBaseSurface(color) && SGIsInside(view, sg_homeRoot)) {
-                // Home keeps its cards and its placeholders; only the base surface the gradient
-                // of Native/Home/HomeGradient.x sits behind goes.
+            } else if (match == sg_homeRoot && SGIsBaseSurface(color)) {
                 color = NULL;
             }
         }

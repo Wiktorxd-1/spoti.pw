@@ -19,19 +19,22 @@ BOOL SGIsInside(UIView *view, UIView *root) {
 }
 
 UIStackView *SGRowIn(UIView *host) {
-    __block UIStackView *row = nil;
-    SGForEachView(host, ^(UIView *v) {
-        if (!row && [v isKindOfClass:UIStackView.class] && v.bounds.size.width > 200 && ((UIStackView *)v).arrangedSubviews.count >= 2) row = (UIStackView *)v;
-    });
-    return row;
+    if (!host) return nil;
+    if ([host isKindOfClass:UIStackView.class] && host.bounds.size.width > 200 && ((UIStackView *)host).arrangedSubviews.count >= 2) return (UIStackView *)host;
+    for (UIView *sub in host.subviews) {
+        UIStackView *row = SGRowIn(sub);
+        if (row) return row;
+    }
+    return nil;
 }
 
 BOOL SGHasClass(UIView *root, NSString *marker) {
-    __block BOOL found = NO;
-    SGForEachView(root, ^(UIView *v) {
-        if (!found && [NSStringFromClass(v.class) containsString:marker]) found = YES;
-    });
-    return found;
+    if (!root || !marker.length) return NO;
+    if ([NSStringFromClass(root.class) containsString:marker]) return YES;
+    for (UIView *sub in root.subviews) {
+        if (SGHasClass(sub, marker)) return YES;
+    }
+    return NO;
 }
 
 BOOL SGKeepsColor(UIView *view) {

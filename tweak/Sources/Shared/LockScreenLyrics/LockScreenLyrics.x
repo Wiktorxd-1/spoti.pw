@@ -77,9 +77,12 @@ static NSString *lineFor(NSDictionary *info, double elapsed) {
     NSInteger index = SGKaraokeLeadLine(lines, position);
     if (index < 0) return nil;
     BOOL nextFarOff = index + 1 == (NSInteger)lines.count || lines[index + 1].start - position > kBreakMs;
-    if (position > lines[index].end + kBreakMs && nextFarOff) return nil;
+    SGKaraokeLine *current = lines[index];
+    if (position > current.end + kBreakMs && nextFarOff) return nil;
+    NSString *full = SGKaraokeLineText(current);
+    if (full.length <= kMaxChars) return full;
     NSString *shown = nil;
-    for (NSArray<SGKaraokeWord *> *piece in piecesOf(lines[index])) {
+    for (NSArray<SGKaraokeWord *> *piece in piecesOf(current)) {
         if (!shown || piece.firstObject.start <= position) shown = textOf(piece);
     }
     return shown;

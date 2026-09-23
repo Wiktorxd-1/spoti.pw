@@ -15,16 +15,24 @@ __weak UIView *sgr_artistRoot = nil;
     if (color && (sgr_nowPlayingRoot || sgr_lyricsPageRoot || sgr_playlistRoot || sgr_albumRoot || sgr_artistRoot)) {
         UIView *view = (UIView *)self.delegate;
         if ([view isKindOfClass:UIView.class] && view.layer == self && !SGKeepsColor(view)) {
-            if (SGIsInside(view, sgr_nowPlayingRoot)) {
+            UIView *match = nil;
+            for (UIView *v = view; v; v = v.superview) {
+                if ([v isKindOfClass:UIVisualEffectView.class]) break;
+                if (v == sgr_nowPlayingRoot || v == sgr_lyricsPageRoot || v == sgr_playlistRoot || v == sgr_albumRoot || v == sgr_artistRoot) {
+                    match = v;
+                    break;
+                }
+            }
+            if (match == sgr_nowPlayingRoot) {
                 if (SGLooksLikeCard(view, color) && sgr_nowPlayingCard != view) {
                     sgr_nowPlayingCard = view;
                     UIView *bar = sgr_nowPlayingRoot;
                     dispatch_async(dispatch_get_main_queue(), ^{ [bar.superview setNeedsLayout]; });
                 }
                 color = NULL;
-            } else if (SGIsInside(view, sgr_lyricsPageRoot)) {
+            } else if (match == sgr_lyricsPageRoot) {
                 color = NULL;
-            } else if (SGIsBaseSurface(color) && (SGIsInside(view, sgr_playlistRoot) || SGIsInside(view, sgr_albumRoot) || SGIsInside(view, sgr_artistRoot))) {
+            } else if (match && SGIsBaseSurface(color)) {
                 color = NULL;
             }
         }

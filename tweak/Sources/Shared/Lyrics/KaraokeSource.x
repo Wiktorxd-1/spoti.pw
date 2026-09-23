@@ -8,6 +8,7 @@
 #import "Lyrics.h"
 #import "Shared/LockScreenLyrics/LockScreenLyrics.h"
 #import "Shared/LyricsSources/LyricsSources.h"
+#import "Shared/Player/PlayerState.h"
 #import "Headers/SPTPlayer.h"
 
 static const NSUInteger kKeptTracks = 40;
@@ -317,6 +318,26 @@ static void prefetch(SPTPlayerTrack *track, NSString *trackID, SPTPlayerState *s
 }
 %end
 
+@interface SGKaraokeTrackWatcher : NSObject <SGPlayerStateObserver>
+@end
+
+@implementation SGKaraokeTrackWatcher
+- (void)playerStateDidChange:(SPTPlayerState *)state {
+    SPTPlayerTrack *track = state.track;
+    if (!track) return;
+    NSString *trackID = idOf(track);
+    if (trackID && ![trackID isEqualToString:sg_lastSeenID]) {
+        sg_lastSeen = track;
+        sg_lastSeenID = trackID;
+        remember(track, trackID);
+        prefetch(track, trackID, state);
+        if (sg_ownSources && !sg_lyrics[trackID]) SGKaraokeRequestLyrics(trackID);
+    }
+}
+@end
+
+static SGKaraokeTrackWatcher *sg_trackWatcher;
+
 %ctor {
     // The sources that search by name learn the name from the player, so the player is caught
     // whenever one is on, not only for the redesign's lyrics and the lock screen.
@@ -328,6 +349,8 @@ static void prefetch(SPTPlayerTrack *track, NSString *trackID, SPTPlayerState *s
     sg_losses = [NSMutableDictionary dictionary];
     sg_ownSources = SGLyricsEnabled();
     %init;
+    sg_trackWatcher = [SGKaraokeTrackWatcher new];
+    SGAddPlayerStateObserver(sg_trackWatcher);
     SGLog(@"karaoke: on");
     SGRequireClasses(@[
         @"SPTEsperantoPlayer", @"SPTPlayerState",

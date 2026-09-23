@@ -157,7 +157,7 @@ static void tick(void) API_AVAILABLE(ios(17.0)) {
 
     NSInteger view = SGInt(SGKeyLiveActivityView, SGLiveActivityLyrics);
     BOOL paused = state.isPaused;
-    NSTimeInterval every = paused ? kPausedTick : kTick;
+    NSTimeInterval every = (paused || view != SGLiveActivityLyrics) ? kPausedTick : kTick;
     if (sg_timer && sg_tickEvery != every) startTimer(every);
     NSString *line = @"", *next = @"";
     if (view == SGLiveActivityLyrics) line = lyricsLine(trackID, &next);
