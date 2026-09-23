@@ -368,11 +368,15 @@ void SGRPlayerToggleLyrics(void) {
 static void replace(void) {
     UIView *host = sg_host;
     if (!host || sg_moving) return;   // a pass in the middle of the transition would cut it short
+    if (!sg_open) {
+        UIView *info = sg_info.viewIfLoaded;
+        if (info && !CGAffineTransformIsIdentity(info.transform)) placeTitleRow((SGRLyricsLayout){0});
+        return;
+    }
     SGRLyricsLayout l = layoutIn(host);
-    if (sg_open && !l.ok) return;
+    if (!l.ok) return;
     placeTitleRow(l);
-    sg_floating.viewIfLoaded.alpha = sg_open ? 0 : 1;
-    if (!sg_open) return;
+    sg_floating.viewIfLoaded.alpha = 0;
     SGRPlayerLyricsOverlay *overlay = objc_getAssociatedObject(host, &kOverlayKey);
     if (!overlay.superview) return;
     place(overlay, host, l);

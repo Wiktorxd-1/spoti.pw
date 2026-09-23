@@ -8,6 +8,7 @@
 #import "Core/SGCore.h"
 #import "Headers/SPTPlayer.h"
 #import "Shared/Lyrics/Lyrics.h"
+#import "Shared/Player/PlayerState.h"
 #import "LiveActivity.h"
 
 API_AVAILABLE(ios(17.0))
@@ -157,8 +158,17 @@ static void tick(void) API_AVAILABLE(ios(17.0)) {
 
     NSInteger view = SGInt(SGKeyLiveActivityView, SGLiveActivityLyrics);
     BOOL paused = state.isPaused;
-    NSTimeInterval every = (paused || view != SGLiveActivityLyrics) ? kPausedTick : kTick;
-    if (sg_timer && sg_tickEvery != every) startTimer(every);
+    BOOL hasTimer = sg_sleepEnd != nil || sg_sleepTrack != nil;
+    if (paused && !hasTimer) {
+        if (sg_timer) {
+            [sg_timer invalidate];
+            sg_timer = nil;
+            sg_tickEvery = 0;
+        }
+    } else {
+        NSTimeInterval every = (paused || view != SGLiveActivityLyrics) ? kPausedTick : kTick;
+        if (!sg_timer || sg_tickEvery != every) startTimer(every);
+    }
     NSString *line = @"", *next = @"";
     if (view == SGLiveActivityLyrics) line = lyricsLine(trackID, &next);
 
@@ -254,6 +264,21 @@ static void runAction(NSString *action) {
     SGLog(@"live activity: %@ -> %@", action, result);
 }
 
+@interface SGLiveActivityPlayerWatcher : NSObject <SGPlayerStateObserver>
+@end
+
+@implementation SGLiveActivityPlayerWatcher
+- (void)playerStateDidChange:(SPTPlayerState *)state {
+    if (@available(iOS 17.0, *)) {
+        if (SGFlag(SGKeyLiveActivity, NO)) {
+            tick();
+        }
+    }
+}
+@end
+
+static SGLiveActivityPlayerWatcher *sg_playerWatcher;
+
 void SGSetLiveActivityEnabled(BOOL on) {
     if (@available(iOS 17.0, *)) {
         [sg_timer invalidate];
@@ -268,6 +293,8 @@ void SGSetLiveActivityEnabled(BOOL on) {
         }
         static dispatch_once_t observing;
         dispatch_once(&observing, ^{
+            sg_playerWatcher = [SGLiveActivityPlayerWatcher new];
+            SGAddPlayerStateObserver(sg_playerWatcher);
             NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
             [center addObserverForName:@"SGLiveActivityPlay" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
                 if ([note.object isKindOfClass:NSString.class]) playQueued(note.object);
@@ -276,7 +303,7 @@ void SGSetLiveActivityEnabled(BOOL on) {
             [center addObserverForName:@"SGLiveActivityAction" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
                 if (![note.object isKindOfClass:NSString.class]) return;
                 runAction(note.object);
-                if (sg_timer) tick();
+                tick();
             }];
         });
         startTimer(kTick);
