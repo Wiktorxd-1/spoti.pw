@@ -1,6 +1,16 @@
 #import "Settings/SGModPage.h"
 #import "Privacy.h"
 
+SGModSection *SGPrivacySection(void) {
+    return SGSection(@"Privacy", @[
+        SGWithSymbol(SGSwitchRow(@"Block telemetry", @"Spotify's own events still go out, since Recents is built from them", SGKeyBlockTelemetry), @"antenna.radiowaves.left.and.right.slash"),
+    ]);
+}
+
+SGModSection *SGPrivacyCountersSection(void) {
+    return countersSection();
+}
+
 // Every switch here forces a flag Spotify ships on to off, so the titles name the hiding: on hides
 // the thing, off is Spotify's own value.
 static UIViewController *tipsPage(void) {

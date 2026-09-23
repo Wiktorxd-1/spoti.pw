@@ -15,3 +15,8 @@ void SGResetBlocked(void);
 
 // The Privacy & clutter page: telemetry, the Search switches, the tips, what telemetry blocking stopped.
 UIViewController *SGPrivacySettingsPage(void);
+
+@class SGModSection;
+// The telemetry switch and what it has stopped, on the Premium, ads & privacy page.
+SGModSection *SGPrivacySection(void);
+SGModSection *SGPrivacyCountersSection(void);
