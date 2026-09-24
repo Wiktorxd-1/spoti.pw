@@ -61,9 +61,3 @@ void SGRPlayerLyricsChanged(void);
 // Alpha 0, no touches, hidden from accessibility, set again on every call: for Spotify's Swift views,
 // which SGRSuppress cannot keep (PlayerControls.x).
 void SGRPlayerVanish(UIView *view);
-
-#pragma mark - landscape (PlayerLandscape.x)
-
-BOOL SGRPlayerIsLandscape(UIView *host);
-CGRect SGRPlayerLandscapeCoverFrame(UIView *host);
-CGRect SGRPlayerLandscapeRightPaneFrame(UIView *host);
