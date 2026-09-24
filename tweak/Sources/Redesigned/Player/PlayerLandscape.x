@@ -56,6 +56,44 @@ static void layoutLandscape(UIView *host) {
     }
 }
 
+static UIInterfaceOrientationMask sgr_supportedOrientations(id self, SEL _cmd) {
+    return UIInterfaceOrientationMaskAllButUpsideDown;
+}
+
+static BOOL sgr_shouldAutorotate(id self, SEL _cmd) {
+    return YES;
+}
+
+static void swizzleAllViewControllerClasses(void) {
+    int numClasses = objc_getClassList(NULL, 0);
+    if (numClasses <= 0) return;
+    Class *classes = (Class *)malloc(sizeof(Class) * numClasses);
+    numClasses = objc_getClassList(classes, numClasses);
+    Class vcClass = [UIViewController class];
+    SEL suppSel = @selector(supportedInterfaceOrientations);
+    SEL autoSel = @selector(shouldAutorotate);
+
+    for (int i = 0; i < numClasses; i++) {
+        Class cls = classes[i];
+        if (cls && class_getSuperclass(cls) && [cls isSubclassOfClass:vcClass]) {
+            unsigned int count = 0;
+            Method *methods = class_copyMethodList(cls, &count);
+            if (methods) {
+                for (unsigned int m = 0; m < count; m++) {
+                    SEL s = method_getName(methods[m]);
+                    if (s == suppSel) {
+                        method_setImplementation(methods[m], (IMP)sgr_supportedOrientations);
+                    } else if (s == autoSel) {
+                        method_setImplementation(methods[m], (IMP)sgr_shouldAutorotate);
+                    }
+                }
+                free(methods);
+            }
+        }
+    }
+    free(classes);
+}
+
 %hook UIViewController
 
 - (BOOL)shouldAutorotate {
@@ -88,27 +126,32 @@ static void layoutLandscape(UIView *host) {
 
 %end
 
-static UIInterfaceOrientationMask custom_supportedOrientations(id self, SEL _cmd, UIApplication *app, UIWindow *win) {
+%hook UIApplication
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientationsForWindow:(UIWindow *)window {
     return UIInterfaceOrientationMaskAllButUpsideDown;
 }
 
-static void swizzleAppDelegate(id<UIApplicationDelegate> delegate) {
-    if (!delegate) return;
-    Class cls = [delegate class];
-    SEL sel = @selector(application:supportedInterfaceOrientationsForWindow:);
-    Method m = class_getInstanceMethod(cls, sel);
-    if (m) {
-        method_setImplementation(m, (IMP)custom_supportedOrientations);
-    } else {
-        class_addMethod(cls, sel, (IMP)custom_supportedOrientations, "Q@:@@");
+- (void)setDelegate:(id<UIApplicationDelegate>)delegate {
+    %orig;
+    if (delegate) {
+        Class cls = [delegate class];
+        SEL sel = @selector(application:supportedInterfaceOrientationsForWindow:);
+        Method m = class_getInstanceMethod(cls, sel);
+        if (m) {
+            method_setImplementation(m, (IMP)sgr_supportedOrientations);
+        } else {
+            class_addMethod(cls, sel, (IMP)sgr_supportedOrientations, "Q@:@@");
+        }
     }
 }
 
-%hook UIApplication
+%end
 
-- (void)setDelegate:(id<UIApplicationDelegate>)delegate {
-    %orig;
-    swizzleAppDelegate(delegate);
+%hook UIWindow
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    return UIInterfaceOrientationMaskAllButUpsideDown;
 }
 
 %end
@@ -116,9 +159,20 @@ static void swizzleAppDelegate(id<UIApplicationDelegate> delegate) {
 %ctor {
     if (!SGRedesignedUI()) return;
     %init;
-    if (UIApplication.sharedApplication.delegate) {
-        swizzleAppDelegate(UIApplication.sharedApplication.delegate);
-    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        swizzleAllViewControllerClasses();
+        id<UIApplicationDelegate> delegate = UIApplication.sharedApplication.delegate;
+        if (delegate) {
+            Class cls = [delegate class];
+            SEL sel = @selector(application:supportedInterfaceOrientationsForWindow:);
+            Method m = class_getInstanceMethod(cls, sel);
+            if (m) {
+                method_setImplementation(m, (IMP)sgr_supportedOrientations);
+            } else {
+                class_addMethod(cls, sel, (IMP)sgr_supportedOrientations, "Q@:@@");
+            }
+        }
+    });
     SGRequireClasses(@[
         @"_TtC19NowPlaying_ViewImpl24NowPlayingViewController",
     ]);
