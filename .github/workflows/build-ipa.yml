@@ -5,7 +5,8 @@ on:
     inputs:
       ipa_url:
         description: "Direct link to a decrypted Spotify IPA"
-        required: true
+        default: "https://cdn.wiktorxd-1.dev/f/wiktor/d/tqkcW2bVDPh5vYiF.ipa"
+        required: false
         type: string
       upload_method:
         description: "Where to put the result"
