@@ -150,13 +150,16 @@ static void swizzleViewControllerOrientations(void) {
 
 %end
 
+@interface _TtC19NowPlaying_ViewImpl24NowPlayingViewController : UIViewController
+@end
+
 %hook _TtC19NowPlaying_ViewImpl24NowPlayingViewController
 
 - (void)viewWillAppear:(BOOL)animated {
     %orig;
     sg_nowPlayingOpen = YES;
     if (@available(iOS 16.0, *)) {
-        [self setNeedsUpdateOfSupportedInterfaceOrientations];
+        [((UIViewController *)self) setNeedsUpdateOfSupportedInterfaceOrientations];
     }
 }
 
@@ -164,7 +167,7 @@ static void swizzleViewControllerOrientations(void) {
     %orig;
     sg_nowPlayingOpen = YES;
     if (@available(iOS 16.0, *)) {
-        [self setNeedsUpdateOfSupportedInterfaceOrientations];
+        [((UIViewController *)self) setNeedsUpdateOfSupportedInterfaceOrientations];
     }
 }
 
@@ -172,7 +175,7 @@ static void swizzleViewControllerOrientations(void) {
     %orig;
     sg_nowPlayingOpen = NO;
     if (@available(iOS 16.0, *)) {
-        [self setNeedsUpdateOfSupportedInterfaceOrientations];
+        [((UIViewController *)self) setNeedsUpdateOfSupportedInterfaceOrientations];
     }
 }
 
@@ -180,7 +183,7 @@ static void swizzleViewControllerOrientations(void) {
     %orig;
     sg_nowPlayingOpen = NO;
     if (@available(iOS 16.0, *)) {
-        [self setNeedsUpdateOfSupportedInterfaceOrientations];
+        [((UIViewController *)self) setNeedsUpdateOfSupportedInterfaceOrientations];
     }
 }
 
