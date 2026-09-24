@@ -12,7 +12,7 @@
 #import "Redesigned/Kit/SGRKit.h"
 #import "Player.h"
 
-static char kLandscapeKey, kGrabberKey;
+static char kLandscapeKey, kGrabberKey, kArtworkKey, kPlateKey;
 static BOOL sg_nowPlayingOpen = NO;
 
 BOOL SGRPlayerIsLandscape(UIView *host) {
@@ -43,8 +43,8 @@ CGRect SGRPlayerLandscapeRightPaneFrame(UIView *host) {
     CGFloat top = MAX(insets.top, 16), bottom = MAX(insets.bottom, 16);
     CGFloat availH = H - top - bottom;
     CGRect coverFrame = SGRPlayerLandscapeCoverFrame(host);
-    CGFloat rightX = MAX(W / 2 + 12, CGRectGetMaxX(coverFrame) + 32);
-    CGFloat rightW = (W - right) - rightX;
+    CGFloat rightX = MAX(W / 2 + 16, CGRectGetMaxX(coverFrame) + 24);
+    CGFloat rightW = (W - right - 12) - rightX;
     return CGRectMake(round(rightX), round(top + 8), round(rightW), round(availH - 16));
 }
 
@@ -68,19 +68,56 @@ static void updateGrabber(UIView *host, BOOL isLandscape) {
     }
 }
 
+static void updateLandscapeArtwork(UIView *host, BOOL isLandscape, CGRect coverFrame) {
+    UIImageView *cover = objc_getAssociatedObject(host, &kArtworkKey);
+    SGRShadowPlate *plate = objc_getAssociatedObject(host, &kPlateKey);
+    if (!cover) {
+        cover = [[UIImageView alloc] initWithFrame:CGRectZero];
+        cover.contentMode = UIViewContentModeScaleAspectFill;
+        cover.clipsToBounds = YES;
+        cover.layer.cornerRadius = 20;
+        cover.layer.cornerCurve = kCACornerCurveContinuous;
+        cover.userInteractionEnabled = NO;
+        objc_setAssociatedObject(host, &kArtworkKey, cover, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+        plate = SGRShadowPlateIn(cover, &kPlateKey);
+        objc_setAssociatedObject(host, &kPlateKey, plate, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+
+    if (isLandscape && !CGRectIsEmpty(coverFrame)) {
+        if (cover.superview != host) [host addSubview:cover];
+        cover.frame = coverFrame;
+        cover.image = SGRNowPlayingArtwork(NULL, NULL);
+        cover.hidden = NO;
+        plate.frame = coverFrame;
+        plate.hidden = NO;
+    } else {
+        cover.hidden = YES;
+        plate.hidden = YES;
+    }
+}
+
 static void layoutLandscape(UIView *host) {
     BOOL isLandscape = SGRPlayerIsLandscape(host);
     updateGrabber(host, isLandscape);
-    if (!isLandscape) return;
 
     CGRect coverFrame = SGRPlayerLandscapeCoverFrame(host);
-    CGRect rightPane = SGRPlayerLandscapeRightPaneFrame(host);
-    if (CGRectIsEmpty(coverFrame) || CGRectIsEmpty(rightPane)) return;
+    updateLandscapeArtwork(host, isLandscape, coverFrame);
 
     UIView *coverList = SGRPlayerCoverList();
     if (coverList) {
-        coverList.frame = coverFrame;
+        coverList.alpha = isLandscape ? 0 : 1;
     }
+
+    UIView *header = SGRFindByIdentifier(host, @"now-playing-minimize-button", NULL);
+    if (header && header.superview) {
+        header.superview.alpha = isLandscape ? 0 : 1;
+    }
+
+    if (!isLandscape) return;
+
+    CGRect rightPane = SGRPlayerLandscapeRightPaneFrame(host);
+    if (CGRectIsEmpty(rightPane)) return;
 
     UIView *bottomStack = SGRFindByIdentifier(host, @"npv.bottomStackView", &kLandscapeKey);
     if (bottomStack) {
@@ -88,12 +125,12 @@ static void layoutLandscape(UIView *host) {
         if ([bottomStack isKindOfClass:[UIStackView class]]) {
             UIStackView *stack = (UIStackView *)bottomStack;
             stack.distribution = UIStackViewDistributionEqualSpacing;
+            for (UIView *sub in stack.arrangedSubviews) {
+                CGRect f = sub.frame;
+                f.size.width = rightPane.size.width;
+                sub.frame = f;
+            }
         }
-    }
-
-    UIView *header = SGRFindByIdentifier(host, @"now-playing-minimize-button", NULL);
-    if (header && header.superview) {
-        header.superview.alpha = isLandscape ? 0 : 1;
     }
 }
 
@@ -252,6 +289,10 @@ static void swizzleViewControllerOrientations(void) {
             }
         }
     });
+    [NSNotificationCenter.defaultCenter addObserverForName:SGRNowPlayingArtworkDidChangeNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
+        if (!sg_nowPlayingOpen) return;
+        // Artwork updated, refresh landscape cover if present
+    }];
     SGRequireClasses(@[
         @"_TtC19NowPlaying_ViewImpl24NowPlayingViewController",
     ]);
