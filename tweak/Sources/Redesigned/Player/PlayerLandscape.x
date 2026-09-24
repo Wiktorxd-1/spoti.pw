@@ -9,7 +9,6 @@
 #import "Player.h"
 
 static char kLandscapeKey;
-static BOOL sg_playerPresented = NO;
 
 BOOL SGRPlayerIsLandscape(UIView *host) {
     if (!host) return NO;
@@ -46,30 +45,30 @@ static void layoutLandscape(UIView *host) {
     CGRect rightPane = SGRPlayerLandscapeRightPaneFrame(host);
     if (CGRectIsEmpty(coverFrame) || CGRectIsEmpty(rightPane)) return;
 
-    // Reposition cover list / tilt view in the left pane
     UIView *coverList = SGRPlayerCoverList();
     if (coverList) {
         coverList.frame = coverFrame;
     }
 
-    // Locate the bottom stack view and arrange its views in the right pane
     UIView *bottomStack = SGRFindByIdentifier(host, @"npv.bottomStackView", &kLandscapeKey);
     if (bottomStack) {
         bottomStack.frame = rightPane;
     }
 }
 
+%hook UIViewController
+
+- (BOOL)shouldAutorotate {
+    return YES;
+}
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    return UIInterfaceOrientationMaskAllButUpsideDown;
+}
+
+%end
+
 %hook _TtC19NowPlaying_ViewImpl24NowPlayingViewController
-
-- (void)viewWillAppear:(BOOL)animated {
-    %orig;
-    sg_playerPresented = YES;
-}
-
-- (void)viewWillDisappear:(BOOL)animated {
-    sg_playerPresented = NO;
-    %orig;
-}
 
 - (BOOL)shouldAutorotate {
     return YES;
@@ -89,13 +88,27 @@ static void layoutLandscape(UIView *host) {
 
 %end
 
+static UIInterfaceOrientationMask custom_supportedOrientations(id self, SEL _cmd, UIApplication *app, UIWindow *win) {
+    return UIInterfaceOrientationMaskAllButUpsideDown;
+}
+
+static void swizzleAppDelegate(id<UIApplicationDelegate> delegate) {
+    if (!delegate) return;
+    Class cls = [delegate class];
+    SEL sel = @selector(application:supportedInterfaceOrientationsForWindow:);
+    Method m = class_getInstanceMethod(cls, sel);
+    if (m) {
+        method_setImplementation(m, (IMP)custom_supportedOrientations);
+    } else {
+        class_addMethod(cls, sel, (IMP)custom_supportedOrientations, "Q@:@@");
+    }
+}
+
 %hook UIApplication
 
-- (UIInterfaceOrientationMask)supportedInterfaceOrientationsForWindow:(UIWindow *)window {
-    if (sg_playerPresented) {
-        return UIInterfaceOrientationMaskAllButUpsideDown;
-    }
-    return %orig;
+- (void)setDelegate:(id<UIApplicationDelegate>)delegate {
+    %orig;
+    swizzleAppDelegate(delegate);
 }
 
 %end
@@ -103,6 +116,9 @@ static void layoutLandscape(UIView *host) {
 %ctor {
     if (!SGRedesignedUI()) return;
     %init;
+    if (UIApplication.sharedApplication.delegate) {
+        swizzleAppDelegate(UIApplication.sharedApplication.delegate);
+    }
     SGRequireClasses(@[
         @"_TtC19NowPlaying_ViewImpl24NowPlayingViewController",
     ]);

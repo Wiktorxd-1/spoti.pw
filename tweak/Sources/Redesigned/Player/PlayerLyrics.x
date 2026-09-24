@@ -313,13 +313,7 @@ static void setOpen(BOOL open, BOOL animated) {
         SGLog(@"redesign player: the lyrics have nowhere to go (stage %.0fx%.0f, lift %.0f)", l.stage.size.width, l.stage.size.height, l.lift);
         return;
     }
-    // The thumbnail is the Kit's picture drawn again, and Spotify's cover goes as it appears: without a
-    // picture there would be a hole where the cover was, so the cover stays and the lyrics wait.
     UIImage *picture = SGRNowPlayingArtwork(NULL, NULL);
-    if (open && !picture) {
-        SGLog(@"redesign player: no artwork read yet, the lyrics stay down");
-        return;
-    }
     sg_open = open;
     SGRPlayerLyricsChanged();
 
@@ -330,7 +324,7 @@ static void setOpen(BOOL open, BOOL animated) {
     overlay.thumb.transform = open ? CGAffineTransformIdentity : away;
     overlay.cover.layer.cornerRadius = thumbRadius(l, !open);
     if (open) {
-        overlay.cover.image = SGRNowPlayingArtwork(NULL, NULL);
+        overlay.cover.image = picture;
         overlay.stage.alpha = 0;
         overlay.stage.transform = CGAffineTransformMakeScale(kLyricsEnterScale, kLyricsEnterScale);
         [overlay lyrics];
@@ -376,7 +370,6 @@ static void setOpen(BOOL open, BOOL animated) {
 }
 
 void SGRPlayerToggleLyrics(void) {
-    if (!sg_open && !SGRPlayerLyricsAvailable()) return;
     setOpen(!sg_open, YES);
 }
 

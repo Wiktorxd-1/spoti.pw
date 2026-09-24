@@ -70,7 +70,7 @@ static CGFloat moveTo(UIView *arranged, UIView *view, CGPoint point, UIView *hos
 void SGRPlayerLyricsChanged(void) {
     SGRGlyphButton *glyph = sg_lyricsGlyph;
     if (!glyph) return;
-    BOOL enabled = SGRPlayerLyricsAvailable() || SGRPlayerLyricsOpen(), open = SGRPlayerLyricsOpen();
+    BOOL enabled = YES, open = SGRPlayerLyricsOpen();
     BOOL wasOpen = [glyph.glyph.symbol isEqualToString:kLyricsSymbolOpen];
     if (glyph.enabled == enabled && wasOpen == open) return;
     // Lyrics turn up once the player has fetched them, well after the footer laid out: a fade, not a pop.
@@ -78,7 +78,7 @@ void SGRPlayerLyricsChanged(void) {
     BOOL animated = glyph.window && !SGRPlayerIsTransitioning();
     [glyph.glyph setSymbol:open ? kLyricsSymbolOpen : kLyricsSymbol animated:animated];
     void (^mark)(void) = ^{
-        glyph.enabled = enabled;
+        glyph.enabled = YES;
         glyph.glyph.tintColor = open ? SGRPrimary() : SGRSecondary();
     };
     if (animated) SGRAnimate(SGRMotionFade, mark, nil);

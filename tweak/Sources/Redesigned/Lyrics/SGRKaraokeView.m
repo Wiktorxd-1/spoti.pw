@@ -1311,7 +1311,10 @@ typedef struct {
     [super layoutSubviews];
     [self alignFade];
     _scroll.contentSize = self.bounds.size;
-    if (_emptyLabel) _emptyLabel.frame = self.bounds;
+    if (_emptyLabel) {
+        _emptyLabel.frame = self.bounds;
+        [self bringSubviewToFront:_emptyLabel];
+    }
     [_credit sizeToFit];
     _credit.frame = CGRectMake(_margin, self.bounds.size.height - _credit.bounds.size.height - kCreditBottom,
                                _credit.bounds.size.width, _credit.bounds.size.height);
@@ -1722,8 +1725,9 @@ typedef struct {
         }
     }
     BOOL hasLines = _tops.count > 0;
-    _emptyLabel.hidden = hasLines || (track == nil);
-    [self setShowing:hasLines || (track != nil)];
+    _emptyLabel.hidden = hasLines;
+    [self setShowing:YES];
+    if (_emptyLabel && !hasLines) [self bringSubviewToFront:_emptyLabel];
     // The source is settled a moment after the lines are, so it is asked for until it answers.
     if (_crediting && _lines && !_credit.text.length) [self creditTo:SGLyricsCreditFor(track)];
     if (!_tops) return;
