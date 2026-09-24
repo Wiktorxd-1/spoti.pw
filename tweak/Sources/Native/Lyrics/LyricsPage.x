@@ -28,6 +28,9 @@ static UIView *clearAncestors(UIView *view) {
     return top;
 }
 
+@interface _TtC32Lyrics_FullscreenElementPageImpl14FullscreenView : UIView
+@end
+
 %hook _TtC32Lyrics_FullscreenElementPageImpl14FullscreenView
 // A colour kept here is re-applied whenever UIKit feels like it, so it is refused outright.
 - (void)setBackgroundColor:(UIColor *)color {
@@ -57,7 +60,7 @@ static UIView *clearAncestors(UIView *view) {
 
 - (void)didMoveToWindow {
     %orig;
-    UIApplication.sharedApplication.idleTimerDisabled = self.window != nil;
+    UIApplication.sharedApplication.idleTimerDisabled = ((UIView *)self).window != nil;
 }
 %end
 
