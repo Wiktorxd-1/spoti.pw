@@ -94,7 +94,7 @@ static void keep(NSString *track, NSArray<SGKaraokeLine *> *lines) {
     }
     sg_lyrics[track] = lines;
     if (track.length && lines.count) {
-        SGLyricsCacheStore(track, lines, SGLyricsCreditFor(track));
+        SGLyricsCacheStore(track, lines, SGLyricsCreditFor(track).text);
     }
     [NSNotificationCenter.defaultCenter postNotificationName:SGKaraokeLinesDidChangeNotification object:track];
 }
@@ -134,7 +134,7 @@ NSArray<SGKaraokeLine *> *SGKaraokeLinesForTrack(NSString *trackID) {
     if (lines) {
         sg_lyrics[trackID] = lines;
         NSString *credit = SGLyricsCacheCredit(trackID);
-        if (credit.length) SGLyricsSetCredit(trackID, credit);
+        if (credit.length) SGLyricsSetCredit(trackID, SGLyricsCreditNamed(credit));
         return lines;
     }
     return nil;
@@ -210,7 +210,7 @@ void SGKaraokeRequestLyrics(NSString *trackID) {
     if (cached.count) {
         keep(trackID, cached);
         NSString *credit = SGLyricsCacheCredit(trackID);
-        if (credit.length) SGLyricsSetCredit(trackID, credit);
+        if (credit.length) SGLyricsSetCredit(trackID, SGLyricsCreditNamed(credit));
         return;
     }
     if (!sg_ownSources) {
@@ -335,19 +335,6 @@ static void prefetch(SPTPlayerTrack *track, NSString *trackID, SPTPlayerState *s
 }
 %end
 
-// A new track is noticed where the player is asked for its state, and with nothing on screen nothing
-// may ask: the player's own report of the change asks it, so the walk starts at the skip.
-@interface SGKaraokeTrackWatcher : NSObject <SGPlayerStateObserver>
-@end
-
-@implementation SGKaraokeTrackWatcher
-- (void)playerStateDidChange:(SPTPlayerState *)state {
-    playerState();
-}
-@end
-
-static SGKaraokeTrackWatcher *sg_trackWatcher;
-
 %hook SPTDataLoaderService
 - (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)task didReceiveData:(NSData *)data {
     received(session, task, data);
@@ -370,11 +357,14 @@ static SGKaraokeTrackWatcher *sg_trackWatcher;
 }
 %end
 
+// A new track is noticed where the player is asked for its state, and with nothing on screen nothing
+// may ask: the player's own report of the change asks it, so the walk starts at the skip.
 @interface SGKaraokeTrackWatcher : NSObject <SGPlayerStateObserver>
 @end
 
 @implementation SGKaraokeTrackWatcher
 - (void)playerStateDidChange:(SPTPlayerState *)state {
+    playerState();
     SPTPlayerTrack *track = state.track;
     if (!track) return;
     NSString *trackID = idOf(track);
