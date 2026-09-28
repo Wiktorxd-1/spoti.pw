@@ -336,10 +336,11 @@ static UITableView *tableIn(UIView *root, int depth) {
 // the cells on screen and no more, and it is done once per sheet.
 static UIView *curationIn(UIView *page) {
     UIView *held = objc_getAssociatedObject(page, &kToolbarKey);
-    if (held) return held;
+    // A reload replaces the row; the one held from before is out of the window and its Mix answers nothing.
+    if (held.window) return held;
     UIView *found = SGRFindByIdentifier(page, SGRPlaylistCurationIdentifier, NULL);
     if (found) objc_setAssociatedObject(page, &kToolbarKey, found, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    return found;
+    return found ?: held;
 }
 
 // The page this sheet belongs to, decided once and only from the ⋯ that opened it. What the page has to
@@ -378,10 +379,11 @@ static void install(UIViewController *menu) {
         objc_setAssociatedObject(menu, &kBlockKey, block, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 
-    // Sort and Search are Spotify's own header controls where the page has them -- one identifier, in the
-    // header, never reused -- and the curation pills only where it has not.
+    // Sort is Spotify's own header button where the page has one -- one identifier, in the header, never
+    // reused -- and the curation pill only where it has not, which is how it was found before the header's
+    // button was (device 2026-09-20: the pill's glyph did not answer and the row went missing).
     UIView *search = nil, *sort = nil, *mix = nil;
-    pillsIn(objc_getAssociatedObject(page, &kToolbarKey), &search, &sort, &mix);
+    pillsIn(curationIn(page), &sort, &mix);
     sort = objc_getAssociatedObject(page, &kSortKey) ?: sort;
     search = objc_getAssociatedObject(page, &kSearchKey) ?: search;
     [block showSearch:search sort:sort mix:mix];
