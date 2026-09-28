@@ -572,7 +572,7 @@ static void setOpen(BOOL open, BOOL animated) {
     overlay.cover.layer.cornerRadius = thumbRadius(l, inPlace || !open);
     if (open) {
         overlay.thumb.alpha = inPlace ? 0 : 1;
-        overlay.cover.image = picture ?: SGRNowPlayingArtwork(NULL, NULL);
+        overlay.cover.image = SGRNowPlayingArtwork(NULL, NULL);
         overlay.stage.alpha = 0;
         overlay.stage.transform = CGAffineTransformMakeScale(kLyricsEnterScale, kLyricsEnterScale);
         [overlay.lyrics setLineInsets:bandOf(l, NO) duration:0];
