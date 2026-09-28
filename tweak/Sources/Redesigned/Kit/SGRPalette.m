@@ -218,38 +218,6 @@ static BOOL dominantColorOf(CGImageRef image, CGFloat out[3]) {
     return found;
 }
 
-<<<<<<< HEAD
-#pragma mark - flow
-
-// A dominant colour in linear light made fit for a moving field: a little more colourful, and within
-// the luminance band that keeps white text readable on it.
-static UIColor *flowColorFor(const CGFloat linear[3], CGFloat ceiling) {
-    CGFloat r = toEncoded(linear[0]), g = toEncoded(linear[1]), b = toEncoded(linear[2]), h = 0, s = 0, v = 0, a = 1;
-    [[UIColor colorWithRed:r green:g blue:b alpha:1] getHue:&h saturation:&s brightness:&v alpha:&a];
-    [[UIColor colorWithHue:h saturation:MIN(kFlowSaturationMax, MAX(s, s * kFlowSaturationLift)) brightness:v alpha:1] getRed:&r green:&g blue:&b alpha:&a];
-    CGFloat lr = toLinear(r), lg = toLinear(g), lb = toLinear(b);
-    CGFloat luminance = 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
-    CGFloat k = 1;
-    if (luminance > ceiling) k = ceiling / luminance;
-    else if (luminance > 0 && luminance < kFlowLuminanceMin) k = MIN(kFlowMaxLift, kFlowLuminanceMin / luminance);
-    return [UIColor colorWithRed:toEncoded(MIN(1, lr * k)) green:toEncoded(MIN(1, lg * k)) blue:toEncoded(MIN(1, lb * k)) alpha:1];
-}
-
-static NSArray<UIColor *> *flowColorsOf(const uint8_t *px, CGFloat ceiling) {
-    if (!px) return nil;
-    size_t half = kSample / 2;
-    size_t regions[5][4] = {{0, 0, half, half}, {half, 0, kSample, half}, {0, half, half, kSample}, {half, half, kSample, kSample}, {0, 0, kSample, kSample}};
-    NSMutableArray<UIColor *> *colors = [NSMutableArray arrayWithCapacity:5];
-    CGFloat linear[3];
-    for (int i = 0; i < 5; i++) {
-        if (!dominantIn(px, regions[i][0], regions[i][1], regions[i][2], regions[i][3], linear)) break;
-        [colors addObject:flowColorFor(linear, ceiling)];
-    }
-    return colors.count == 5 ? colors : nil;
-}
-
-=======
->>>>>>> upstream/beta
 static UIColor *tintOf(CGImageRef image, UIColor *surface) {
     CGFloat linear[3];
     CGFloat r = 0, g = 0, b = 0, a = 1;
