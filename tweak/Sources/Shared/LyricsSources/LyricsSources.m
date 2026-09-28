@@ -378,7 +378,7 @@ static void finish(SGLyricsWalk *walk) {
     }
     if (lyrics.karaokeLines.count) {
         SGKaraokeKeepLines(trackID, lyrics.karaokeLines);
-        SGLyricsSetCredit(trackID, lyrics.provider);
+        SGLyricsSetCredit(trackID, lyrics.credit ?: SGLyricsCreditNamed(lyrics.provider));
     }
     SGLog(@"lyrics: %@ ends with %@", trackID, lyrics
           ? [NSString stringWithFormat:@"%lu %@ lines from %@, %lu page lines",
