@@ -383,7 +383,7 @@ static void install(UIViewController *menu) {
     // reused -- and the curation pill only where it has not, which is how it was found before the header's
     // button was (device 2026-09-20: the pill's glyph did not answer and the row went missing).
     UIView *search = nil, *sort = nil, *mix = nil;
-    pillsIn(curationIn(page), &sort, &mix);
+    pillsIn(curationIn(page), &search, &sort, &mix);
     sort = objc_getAssociatedObject(page, &kSortKey) ?: sort;
     search = objc_getAssociatedObject(page, &kSearchKey) ?: search;
     [block showSearch:search sort:sort mix:mix];
