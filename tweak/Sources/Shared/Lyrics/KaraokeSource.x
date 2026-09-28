@@ -91,11 +91,13 @@ static void keep(NSString *track, NSArray<SGKaraokeLine *> *lines) {
             [sg_lyrics removeObjectForKey:kept];
             [sg_requested removeObject:kept];
         }
+    }
     sg_lyrics[track] = lines;
     if (track.length && lines.count) {
         SGLyricsCacheStore(track, lines, SGLyricsCreditFor(track));
     }
     [NSNotificationCenter.defaultCenter postNotificationName:SGKaraokeLinesDidChangeNotification object:track];
+}
 
 void SGKaraokeKeepLines(NSString *track, NSArray<SGKaraokeLine *> *lines) {
     dispatch_async(dispatch_get_main_queue(), ^{ keep(track, lines); });
