@@ -252,8 +252,11 @@ NSString *SGKaraokePlayingTrack(void) {
 NSInteger SGKaraokePositionMs(void) {
     SPTPlayerState *state = playerState();
     if (!state) return -1;
-    double position;
-    if (!SGSingPosition(state, &position)) position = state.isPaused ? state.positionAsOfTimestamp : state.position;
+    double position = 0;
+    if (SGSingPosition(state, &position)) {
+        return (NSInteger)(position * 1000);
+    }
+    position = state.isPaused ? state.positionAsOfTimestamp : state.position;
     return (NSInteger)(position * 1000);
 }
 

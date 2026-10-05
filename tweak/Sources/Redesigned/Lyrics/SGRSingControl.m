@@ -258,6 +258,9 @@ static SGRSingLook lookOf(SGSingState state) {
     _button.accessibilityIdentifier = @"sing.microphone";
     [_button addTarget:self action:@selector(tapped) forControlEvents:UIControlEventTouchUpInside];
     [_button addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(held:)]];
+    UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(doubleTapped:)];
+    doubleTap.numberOfTapsRequired = 2;
+    [_button addGestureRecognizer:doubleTap];
     _ring = [SGRSingRing new];
     _glyph = [[UIImageView alloc] initWithImage:singGlyph()];
     _glyph.tintColor = SGRPrimary();
@@ -483,6 +486,25 @@ static SGRSingLook lookOf(SGSingState state) {
     _dragLevel = [touch.view isDescendantOfView:_slider] ?
         SGSingLevelFromPosition(1 - [touch locationInView:_slider].y / MAX(1, _slider.bounds.size.height)) : SGSingVocalLevel();
     return SGSingStateIsOn(state) || state == SGSingPreparing || state == SGSingIdle;
+}
+
+- (void)doubleTapped:(UITapGestureRecognizer *)gesture {
+    if (gesture.state != UIGestureRecognizerStateEnded) return;
+    [self interacted];
+    UIImpactFeedbackGenerator *haptic = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+    [haptic impactOccurred];
+    SGSingState state = SGSingCurrentState();
+    if (!SGSingStateIsOn(state)) {
+        SGSingSetVocalLevel(SGSingMinimumVocalLevel);
+        SGSingSetEnabled(YES);
+        if (SGSingCurrentState() == SGSingFailed) [self showExplanation];
+        else self.expanded = YES;
+    } else {
+        float current = SGSingVocalLevel();
+        float target = (current <= SGSingMinimumVocalLevel + 0.05f) ? 1.0f : SGSingMinimumVocalLevel;
+        _slider.value = target;
+        [self changed];
+    }
 }
 
 - (void)tapped {

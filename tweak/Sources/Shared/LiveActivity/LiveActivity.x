@@ -150,7 +150,8 @@ static void checkSleepTimer(id<SPTPlayer> player, SPTPlayerState *state, NSStrin
 
 static void tick(void) API_AVAILABLE(ios(17.0)) {
     id<SPTPlayer> player = SGKaraokePlayer();
-    SPTPlayerState *state = player.state;
+    SPTPlayerState *state = [player respondsToSelector:@selector(state)] ? [player state] : nil;
+    if (!state) state = SGPlayerState();
     SPTPlayerTrack *track = state.track;
     if (!track.trackTitle.length) return;
     NSString *trackID = SGKaraokePlayingTrack();

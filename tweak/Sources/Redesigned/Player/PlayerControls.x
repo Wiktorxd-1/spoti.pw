@@ -381,6 +381,9 @@ static void seekOnTap(UISlider *slider, CGPoint point) {
 
 @end
 
+static float sg_lastHapticValue = -1;
+static UISelectionFeedbackGenerator *sg_scrubFeedback;
+
 %hook _TtCO17NowPlaying_ECMKit11ProgressBar6Slider
 - (BOOL)isTracking {
     return (UISlider *)self == sg_seekingSlider || %orig;
@@ -388,8 +391,42 @@ static void seekOnTap(UISlider *slider, CGPoint point) {
 
 - (BOOL)beginTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
     BOOL tracking = %orig;
-    if (tracking && touch == sg_tapTouch) sg_sliderTookTap = YES;
+    if (tracking) {
+        if (touch == sg_tapTouch) sg_sliderTookTap = YES;
+        sg_lastHapticValue = [(UISlider *)self value];
+        if (!sg_scrubFeedback) sg_scrubFeedback = [UISelectionFeedbackGenerator new];
+        [sg_scrubFeedback prepare];
+    }
     return tracking;
+}
+
+- (BOOL)continueTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
+    BOOL tracking = %orig;
+    if (tracking && [(UISlider *)self isTracking]) {
+        float val = [(UISlider *)self value];
+        float maxVal = [(UISlider *)self maximumValue];
+        float minVal = [(UISlider *)self minimumValue];
+        float range = maxVal - minVal;
+        float step = range > 0 ? fmaxf(5.0f, range * 0.02f) : 10.0f;
+        if (sg_lastHapticValue < 0 || fabsf(val - sg_lastHapticValue) >= step) {
+            sg_lastHapticValue = val;
+            if (sg_scrubFeedback) {
+                [sg_scrubFeedback selectionChanged];
+                [sg_scrubFeedback prepare];
+            }
+        }
+    }
+    return tracking;
+}
+
+- (void)endTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
+    %orig;
+    sg_lastHapticValue = -1;
+}
+
+- (void)cancelTrackingWithEvent:(UIEvent *)event {
+    %orig;
+    sg_lastHapticValue = -1;
 }
 %end
 
