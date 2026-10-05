@@ -16,17 +16,20 @@ static bool readWord(uintptr_t address, uint64_t *value) {
     return readMetadata(address, value, sizeof *value);
 }
 void SGAudioSourceQueueInitialize(void) {
-    // Spotify 9.1.78 arm64. A version string alone cannot establish the private queue ABI.
-    static const unsigned char uuid[16] = {0xc7,0x12,0x37,0x0b,0x44,0xcd,0x35,0xc8,0xa0,0x58,0x4f,0xbe,0xd1,0xad,0x07,0x58};
+    // Spotify 9.1.78 / 9.1.84 arm64. A version string alone cannot establish the private queue ABI.
+    static const unsigned char uuid_9_1_78[16] = {0xc7,0x12,0x37,0x0b,0x44,0xcd,0x35,0xc8,0xa0,0x58,0x4f,0xbe,0xd1,0xad,0x07,0x58};
+    static const unsigned char uuid_9_1_84[16] = {0x9a,0x7a,0x80,0xc7,0x15,0xcf,0x37,0xcf,0xbc,0x38,0xf4,0x14,0x83,0x34,0xce,0x57};
     const struct mach_header_64 *header = (const void *)_dyld_get_image_header(0);
     if (!header || header->magic != MH_MAGIC_64) return;
     const struct load_command *command = (const void *)(header + 1);
     for (uint32_t i = 0; i < header->ncmds; i++, command = (const void *)((const char *)command + command->cmdsize)) {
-        if (command->cmd == LC_UUID && command->cmdsize == sizeof(struct uuid_command) &&
-            !memcmp(((const struct uuid_command *)command)->uuid, uuid, sizeof uuid)) {
-            sg_sourceImage = (uintptr_t)header;
-            sg_sourceLayout = true;
-            return;
+        if (command->cmd == LC_UUID && command->cmdsize == sizeof(struct uuid_command)) {
+            const unsigned char *u = ((const struct uuid_command *)command)->uuid;
+            if (!memcmp(u, uuid_9_1_78, sizeof uuid_9_1_78) || !memcmp(u, uuid_9_1_84, sizeof uuid_9_1_84)) {
+                sg_sourceImage = (uintptr_t)header;
+                sg_sourceLayout = true;
+                return;
+            }
         }
     }
 }
