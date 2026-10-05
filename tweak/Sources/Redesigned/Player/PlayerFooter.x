@@ -94,6 +94,7 @@ static SGRGlyphButton *lyricsGlyphIn(UIView *host) {
         objc_setAssociatedObject(host, &kLyricsGlyphKey, glyph, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     if (glyph.superview != host) [host addSubview:glyph];
+    [host bringSubviewToFront:glyph];
     sg_lyricsGlyph = glyph;
     return glyph;
 }
@@ -208,6 +209,7 @@ static void layOutFooter(UIViewController *unit) {
     SGRGlyphButton *lyrics = lyricsGlyphIn(host);
     lyrics.bounds = CGRectMake(0, 0, 44, 44);
     lyrics.center = CGPointMake(round(width * (rtl ? kTrailing : kLeading)), middleY);
+    [host bringSubviewToFront:lyrics];
     SGRPlayerLyricsChanged();
 
     UIView *connect = SGRFindByIdentifier(host, @"Components.ConnectButtonOutputSwitcher", &kConnectKey);

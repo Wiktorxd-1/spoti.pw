@@ -265,7 +265,14 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     if (!host || host.bounds.size.height < 150) return l;
     if (!info || !duration) return l;
     CGRect area = SGRPlayerArtworkAreaIn(host), cover = SGRPlayerCoverFrameIn(host);
-    if (CGRectIsNull(area) || CGRectIsNull(cover)) return l;
+    if (CGRectIsNull(area) || CGRectIsNull(cover)) {
+        CGFloat topY = sg_header.viewIfLoaded ? CGRectGetMaxY(SGFrameIn(sg_header.viewIfLoaded, host)) : host.safeAreaInsets.top + 44;
+        CGFloat infoY = CGRectGetMinY(untransformed(info, host));
+        CGFloat h = MAX(0, infoY - topY);
+        area = CGRectMake(0, topY, host.bounds.size.width, h);
+        CGFloat side = MIN(area.size.width - 2 * SGRSideMargin, area.size.height - 2 * SGRSideMargin);
+        cover = CGRectMake(round((host.bounds.size.width - side) / 2), round(topY + (h - side) / 2), side, side);
+    }
     CGRect row = untransformed(info, host), bar = untransformed(duration, host);
     // The thumbnail takes the title's own leading edge, so the two line up down the page.
     CGFloat leading = title ? CGRectGetMinX(untransformed(title, host)) : CGRectGetMinX(area) + SGRSideMargin;
@@ -284,7 +291,7 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     CGFloat roomTop = MIN(header ? CGRectGetMinY(SGFrameIn(header, host)) : safe.top, CGRectGetMinY(l.stage));
     CGFloat roomBottom = MAX(host.bounds.size.height - safe.bottom, CGRectGetMaxY(l.stage));
     l.room = CGRectMake(CGRectGetMinX(area), roomTop, area.size.width, roomBottom - roomTop);
-    l.ok = l.stage.size.height > kLivingHeight / 2 && l.lift < 0;
+    l.ok = l.stage.size.height > 50 && l.lift < 0;
     return l;
 }
 
