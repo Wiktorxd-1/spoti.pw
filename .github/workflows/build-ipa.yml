@@ -97,7 +97,7 @@ jobs:
         run: |
           IPA_FILE="out/spoti.pw.ipa"
           IPA_SIZE=$(stat -f%z "$IPA_FILE" 2>/dev/null || stat -c%s "$IPA_FILE")
-          VERSION="9.1.84"
+          VERSION="9.1.84.1"
           TODAY=$(date -u +"%Y-%m-%d")
           
           python3 -c "
