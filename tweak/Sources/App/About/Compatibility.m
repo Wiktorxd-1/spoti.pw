@@ -32,7 +32,7 @@ static NSArray<SGIncompatibility *> *incompatibilities(void) {
     dispatch_once(&once, ^{
         NSMutableArray<SGIncompatibility *> *list = [NSMutableArray array];
         NSString *version = runningVersion();
-        if (version && ![version isEqualToString:SGSupportedSpotifyVersion]) {
+        if (version && ![version isEqualToString:SGSupportedSpotifyVersion] && ![version hasPrefix:SGSupportedSpotifyVersion]) {
             SGIncompatibility *wrong = [SGIncompatibility new];
             wrong.title = [NSString stringWithFormat:@"Spotify %@ isn't supported", version];
             wrong.subtitle = [NSString stringWithFormat:@"The mod is made for %@ only", SGSupportedSpotifyVersion];
