@@ -1065,6 +1065,7 @@ typedef struct {
     SGRKaraokeStyle *_style;   // how the lines were laid out
     BOOL _hasSpoken, _hasTranslation;   // whether the song has any line with either
     UIButton *_extras;
+    UIButton *_share;
     CGFloat _builtWidth;
     BOOL _showing;
     CAGradientLayer *_fade;
@@ -1177,9 +1178,21 @@ typedef struct {
     free(_breaks);
 }
 
+- (void)shareTapped {
+    SGPlayFeedback(SGFeedbackToggle);
+    UIResponder *r = self;
+    UIViewController *vc = nil;
+    while (r) {
+        if ([r isKindOfClass:UIViewController.class]) { vc = (UIViewController *)r; break; }
+        r = r.nextResponder;
+    }
+    SGOpenLyricsShare(vc, -1);
+}
+
 - (void)tapped:(UITapGestureRecognizer *)tap {
     if (self.takesTap && !self.takesTap()) return;
     if (_extras && !_extras.hidden && CGRectContainsPoint(_extras.frame, [tap locationInView:self])) return;
+    if (_share && !_share.hidden && CGRectContainsPoint(_share.frame, [tap locationInView:self])) return;
     if (_credited.links.count && !_credit.hidden && CGRectContainsPoint(CGRectInset(_credit.frame, -8, -8), [tap locationInView:self])) {
         SGLyricsOpenCredit(_credited);
         return;
@@ -1202,12 +1215,21 @@ typedef struct {
 }
 
 - (void)held:(UILongPressGestureRecognizer *)hold {
-    if (hold.state != UIGestureRecognizerStateBegan || !_meanings.count) return;
+    if (hold.state != UIGestureRecognizerStateBegan) return;
     CGPoint point = [hold locationInView:_scroll];
-    for (SGRKaraokeLineView *view in _shown.allValues) {
-        if (!CGRectContainsPoint(CGRectInset(view.frame, -_margin, -_lineGap / 2), point)) continue;
-        [self explainLine:view];
-        return;
+    for (NSNumber *key in _shown.allKeys) {
+        SGRKaraokeLineView *view = _shown[key];
+        if (CGRectContainsPoint(CGRectInset(view.frame, -_margin, -_lineGap / 2), point)) {
+            SGPlayFeedback(SGFeedbackToggle);
+            UIResponder *r = self;
+            UIViewController *vc = nil;
+            while (r) {
+                if ([r isKindOfClass:UIViewController.class]) { vc = (UIViewController *)r; break; }
+                r = r.nextResponder;
+            }
+            SGOpenLyricsShare(vc, key.integerValue);
+            return;
+        }
     }
 }
 
@@ -1348,6 +1370,31 @@ typedef struct {
     if (extras) {
         _extras.frame = CGRectMake(_margin, bottom - kExtrasSide - kExtrasBottom, kExtrasSide, kExtrasSide);
         _credit.center = CGPointMake(CGRectGetMaxX(_extras.frame) + kExtrasCreditGap + _credit.bounds.size.width / 2, _extras.center.y);
+    }
+    if (_lines.count > 0 && !_emptyLabel) {
+        if (!_share) {
+            UIImage *glyph = [UIImage systemImageNamed:@"square.and.arrow.up" withConfiguration:
+                              [UIImageSymbolConfiguration configurationWithPointSize:kExtrasGlyph weight:UIImageSymbolWeightSemibold]];
+            UIButtonConfiguration *config;
+            if (@available(iOS 26.0, *)) {
+                config = [UIButtonConfiguration glassButtonConfiguration];
+            } else {
+                config = [UIButtonConfiguration filledButtonConfiguration];
+                config.baseBackgroundColor = SGRSolidGlassFill();
+            }
+            config.image = glyph;
+            config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+            config.baseForegroundColor = UIColor.whiteColor;
+            _share = [UIButton buttonWithConfiguration:config primaryAction:nil];
+            _share.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+            _share.accessibilityLabel = @"Share lyrics";
+            [_share addTarget:self action:@selector(shareTapped) forControlEvents:UIControlEventTouchUpInside];
+            [self addSubview:_share];
+        }
+        _share.hidden = NO;
+        _share.frame = CGRectMake(self.bounds.size.width - _margin - kExtrasSide, bottom - kExtrasSide - kExtrasBottom, kExtrasSide, kExtrasSide);
+    } else if (_share) {
+        _share.hidden = YES;
     }
     if (_lines && self.bounds.size.width != _builtWidth) [self rebuild];
 }

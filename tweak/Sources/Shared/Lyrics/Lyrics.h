@@ -115,3 +115,7 @@ id SGKaraokePlayer(void);                // SPTEsperantoPlayer, nil before the a
 SPTPlayerTrack *SGKaraokeTrackFor(NSString *trackID);
 // Keeps a track seen elsewhere, so a source can name it before the player has reported it.
 void SGKaraokeRememberTrack(SPTPlayerTrack *track);
+
+// Opens lyrics share flow (interactive line selection + Liquid Glass share card)
+void SGOpenLyricsShare(UIViewController *presenter, NSInteger initialLineIndex);
+

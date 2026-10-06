@@ -24,6 +24,109 @@ static char kShareGlassKey, kShareGlowKey, kShareDisplayLinkKey, kShareEditPillK
 static void applyModdedCardStyle(UIViewController *vc);
 static void openLineSelector(UIViewController *presenter);
 
+#pragma mark - Card Image Renderer for Standalone Sharing
+
+static UIImage *SGRenderLyricsShareCard(SPTPlayerTrack *track, NSArray<NSString *> *lines, UIImage *artwork) {
+    CGFloat cardWidth = 400.0;
+    CGFloat pad = 24.0;
+    CGFloat headerHeight = 64.0;
+    CGFloat footerHeight = 44.0;
+
+    UIFont *lyricFont = [UIFont systemFontOfSize:22 weight:UIFontWeightBold];
+    UIFontDescriptor *desc = [lyricFont.fontDescriptor fontDescriptorWithDesign:UIFontDescriptorSystemDesignRounded];
+    if (desc) lyricFont = [UIFont fontWithDescriptor:desc size:22];
+
+    CGFloat lyricsHeight = 0;
+    for (NSString *line in lines) {
+        CGRect rect = [line boundingRectWithSize:CGSizeMake(cardWidth - 2 * pad, CGFLOAT_MAX)
+                                         options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                      attributes:@{NSFontAttributeName: lyricFont}
+                                         context:nil];
+        lyricsHeight += ceil(rect.size.height) + 16.0;
+    }
+    lyricsHeight = MAX(lyricsHeight, 80.0);
+
+    CGFloat totalHeight = headerHeight + lyricsHeight + footerHeight + 2 * pad;
+
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(0, 0, cardWidth, totalHeight)];
+    card.backgroundColor = [UIColor colorWithWhite:0.10 alpha:0.96];
+    card.layer.cornerRadius = 28;
+    if (@available(iOS 13.0, *)) {
+        card.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    card.layer.masksToBounds = YES;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.2].CGColor;
+
+    // Background gradient
+    CAGradientLayer *grad = [CAGradientLayer layer];
+    grad.frame = card.bounds;
+    grad.colors = @[
+        (id)[UIColor colorWithWhite:0.18 alpha:1.0].CGColor,
+        (id)[UIColor colorWithWhite:0.06 alpha:1.0].CGColor
+    ];
+    grad.startPoint = CGPointMake(0.1, 0.0);
+    grad.endPoint = CGPointMake(0.9, 1.0);
+    [card.layer insertSublayer:grad atIndex:0];
+
+    // Artwork
+    UIImageView *artView = [[UIImageView alloc] initWithFrame:CGRectMake(pad, pad, 52, 52)];
+    artView.image = artwork ?: [UIImage systemImageNamed:@"music.note"];
+    artView.tintColor = UIColor.whiteColor;
+    artView.contentMode = UIViewContentModeScaleAspectFill;
+    artView.layer.cornerRadius = 10;
+    if (@available(iOS 13.0, *)) artView.layer.cornerCurve = kCACornerCurveContinuous;
+    artView.layer.masksToBounds = YES;
+    [card addSubview:artView];
+
+    // Track title & Artist
+    UILabel *titleLbl = [[UILabel alloc] initWithFrame:CGRectMake(pad + 62, pad + 4, cardWidth - pad * 2 - 62, 22)];
+    titleLbl.text = track.trackTitle ?: @"Song";
+    titleLbl.font = [UIFont systemFontOfSize:17 weight:UIFontWeightBold];
+    if (desc) titleLbl.font = [UIFont fontWithDescriptor:desc size:17];
+    titleLbl.textColor = UIColor.whiteColor;
+    [card addSubview:titleLbl];
+
+    UILabel *artistLbl = [[UILabel alloc] initWithFrame:CGRectMake(pad + 62, pad + 28, cardWidth - pad * 2 - 62, 18)];
+    artistLbl.text = track.artistName ?: @"Artist";
+    artistLbl.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    artistLbl.textColor = [UIColor colorWithWhite:1.0 alpha:0.65];
+    [card addSubview:artistLbl];
+
+    // Lyric lines
+    CGFloat y = pad + headerHeight + 12;
+    for (NSString *line in lines) {
+        CGRect rect = [line boundingRectWithSize:CGSizeMake(cardWidth - 2 * pad, CGFLOAT_MAX)
+                                         options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                      attributes:@{NSFontAttributeName: lyricFont}
+                                         context:nil];
+        CGFloat h = ceil(rect.size.height);
+        UILabel *lineLbl = [[UILabel alloc] initWithFrame:CGRectMake(pad, y, cardWidth - 2 * pad, h)];
+        lineLbl.text = line;
+        lineLbl.font = lyricFont;
+        lineLbl.textColor = UIColor.whiteColor;
+        lineLbl.numberOfLines = 0;
+        lineLbl.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.4].CGColor;
+        lineLbl.layer.shadowOffset = CGSizeMake(0, 1);
+        lineLbl.layer.shadowRadius = 4;
+        lineLbl.layer.shadowOpacity = 0.6;
+        [card addSubview:lineLbl];
+        y += h + 16.0;
+    }
+
+    // Footer watermark
+    UILabel *watermark = [[UILabel alloc] initWithFrame:CGRectMake(pad, totalHeight - pad - 18, cardWidth - 2 * pad, 16)];
+    watermark.text = @"Spotify • spoti.pw";
+    watermark.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+    watermark.textColor = [UIColor colorWithWhite:1.0 alpha:0.45];
+    [card addSubview:watermark];
+
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:card.bounds.size];
+    return [renderer imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
+        [card.layer renderInContext:ctx.CGContext];
+    }];
+}
+
 #pragma mark - Line Selection Modal
 
 @interface SGLyricsSelectionModal : UIViewController <UITableViewDelegate, UITableViewDataSource>
@@ -62,7 +165,7 @@ static void openLineSelector(UIViewController *presenter);
     UIButton *doneBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     doneBtn.frame = CGRectMake(self.view.bounds.size.width - 80, 18, 64, 32);
     doneBtn.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
-    [doneBtn setTitle:@"Done" forState:UIControlStateNormal];
+    [doneBtn setTitle:@"Share" forState:UIControlStateNormal];
     [doneBtn setTitleColor:UIColor.blackColor forState:UIControlStateNormal];
     doneBtn.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
     doneBtn.backgroundColor = UIColor.whiteColor;
@@ -397,6 +500,75 @@ static void openLineSelector(UIViewController *presenter) {
             }
         }
         applyModdedCardStyle(presenter);
+    };
+
+    if (@available(iOS 15.0, *)) {
+        UISheetPresentationController *sheet = modal.sheetPresentationController;
+        sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent, UISheetPresentationControllerDetent.largeDetent];
+        sheet.prefersGrabberVisible = YES;
+        sheet.preferredCornerRadius = 24;
+    }
+    [presenter presentViewController:modal animated:YES completion:nil];
+}
+
+void SGOpenLyricsShare(UIViewController *presenter, NSInteger initialLineIndex) {
+    if (!presenter) {
+        for (UIWindow *w in UIApplication.sharedApplication.windows) {
+            if (w.isKeyWindow || !presenter) presenter = w.rootViewController;
+        }
+        while (presenter.presentedViewController) presenter = presenter.presentedViewController;
+    }
+    if (!presenter) return;
+
+    NSString *trackID = SGKaraokePlayingTrack();
+    NSArray<SGKaraokeLine *> *lines = SGKaraokeLinesForTrack(trackID);
+    if (!lines.count) {
+        SPTPlayerState *state = SGPlayerState();
+        NSString *uri = SGURIString(state.track.URI);
+        if ([uri hasPrefix:@"spotify:track:"]) {
+            trackID = [uri substringFromIndex:@"spotify:track:".length];
+            lines = SGKaraokeLinesForTrack(trackID);
+        }
+    }
+    if (!lines.count) return;
+
+    SGLyricsSelectionModal *modal = [[SGLyricsSelectionModal alloc] init];
+    modal.lines = lines;
+    modal.selectedIndices = [NSMutableSet set];
+
+    if (initialLineIndex >= 0 && initialLineIndex < (NSInteger)lines.count) {
+        [modal.selectedIndices addObject:@(initialLineIndex)];
+        if (initialLineIndex + 1 < (NSInteger)lines.count) [modal.selectedIndices addObject:@(initialLineIndex + 1)];
+    } else {
+        NSInteger pos = SGKaraokePositionMs();
+        NSInteger lead = SGKaraokeLeadLine(lines, pos);
+        if (lead >= 0 && lead < (NSInteger)lines.count) {
+            [modal.selectedIndices addObject:@(lead)];
+            if (lead + 1 < (NSInteger)lines.count) [modal.selectedIndices addObject:@(lead + 1)];
+        } else if (lines.count > 0) {
+            [modal.selectedIndices addObject:@0];
+            if (lines.count > 1) [modal.selectedIndices addObject:@1];
+        }
+    }
+
+    modal.onDone = ^(NSArray<NSString *> *selectedTexts) {
+        if (!selectedTexts.count) return;
+        SPTPlayerState *state = SGPlayerState();
+        UIImage *shareImg = SGRenderLyricsShareCard(state.track, selectedTexts, nil);
+
+        NSMutableArray *items = [NSMutableArray array];
+        if (shareImg) [items addObject:shareImg];
+        NSString *uri = SGURIString(state.track.URI);
+        if (uri.length && [uri hasPrefix:@"spotify:track:"]) {
+            NSString *tId = [uri substringFromIndex:@"spotify:track:".length];
+            [items addObject:[NSURL URLWithString:[NSString stringWithFormat:@"https://open.spotify.com/track/%@", tId]]];
+        }
+
+        UIActivityViewController *act = [[UIActivityViewController alloc] initWithActivityItems:items applicationActivities:nil];
+        if (@available(iOS 13.0, *)) {
+            act.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+        }
+        [presenter presentViewController:act animated:YES completion:nil];
     };
 
     if (@available(iOS 15.0, *)) {
