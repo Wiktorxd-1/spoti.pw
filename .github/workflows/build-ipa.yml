@@ -16,6 +16,9 @@ on:
 
 env:
   THEOS: ${{ github.workspace }}/theos
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
 permissions:
   contents: write
@@ -34,19 +37,43 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Cache Theos
+        id: cache-theos
+        uses: actions/cache@v4
+        with:
+          path: theos
+          key: theos-v2-${{ runner.os }}
+
       - uses: actions/checkout@v5
+        if: steps.cache-theos.outputs.cache-hit != 'true'
         with:
           repository: theos/theos
           path: theos
           submodules: recursive
           fetch-depth: 1
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('scripts/pipeline.sh') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
       - name: Install tools
         run: |
           brew install make dpkg ldid
           python3 -m pip install --break-system-packages git+https://github.com/asdfzxcvbn/pyzule-rw.git
 
+      - name: Cache base IPA
+        id: cache-ipa
+        uses: actions/cache@v4
+        with:
+          path: ipa/spotify.ipa
+          key: base-ipa-${{ inputs.ipa_url }}
+
       - name: Download IPA
+        if: steps.cache-ipa.outputs.cache-hit != 'true'
         run: |
           mkdir -p ipa
           curl -fsSL "${{ inputs.ipa_url }}" -o ipa/spotify.ipa
