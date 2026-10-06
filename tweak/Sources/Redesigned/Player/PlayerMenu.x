@@ -907,56 +907,6 @@ static SGRPlayerMenuTakeover *takeoverFor(UIViewController *menu) {
     return t;
 }
 
-#pragma mark - what darkens the screen as the menu opens
-
-// A dark picture across the screen flashed as the menu opened on the phone, with the sheet and its dimming
-// out of sight from the presentation's first frame (device, 2026-09-24). So the first menus of a launch say
-// what they find at a few moments after the ⋯'s tap: every view drawn dark over most of the window, and the
-// windows themselves.
-static NSString *darkness(UIColor *color) {
-    CGFloat white = 1, alpha = 0;
-    if (!color || ![color getWhite:&white alpha:&alpha]) {
-        CGFloat r, g, b;
-        if (![color getRed:&r green:&g blue:&b alpha:&alpha]) return nil;
-        white = (r + g + b) / 3;
-    }
-    return alpha >= 0.3 && white < 0.15 ? [NSString stringWithFormat:@"%.2f@%.2f", white, alpha] : nil;
-}
-
-static void findDark(UIView *view, UIView *window, CGFloat alpha, int depth, NSMutableArray<NSString *> *out) {
-    if (view.hidden || view.alpha < 0.01 || depth > 40 || out.count > 20) return;
-    alpha *= view.alpha;
-    CGRect frame = [view convertRect:view.bounds toView:window];
-    CGRect screen = CGRectIntersection(frame, window.bounds);
-    BOOL covers = !CGRectIsNull(screen) && screen.size.width * screen.size.height > 0.6 * window.bounds.size.width * window.bounds.size.height;
-    if (!covers) return;
-    NSString *dark = darkness(view.backgroundColor) ?: (view.layer.backgroundColor ? darkness([UIColor colorWithCGColor:view.layer.backgroundColor]) : nil);
-    if (dark && alpha > 0.05) {
-        [out addObject:[NSString stringWithFormat:@"%@%@ bg %@ alpha %.2f", NSStringFromClass(view.class),
-                        view.accessibilityIdentifier.length ? [@" id=" stringByAppendingString:view.accessibilityIdentifier] : @"", dark, alpha]];
-    }
-    for (UIView *child in view.subviews) findDark(child, window, alpha, depth + 1, out);
-}
-
-static void logDarkness(UIView *anyView) {
-    static int menus;
-    if (menus++ >= 2) return;
-    for (NSNumber *after in @[@0, @0.02, @0.05, @0.1, @0.2, @0.4]) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(after.doubleValue * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            UIWindowScene *scene = anyView.window.windowScene;
-            NSMutableArray<NSString *> *lines = [NSMutableArray array];
-            for (UIWindow *window in scene.windows) {
-                if (window.hidden) continue;
-                NSMutableArray<NSString *> *dark = [NSMutableArray array];
-                findDark(window, window, 1, 0, dark);
-                [lines addObject:[NSString stringWithFormat:@"%@ level %.0f: %@", NSStringFromClass(window.class), window.windowLevel,
-                                  dark.count ? [dark componentsJoinedByString:@"; "] : @"nothing dark over it"]];
-            }
-            SGLog(@"redesign player menu: %.2f s after the sheet began: %@", after.doubleValue, [lines componentsJoinedByString:@" | "]);
-        });
-    }
-}
-
 // The sheet and its dimming go out of sight as the presentation begins, before its first frame: the menu's
 // own appearance comes later than that, and hiding them only from there let the dimming's black and the sheet
 // show for a frame or two as the ⋯ was tapped (device, 2026-09-24). A presentation taken this way is claimed,
