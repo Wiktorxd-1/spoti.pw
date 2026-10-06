@@ -513,9 +513,12 @@ static void openLineSelector(UIViewController *presenter) {
 
 void SGOpenLyricsShare(UIViewController *presenter, NSInteger initialLineIndex) {
     if (!presenter) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         for (UIWindow *w in UIApplication.sharedApplication.windows) {
             if (w.isKeyWindow || !presenter) presenter = w.rootViewController;
         }
+#pragma clang diagnostic pop
         while (presenter.presentedViewController) presenter = presenter.presentedViewController;
     }
     if (!presenter) return;
