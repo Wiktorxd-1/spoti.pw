@@ -30,6 +30,8 @@ jobs:
       - uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+          fetch-depth: 0
 
       - uses: levibostian/action-hide-sensitive-inputs@v1
 
@@ -85,7 +87,10 @@ jobs:
           curl -fsSL "${{ inputs.ipa_url }}" -o ipa/spotify.ipa
           case "$(file --mime-type -b ipa/spotify.ipa)" in application/zip|application/x-ios-app) ;; *) echo "::error::Not an IPA"; exit 1 ;; esac
 
-      - run: make release
+      - name: Build modded release IPA
+        env:
+          SPOTIFY_APP_VERSION: 9.1.84.${{ github.run_number }}
+        run: make release
 
       - name: Create or update GitHub Release with modded IPA
         env:
@@ -103,7 +108,7 @@ jobs:
         run: |
           IPA_FILE="out/spoti.pw.ipa"
           IPA_SIZE=$(stat -f%z "$IPA_FILE" 2>/dev/null || stat -c%s "$IPA_FILE")
-          VERSION="9.1.84.1"
+          VERSION="9.1.84.${{ github.run_number }}"
           TODAY=$(date -u +"%Y-%m-%d")
           
           python3 -c "
@@ -156,7 +161,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add apps.json sidestore.json tweak/Sources/Shared/Flags/SGFlagList.m 2>/dev/null || true
-          git diff --staged --quiet || (git commit -m "chore(actions): update apps.json and flag table from build" && git pull --rebase origin main && git push origin HEAD:main)
+          git diff --staged --quiet || (git commit -m "chore(actions): update apps.json to $VERSION" && git push origin HEAD:main)
 
       - uses: actions/upload-artifact@v5
         if: inputs.upload_method != 'filebin'

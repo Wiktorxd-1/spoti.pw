@@ -302,32 +302,43 @@ static void applyModdedCardStyle(UIViewController *vc) {
     // Make the entire card tappable to open the line selection sheet
     if (!objc_getAssociatedObject(card, &kShareTapGestureKey)) {
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:vc action:@selector(sg_handleCardTap:)];
+        tap.cancelsTouchesInView = NO;
         card.userInteractionEnabled = YES;
         [card addGestureRecognizer:tap];
         objc_setAssociatedObject(card, &kShareTapGestureKey, tap, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 
-    // Add sleek "Edit Lines" floating glass pill button above the card
+    // Add navigation bar Edit button if available
+    if (vc.navigationItem && !vc.navigationItem.rightBarButtonItem) {
+        UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithTitle:@"Edit Lines" style:UIBarButtonItemStylePlain target:vc action:@selector(sg_openLineSelectorAction)];
+        vc.navigationItem.rightBarButtonItem = item;
+    }
+
+    // Add sleek "Edit Lines" floating glass pill button
     UIButton *pill = objc_getAssociatedObject(vc, &kShareEditPillKey);
-    if (!pill && card.superview) {
+    CGRect cardInVC = card.superview ? [card.superview convertRect:card.frame toView:vc.view] : card.frame;
+    CGFloat pillW = 132;
+    CGFloat pillH = 36;
+    CGFloat pillY = (cardInVC.origin.y >= 54) ? (cardInVC.origin.y - 46) : (CGRectGetMaxY(cardInVC) + 12);
+    if (pillY < 40) pillY = 50;
+
+    if (!pill) {
         pill = [UIButton buttonWithType:UIButtonTypeCustom];
         pill.tag = 999;
-        CGFloat pillW = 126;
-        CGFloat pillH = 34;
-        pill.frame = CGRectMake((vc.view.bounds.size.width - pillW) / 2.0, CGRectGetMinY(card.frame) - 44, pillW, pillH);
+        pill.frame = CGRectMake((vc.view.bounds.size.width - pillW) / 2.0, pillY, pillW, pillH);
         pill.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
-        pill.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
-        pill.layer.cornerRadius = 17;
+        pill.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
+        pill.layer.cornerRadius = 18;
         if (@available(iOS 13.0, *)) {
             pill.layer.cornerCurve = kCACornerCurveContinuous;
         }
         pill.layer.borderWidth = 1.0;
-        pill.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.25].CGColor;
+        pill.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.28].CGColor;
         pill.layer.masksToBounds = YES;
 
         [pill setTitle:@"✏️ Edit Lines" forState:UIControlStateNormal];
         [pill setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-        UIFont *pFont = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+        UIFont *pFont = [UIFont systemFontOfSize:14 weight:UIFontWeightBold];
         UIFontDescriptor *pDesc = [pFont.fontDescriptor fontDescriptorWithDesign:UIFontDescriptorSystemDesignRounded];
         if (pDesc) pFont = [UIFont fontWithDescriptor:pDesc size:14];
         pill.titleLabel.font = pFont;
@@ -335,8 +346,8 @@ static void applyModdedCardStyle(UIViewController *vc) {
         [pill addTarget:vc action:@selector(sg_openLineSelectorAction) forControlEvents:UIControlEventTouchUpInside];
         [vc.view addSubview:pill];
         objc_setAssociatedObject(vc, &kShareEditPillKey, pill, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    } else if (pill) {
-        pill.frame = CGRectMake((vc.view.bounds.size.width - 126) / 2.0, MAX(16, CGRectGetMinY(card.frame) - 44), 126, 34);
+    } else {
+        pill.frame = CGRectMake((vc.view.bounds.size.width - pillW) / 2.0, pillY, pillW, pillH);
         [vc.view bringSubviewToFront:pill];
     }
 }
