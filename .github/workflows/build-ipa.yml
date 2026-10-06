@@ -17,11 +17,16 @@ on:
 env:
   THEOS: ${{ github.workspace }}/theos
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: levibostian/action-hide-sensitive-inputs@v1
 
@@ -49,11 +54,71 @@ jobs:
 
       - run: make release
 
+      - name: Generate apps.json for SideStore
+        run: |
+          IPA_FILE=$(ls out/*.ipa | head -n 1)
+          IPA_SIZE=$(stat -f%z "$IPA_FILE" 2>/dev/null || stat -c%s "$IPA_FILE")
+          VERSION="9.1.84"
+          TODAY=$(date -u +"%Y-%m-%d")
+          
+          python3 -c "
+          import json
+          data = {
+            'name': 'spoti.pw',
+            'identifier': 'pw.spoti.source',
+            'subtitle': 'Liquid Glass UI for Spotify',
+            'description': 'Liquid Glass UI for the decrypted Spotify iOS app with real-time synced lyrics, Sing vocal control, and Live Activity support.',
+            'iconURL': 'https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png',
+            'website': 'https://spoti.pw',
+            'tintColor': '1ED760',
+            'apps': [
+              {
+                'name': 'Spotify',
+                'bundleIdentifier': 'com.spotify.client',
+                'developerName': 'Spotify & spoti.pw',
+                'subtitle': 'Liquid Glass UI & Lyrics',
+                'version': '${VERSION}',
+                'versionDate': '${TODAY}',
+                'versionDescription': 'Spotify ${VERSION} with spoti.pw Liquid Glass UI, real-time Live Activity lyrics, Quick Sing karaoke toggle, and scrubbing haptics.',
+                'downloadURL': '${{ inputs.ipa_url }}',
+                'localizedDescription': 'A complete Liquid Glass redesign for the Spotify iOS app. Includes Apple Music style real-time synced lyrics, Live Activity support in Dynamic Island & Lock Screen, vocal volume control (Sing), AMOLED dark mode, and seamless physical haptics.',
+                'iconURL': 'https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png',
+                'tintColor': '1ED760',
+                'size': int('${IPA_SIZE}')
+              }
+            ],
+            'news': [
+              {
+                'appID': 'com.spotify.client',
+                'title': 'spoti.pw ${VERSION}',
+                'identifier': f'spoti-pw-${VERSION}-release',
+                'caption': 'Spotify ${VERSION} Support & Live Activity Lyrics',
+                'date': '${TODAY}',
+                'tintColor': '1ED760',
+                'notify': True,
+                'url': 'https://github.com/Wiktorxd-1/spoti.pw'
+              }
+            ]
+          }
+          with open('apps.json', 'w') as f:
+            json.dump(data, f, indent=2)
+          with open('sidestore.json', 'w') as f:
+            json.dump(data, f, indent=2)
+          "
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps.json sidestore.json
+          git diff --staged --quiet || (git commit -m "chore(actions): update apps.json and sidestore.json from build" && git push origin HEAD:main)
+
       - uses: actions/upload-artifact@v5
         if: inputs.upload_method != 'filebin'
         with:
           name: spoti.ipa
-          path: out/*.ipa
+          path: |
+            out/*.ipa
+            apps.json
+            sidestore.json
           if-no-files-found: error
 
       - name: Upload to filebin.net
@@ -66,3 +131,4 @@ jobs:
             echo "- https://filebin.net/$BIN/$(basename "$f")" >> "$GITHUB_STEP_SUMMARY"
           done
           echo "- _filebin deletes bins after a few days of inactivity, download promptly._" >> "$GITHUB_STEP_SUMMARY"
+
