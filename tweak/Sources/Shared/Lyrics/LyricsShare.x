@@ -97,6 +97,8 @@ static void applyModdedCardStyle(UIViewController *vc) {
     }
 }
 
+static NSInteger sg_lastLeadIndex = -999;
+
 // Real-time animated lyric highlighting in sync with Spotify track playback
 static void updateCardAnimation(UIViewController *vc) {
     UIView *card = findCardContainer(vc.view);
@@ -108,6 +110,8 @@ static void updateCardAnimation(UIViewController *vc) {
     NSString *trackID = SGKaraokePlayingTrack();
     NSArray<SGKaraokeLine *> *lines = SGKaraokeLinesForTrack(trackID);
     NSInteger leadIndex = SGKaraokeLeadLine(lines, position);
+    if (leadIndex == sg_lastLeadIndex) return; // Skip work if active line hasn't changed
+    sg_lastLeadIndex = leadIndex;
 
     NSArray<UILabel *> *labels = findLyricLabels(card);
     if (labels.count == 0) return;
