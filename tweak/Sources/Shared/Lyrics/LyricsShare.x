@@ -7,6 +7,7 @@
 #import "Shared/Lyrics/Lyrics.h"
 #import "Shared/Player/PlayerState.h"
 #import "Shared/LockScreenArtwork/LockScreenArtwork.h"
+#import "Shared/Navigation/Links.h"
 #import "Shared/Haptics/Haptics.h"
 
 static char kShareGlassKey, kShareGlowKey, kShareDisplayLinkKey, kShareEditPillKey, kShareTapGestureKey;
