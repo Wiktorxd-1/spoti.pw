@@ -10,7 +10,6 @@
 #import "Shared/Haptics/Haptics.h"
 
 static char kShareGlassKey, kShareGlowKey, kShareDisplayLinkKey, kShareEditPillKey, kShareTapGestureKey;
-static char kSelectedLinesKey, kCardCustomContainerKey;
 
 @interface _TtC16Share_LyricsImpl31LyricsShareFormatViewController : UIViewController
 - (BOOL)isLyricsEditEnabled;
