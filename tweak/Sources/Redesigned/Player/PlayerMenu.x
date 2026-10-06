@@ -27,7 +27,7 @@ static const NSTimeInterval kRowsWait = 4;
 // A sheet hidden as its presentation begins and still without a menu taken over by then is shown again.
 static const NSTimeInterval kClaimWait = 1;
 // How often the table is looked at while the menu waits for Spotify's rows.
-static const NSTimeInterval kRowsPoll = 0.05;
+static const NSTimeInterval kRowsPoll = 0.01;
 // A menu the system has not shown by then is given up for Spotify's sheet.
 static const NSTimeInterval kShowWait = 0.8;
 // How long after the menu has closed a pick may still come in before the sheet is taken away.
@@ -269,10 +269,26 @@ static void logNumbers(NSArray<SGRPlayerMenuSpotifyRow *> *rows) {
 static NSArray<SGRPlayerMenuSpotifyRow *> *sgr_lastRows;
 static NSString *sgr_lastSignature;
 
+static NSArray<SGRPlayerMenuSpotifyRow *> *defaultProvisionalRows(void) {
+    NSMutableArray<SGRPlayerMenuSpotifyRow *> *rows = [NSMutableArray array];
+    struct { NSString *id; NSString *title; } defs[] = {
+        {@"19", @"Add to playlist"},
+        {@"11", @"Add to queue"},
+        {@"9",  @"Share"}
+    };
+    for (size_t i = 0; i < sizeof(defs) / sizeof(defs[0]); i++) {
+        SGRPlayerMenuSpotifyRow *row = [SGRPlayerMenuSpotifyRow new];
+        row.identifier = defs[i].id;
+        row.title = defs[i].title;
+        [rows addObject:row];
+    }
+    return rows;
+}
+
 static NSArray<SGRPlayerMenuSpotifyRow *> *lastRows(void) {
     if (sgr_lastRows) return sgr_lastRows;
     NSData *data = [NSUserDefaults.standardUserDefaults dataForKey:kLastRowsKey];
-    if (!data) return nil;
+    if (!data) return defaultProvisionalRows();
     NSSet *classes = [NSSet setWithObjects:NSArray.class, NSDictionary.class, NSString.class, NSNumber.class, UIImage.class, nil];
     id stored = [NSKeyedUnarchiver unarchivedObjectOfClasses:classes fromData:data error:nil];
     NSMutableArray<SGRPlayerMenuSpotifyRow *> *rows = [NSMutableArray array];
@@ -286,7 +302,7 @@ static NSArray<SGRPlayerMenuSpotifyRow *> *lastRows(void) {
         row.disabled = [entry[@"disabled"] boolValue];
         [rows addObject:row];
     }
-    sgr_lastRows = rows.count ? rows : nil;
+    sgr_lastRows = rows.count ? rows : defaultProvisionalRows();
     sgr_lastSignature = sgr_lastRows ? signatureOf(sgr_lastRows) : nil;
     return sgr_lastRows;
 }
@@ -955,13 +971,13 @@ static void logDarkness(UIView *anyView) {
     if (!moreTappedRecently() || !menu) return;
     objc_setAssociatedObject(sheet, &kClaimKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     hidePresentation(presentation.presentedView, presentation.containerView);
-    logDarkness(presentation.containerView ?: presentation.presentingViewController.view);
     // A menu asked for from inside this call is never shown; from the next turn it is, and stays.
     __weak UIViewController *weakMenu = menu;
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *strongMenu = weakMenu;
         SGRPlayerMenuTakeover *t = strongMenu ? takeoverFor(strongMenu) : nil;
         if (!t) return;
+        [strongMenu.view layoutIfNeeded];
         pass(t);
         openMenu(t);
     });
