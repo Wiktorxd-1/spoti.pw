@@ -87,7 +87,11 @@ jobs:
         run: |
           IPA_FILE=$(ls out/*.ipa | head -n 1)
           cp "$IPA_FILE" out/spoti.pw.ipa
-          gh release create v9.1.84 out/spoti.pw.ipa --title "spoti.pw 9.1.84" --notes "Spotify 9.1.84 with spoti.pw Liquid Glass UI and synced lyrics" --clobber || gh release upload v9.1.84 out/spoti.pw.ipa --clobber
+          if ! gh release view v9.1.84 >/dev/null 2>&1; then
+            gh release create v9.1.84 out/spoti.pw.ipa --title "spoti.pw 9.1.84" --notes "Spotify 9.1.84 with spoti.pw Liquid Glass UI and synced lyrics"
+          else
+            gh release upload v9.1.84 out/spoti.pw.ipa --clobber
+          fi
 
       - name: Generate apps.json for SideStore
         run: |
