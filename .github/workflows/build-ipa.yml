@@ -81,15 +81,25 @@ jobs:
 
       - run: make release
 
-      - name: Generate apps.json for SideStore
+      - name: Create or update GitHub Release with modded IPA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           IPA_FILE=$(ls out/*.ipa | head -n 1)
+          cp "$IPA_FILE" out/spoti.pw.ipa
+          gh release create v9.1.84 out/spoti.pw.ipa --title "spoti.pw 9.1.84" --notes "Spotify 9.1.84 with spoti.pw Liquid Glass UI and synced lyrics" --clobber || gh release upload v9.1.84 out/spoti.pw.ipa --clobber
+
+      - name: Generate apps.json for SideStore
+        run: |
+          IPA_FILE="out/spoti.pw.ipa"
           IPA_SIZE=$(stat -f%z "$IPA_FILE" 2>/dev/null || stat -c%s "$IPA_FILE")
           VERSION="9.1.84"
           TODAY=$(date -u +"%Y-%m-%d")
           
           python3 -c "
-          import json
+          import json, os
+          repo = os.environ.get('GITHUB_REPOSITORY', 'Wiktorxd-1/spoti.pw')
+          download_url = f'https://github.com/{repo}/releases/download/v9.1.84/spoti.pw.ipa'
           data = {
             'name': 'spoti.pw',
             'identifier': 'pw.spoti.source',
@@ -107,7 +117,7 @@ jobs:
                 'version': '${VERSION}',
                 'versionDate': '${TODAY}',
                 'versionDescription': 'Spotify ${VERSION} with spoti.pw Liquid Glass UI, real-time Live Activity lyrics, Quick Sing karaoke toggle, and scrubbing haptics.',
-                'downloadURL': '${{ inputs.ipa_url }}',
+                'downloadURL': download_url,
                 'localizedDescription': 'A complete Liquid Glass redesign for the Spotify iOS app. Includes Apple Music style real-time synced lyrics, Live Activity support in Dynamic Island & Lock Screen, vocal volume control (Sing), AMOLED dark mode, and seamless physical haptics.',
                 'iconURL': 'https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png',
                 'tintColor': '1ED760',
