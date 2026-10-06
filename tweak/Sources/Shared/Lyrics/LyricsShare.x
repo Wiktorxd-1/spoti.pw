@@ -8,7 +8,7 @@
 #import "Shared/Player/PlayerState.h"
 #import "Shared/LockScreenArtwork/LockScreenArtwork.h"
 
-static char kShareGlassKey, kShareArtworkKey, kShareDisplayLinkKey, kShareActiveLinesKey;
+static char kShareGlassKey, kShareDisplayLinkKey;
 
 @interface _TtC16Share_LyricsImpl31LyricsShareFormatViewController : UIViewController
 - (BOOL)isLyricsEditEnabled;
