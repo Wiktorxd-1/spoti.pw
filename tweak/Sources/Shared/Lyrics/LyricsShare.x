@@ -146,7 +146,7 @@ static void updateCardAnimation(UIViewController *vc) {
     __weak typeof(self) weakSelf = self;
     CADisplayLink *link = [CADisplayLink displayLinkWithTarget:weakSelf selector:@selector(sg_tickAnimation:)];
     if (@available(iOS 15.0, *)) {
-        link.preferredFrameRateRange = CAFrameRateRangeMake(30, 60, 60);
+        link.preferredFrameRateRange = CAFrameRateRangeMake(15, 30, 30);
     }
     [link addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
     objc_setAssociatedObject(self, &kShareDisplayLinkKey, link, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -155,6 +155,12 @@ static void updateCardAnimation(UIViewController *vc) {
 - (void)viewDidLayoutSubviews {
     %orig;
     applyModdedCardStyle((UIViewController *)self);
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    %orig;
+    CADisplayLink *link = objc_getAssociatedObject(self, &kShareDisplayLinkKey);
+    link.paused = NO;
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -166,6 +172,9 @@ static void updateCardAnimation(UIViewController *vc) {
 
 %new
 - (void)sg_tickAnimation:(CADisplayLink *)link {
+    if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) {
+        return;
+    }
     updateCardAnimation((UIViewController *)self);
 }
 

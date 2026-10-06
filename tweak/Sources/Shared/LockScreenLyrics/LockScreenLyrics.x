@@ -101,6 +101,17 @@ static NSDictionary *withLine(NSDictionary *info, NSString *line, double elapsed
     return shown;
 }
 
+static BOOL hasSyncedLyrics(NSDictionary *info) {
+    NSString *trackID = SGKaraokePlayingTrack();
+    if (!trackID.length) return NO;
+    NSArray<SGKaraokeLine *> *lines = SGKaraokeLinesForTrack(trackID);
+    if (!lines) {
+        SGKaraokeRequestLyrics(trackID);
+        return NO;
+    }
+    return SGKaraokeLinesTiming(lines) != SGKaraokeTimingNone;
+}
+
 static void tick(void) {
     NSDictionary *info;
     CFAbsoluteTime reportedAt;
@@ -108,7 +119,10 @@ static void tick(void) {
         info = sg_spotifyInfo;
         reportedAt = sg_spotifyInfoAt;
     }
-    if (!info[MPNowPlayingInfoPropertyElapsedPlaybackTime]) return;
+    if (!info[MPNowPlayingInfoPropertyElapsedPlaybackTime] || !hasSyncedLyrics(info)) {
+        setTicking(NO);
+        return;
+    }
     CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
     double elapsed = elapsedAt(info, reportedAt, now);
     NSString *line = lineFor(info, elapsed);
@@ -154,12 +168,13 @@ static BOOL playingBy(NSDictionary *info) {
     if (!NSThread.isMainThread || !info[MPNowPlayingInfoPropertyElapsedPlaybackTime]) {
         dispatch_async(dispatch_get_main_queue(), ^{
             sg_shownLine = nil;
-            setTicking(playing);
+            setTicking(playing && hasSyncedLyrics(info));
         });
         %orig;
         return;
     }
-    setTicking(playing);
+    BOOL shouldTick = playing && hasSyncedLyrics(info);
+    setTicking(shouldTick);
     double elapsed = elapsedAt(info, now, now);
     NSString *line = lineFor(info, elapsed);
     sg_shownLine = line;

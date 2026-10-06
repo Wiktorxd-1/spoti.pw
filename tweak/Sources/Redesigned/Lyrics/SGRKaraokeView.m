@@ -1100,18 +1100,24 @@ typedef struct {
     if (state.isPaused) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             SPTPlayerState *curr = SGPlayerState();
-            if (curr.isPaused && !self->_browsing) {
+            if (curr.isPaused && !self->_browsing && !self->_scroll.isDragging && !self->_scroll.isDecelerating) {
                 self->_link.paused = YES;
             }
         });
     } else {
-        if (_link.paused) _link.paused = NO;
+        if (_link.paused) {
+            _link.paused = NO;
+        }
+        if (self.window && _showing) {
+            [self tick];
+        }
     }
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
+    SGAddPlayerStateObserver(self);
     self.hidden = YES;
     _focus = _openBreak = -1;
     _fontSize = kFontSize;
@@ -1797,6 +1803,7 @@ typedef struct {
     [self alignFade];
     if (_plain) {
         [self showLinesInSight];   // it moves only when scrolled by hand
+        _link.paused = YES;
         return;
     }
 
@@ -1826,6 +1833,10 @@ typedef struct {
     }
     for (NSUInteger i = 0; i < _sungCount; i++) [_shown[@(_sung[i])] showTime:now];
     if (_dots.superview) [_dots showTime:now running:!_stillSince || _link.targetTimestamp - _stillSince < kStillFor at:_link.targetTimestamp];
+
+    if (_stillSince > 0 && (_link.targetTimestamp - _stillSince) > 0.5 && !_scroll.isDragging && !_scroll.isDecelerating && !_browsing) {
+        _link.paused = YES;
+    }
 }
 
 // What is sung at `now`: each line from its start until it is sung out, so two voices over each

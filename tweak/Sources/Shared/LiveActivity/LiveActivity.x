@@ -167,7 +167,9 @@ static void tick(void) API_AVAILABLE(ios(17.0)) {
             sg_tickEvery = 0;
         }
     } else {
-        NSTimeInterval every = (paused || view != SGLiveActivityLyrics) ? kPausedTick : kTick;
+        NSArray<SGKaraokeLine *> *lines = (view == SGLiveActivityLyrics) ? SGKaraokeLinesForTrack(trackID) : nil;
+        BOOL hasTimedLyrics = lines && SGKaraokeLinesTiming(lines) != SGKaraokeTimingNone;
+        NSTimeInterval every = (paused || view != SGLiveActivityLyrics || !hasTimedLyrics) ? kPausedTick : kTick;
         if (!sg_timer || sg_tickEvery != every) startTimer(every);
     }
     NSString *line = @"", *next = @"";
