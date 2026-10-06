@@ -1,14 +1,16 @@
 // Lyrics sharing overhaul: transforms Spotify's lyrics sharing format page into a modern
 // Liquid Glass / Apple Music styled shareable card with real-time time-synced karaoke animation,
-// line selector integration on the text/edit button, and Instagram Stories sharing with real audio attachment.
+// interactive multi-line selection modal (up to 6 lines), and Instagram Stories sharing with real audio attachment.
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import "Core/SGCore.h"
 #import "Shared/Lyrics/Lyrics.h"
 #import "Shared/Player/PlayerState.h"
 #import "Shared/LockScreenArtwork/LockScreenArtwork.h"
+#import "Shared/Haptics/Haptics.h"
 
-static char kShareGlassKey, kShareDisplayLinkKey;
+static char kShareGlassKey, kShareGlowKey, kShareDisplayLinkKey, kShareEditPillKey, kShareTapGestureKey;
+static char kSelectedLinesKey, kCardCustomContainerKey;
 
 @interface _TtC16Share_LyricsImpl31LyricsShareFormatViewController : UIViewController
 - (BOOL)isLyricsEditEnabled;
@@ -16,15 +18,158 @@ static char kShareGlassKey, kShareDisplayLinkKey;
 - (void)editButtonTapped;
 @end
 
-@interface _TtC21Share_SharingSDKSwift28InstagramStoriesShareHandler : NSObject
+@interface _TtC16Share_LyricsImpl34LyricsShareSelectionViewController : UIViewController
 @end
+
+// Forward declarations
+static void applyModdedCardStyle(UIViewController *vc);
+static void openLineSelector(UIViewController *presenter);
+
+#pragma mark - Line Selection Modal
+
+@interface SGLyricsSelectionModal : UIViewController <UITableViewDelegate, UITableViewDataSource>
+@property (nonatomic, weak) UIViewController *formatVC;
+@property (nonatomic, copy) NSArray<SGKaraokeLine *> *lines;
+@property (nonatomic, strong) NSMutableSet<NSNumber *> *selectedIndices;
+@property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, copy) void (^onDone)(NSArray<NSString *> *selectedTexts);
+@end
+
+@implementation SGLyricsSelectionModal
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.95];
+    self.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+
+    // Header view
+    UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 68)];
+    header.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(20, 16, self.view.bounds.size.width - 120, 26)];
+    title.text = @"Select Lyrics";
+    title.font = [UIFont systemFontOfSize:20 weight:UIFontWeightBold];
+    UIFontDescriptor *desc = [title.font.fontDescriptor fontDescriptorWithDesign:UIFontDescriptorSystemDesignRounded];
+    if (desc) title.font = [UIFont fontWithDescriptor:desc size:20];
+    title.textColor = UIColor.whiteColor;
+    [header addSubview:title];
+
+    UILabel *sub = [[UILabel alloc] initWithFrame:CGRectMake(20, 42, self.view.bounds.size.width - 120, 18)];
+    sub.text = @"Choose up to 6 lines to share";
+    sub.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    sub.textColor = [UIColor colorWithWhite:1.0 alpha:0.6];
+    [header addSubview:sub];
+
+    UIButton *doneBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    doneBtn.frame = CGRectMake(self.view.bounds.size.width - 80, 18, 64, 32);
+    doneBtn.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
+    [doneBtn setTitle:@"Done" forState:UIControlStateNormal];
+    [doneBtn setTitleColor:UIColor.blackColor forState:UIControlStateNormal];
+    doneBtn.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+    doneBtn.backgroundColor = UIColor.whiteColor;
+    doneBtn.layer.cornerRadius = 16;
+    doneBtn.layer.masksToBounds = YES;
+    [doneBtn addTarget:self action:@selector(doneTapped) forControlEvents:UIControlEventTouchUpInside];
+    [header addSubview:doneBtn];
+
+    [self.view addSubview:header];
+
+    // Table view
+    self.tableView = [[UITableView alloc] initWithFrame:CGRectMake(0, 68, self.view.bounds.size.width, self.view.bounds.size.height - 68) style:UITableViewStylePlain];
+    self.tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.tableView.backgroundColor = UIColor.clearColor;
+    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 54;
+    self.tableView.contentInset = UIEdgeInsetsMake(8, 0, 32, 0);
+    [self.view addSubview:self.tableView];
+}
+
+- (void)doneTapped {
+    [self dismissViewControllerAnimated:YES completion:nil];
+    if (self.onDone) {
+        NSMutableArray<NSString *> *chosen = [NSMutableArray array];
+        NSArray<NSNumber *> *sorted = [self.selectedIndices.allObjects sortedArrayUsingSelector:@selector(compare:)];
+        for (NSNumber *idx in sorted) {
+            NSInteger i = idx.integerValue;
+            if (i >= 0 && i < (NSInteger)self.lines.count) {
+                NSString *txt = SGKaraokeLineText(self.lines[i]);
+                if (txt.length) [chosen addObject:txt];
+            }
+        }
+        self.onDone(chosen);
+    }
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return self.lines.count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"LyricCell"];
+    if (!cell) {
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"LyricCell"];
+        cell.backgroundColor = UIColor.clearColor;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+
+        UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 10, self.view.bounds.size.width - 40, 34)];
+        lbl.tag = 101;
+        lbl.numberOfLines = 0;
+        lbl.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [cell.contentView addSubview:lbl];
+    }
+
+    UILabel *lbl = [cell.contentView viewWithTag:101];
+    BOOL isSelected = [self.selectedIndices containsObject:@(indexPath.row)];
+    SGKaraokeLine *line = self.lines[indexPath.row];
+    lbl.text = SGKaraokeLineText(line);
+
+    UIFont *font = [UIFont systemFontOfSize:18 weight:UIFontWeightBold];
+    UIFontDescriptor *desc = [font.fontDescriptor fontDescriptorWithDesign:UIFontDescriptorSystemDesignRounded];
+    if (desc) font = [UIFont fontWithDescriptor:desc size:18];
+    lbl.font = font;
+
+    if (isSelected) {
+        lbl.textColor = UIColor.whiteColor;
+        lbl.alpha = 1.0;
+        cell.contentView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+        cell.contentView.layer.cornerRadius = 14;
+        cell.contentView.layer.masksToBounds = YES;
+    } else {
+        lbl.textColor = [UIColor colorWithWhite:1.0 alpha:0.5];
+        lbl.alpha = 0.6;
+        cell.contentView.backgroundColor = UIColor.clearColor;
+    }
+
+    return cell;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    NSNumber *num = @(indexPath.row);
+    if ([self.selectedIndices containsObject:num]) {
+        [self.selectedIndices removeObject:num];
+    } else {
+        if (self.selectedIndices.count >= 6) {
+            SGPlayFeedback(SGFeedbackEdge);
+            return;
+        }
+        [self.selectedIndices addObject:num];
+    }
+    SGPlayFeedback(SGFeedbackToggle);
+    [tableView reloadData];
+}
+
+@end
+
+#pragma mark - Card Hierarchy & Styling
 
 // Recursively find the preview card container inside the format view controller
 static UIView *findCardContainer(UIView *root) {
     if (!root) return nil;
     if (root.subviews.count > 0 && root.bounds.size.width > 200 && root.bounds.size.height > 250) {
         for (UIView *sub in root.subviews) {
-            // Usually the card is centered with aspect ratio ~ 9:16 or 3:4
             CGFloat w = sub.bounds.size.width;
             CGFloat h = sub.bounds.size.height;
             if (w >= 180 && h >= 220 && sub.subviews.count > 0) {
@@ -42,10 +187,19 @@ static UIView *findCardContainer(UIView *root) {
 // Find all UILabels inside the card that represent lyric lines
 static NSArray<UILabel *> *findLyricLabels(UIView *card) {
     NSMutableArray<UILabel *> *labels = [NSMutableArray array];
+    SPTPlayerState *state = SGPlayerState();
+    NSString *trackName = state.track.trackTitle ?: @"";
+    NSString *artistName = state.track.artistName ?: @"";
+
     SGForEachView(card, ^(UIView *v) {
         if ([v isKindOfClass:UILabel.class]) {
             UILabel *lbl = (UILabel *)v;
             if (lbl.text.length > 0 && lbl.bounds.size.height > 12) {
+                // Ignore track title, artist name, and spotify watermark labels
+                if ([lbl.text isEqualToString:trackName] || [lbl.text isEqualToString:artistName] ||
+                    [lbl.text hasPrefix:@"Spotify"] || [lbl.text hasPrefix:@"♪"]) {
+                    return;
+                }
                 [labels addObject:lbl];
             }
         }
@@ -63,13 +217,44 @@ static void applyModdedCardStyle(UIViewController *vc) {
     UIView *card = findCardContainer(vc.view);
     if (!card) return;
 
-    // Apply sleek modern Liquid Glass styling
+    // Strip solid and opaque backgrounds from card and its intermediate container views
+    card.backgroundColor = UIColor.clearColor;
+    for (UIView *sub in card.subviews) {
+        if ([sub isKindOfClass:UIImageView.class] && sub.bounds.size.width >= card.bounds.size.width - 10) {
+            sub.hidden = YES; // Hide solid background image
+        } else if (![sub isKindOfClass:UIVisualEffectView.class] && sub.tag != 999) {
+            sub.backgroundColor = UIColor.clearColor;
+        }
+    }
+
+    // Apply sleek modern Liquid Glass styling (28pt continuous corner radius + 1pt glass border)
     card.layer.cornerRadius = 28;
+    if (@available(iOS 13.0, *)) {
+        card.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     card.layer.masksToBounds = YES;
     card.layer.borderWidth = 1.0;
     card.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.18].CGColor;
 
-    // Add Frosted Dark Glass pane under card content if not present
+    // Ambient background glow layer matching modern dark glass
+    CAGradientLayer *glow = objc_getAssociatedObject(card, &kShareGlowKey);
+    if (!glow) {
+        glow = [CAGradientLayer layer];
+        glow.frame = card.bounds;
+        glow.colors = @[
+            (id)[UIColor colorWithWhite:0.15 alpha:0.8].CGColor,
+            (id)[UIColor colorWithWhite:0.05 alpha:0.9].CGColor
+        ];
+        glow.startPoint = CGPointMake(0.2, 0.0);
+        glow.endPoint = CGPointMake(0.8, 1.0);
+        glow.cornerRadius = 28;
+        [card.layer insertSublayer:glow atIndex:0];
+        objc_setAssociatedObject(card, &kShareGlowKey, glow, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    } else {
+        glow.frame = card.bounds;
+    }
+
+    // Frosted Dark Glass pane
     UIVisualEffectView *glass = objc_getAssociatedObject(card, &kShareGlassKey);
     if (!glass) {
         UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
@@ -77,6 +262,9 @@ static void applyModdedCardStyle(UIViewController *vc) {
         glass.frame = card.bounds;
         glass.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         glass.layer.cornerRadius = 28;
+        if (@available(iOS 13.0, *)) {
+            glass.layer.cornerCurve = kCACornerCurveContinuous;
+        }
         glass.layer.masksToBounds = YES;
         [card insertSubview:glass atIndex:0];
         objc_setAssociatedObject(card, &kShareGlassKey, glass, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -85,16 +273,129 @@ static void applyModdedCardStyle(UIViewController *vc) {
         [card sendSubviewToBack:glass];
     }
 
-    // Modernize lyric label typography (Apple Music bold rounded style)
+    // Modernize lyric label typography (Apple Music bold rounded style with crisp text)
     NSArray<UILabel *> *labels = findLyricLabels(card);
     for (UILabel *lbl in labels) {
-        if ([lbl.text hasPrefix:@"♪"] || lbl.font.pointSize < 14) continue;
-        UIFont *roundedFont = [UIFont systemFontOfSize:lbl.font.pointSize weight:UIFontWeightBold];
+        UIFont *roundedFont = [UIFont systemFontOfSize:21 weight:UIFontWeightBold];
         UIFontDescriptor *desc = [roundedFont.fontDescriptor fontDescriptorWithDesign:UIFontDescriptorSystemDesignRounded];
-        if (desc) roundedFont = [UIFont fontWithDescriptor:desc size:lbl.font.pointSize];
+        if (desc) roundedFont = [UIFont fontWithDescriptor:desc size:21];
         lbl.font = roundedFont;
         lbl.textColor = UIColor.whiteColor;
+        lbl.numberOfLines = 0;
+        lbl.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.4].CGColor;
+        lbl.layer.shadowOffset = CGSizeMake(0, 1);
+        lbl.layer.shadowRadius = 4;
+        lbl.layer.shadowOpacity = 0.6;
     }
+
+    // Style album artwork thumbnail with continuous rounded corners
+    SGForEachView(card, ^(UIView *v) {
+        if ([v isKindOfClass:UIImageView.class] && v.bounds.size.width < 100 && v.bounds.size.width > 20) {
+            v.layer.cornerRadius = 12;
+            if (@available(iOS 13.0, *)) {
+                v.layer.cornerCurve = kCACornerCurveContinuous;
+            }
+            v.layer.masksToBounds = YES;
+        }
+    });
+
+    // Make the entire card tappable to open the line selection sheet
+    if (!objc_getAssociatedObject(card, &kShareTapGestureKey)) {
+        UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:vc action:@selector(sg_handleCardTap:)];
+        card.userInteractionEnabled = YES;
+        [card addGestureRecognizer:tap];
+        objc_setAssociatedObject(card, &kShareTapGestureKey, tap, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+
+    // Add sleek "Edit Lines" floating glass pill button above the card
+    UIButton *pill = objc_getAssociatedObject(vc, &kShareEditPillKey);
+    if (!pill && card.superview) {
+        pill = [UIButton buttonWithType:UIButtonTypeCustom];
+        pill.tag = 999;
+        CGFloat pillW = 126;
+        CGFloat pillH = 34;
+        pill.frame = CGRectMake((vc.view.bounds.size.width - pillW) / 2.0, CGRectGetMinY(card.frame) - 44, pillW, pillH);
+        pill.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
+        pill.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
+        pill.layer.cornerRadius = 17;
+        if (@available(iOS 13.0, *)) {
+            pill.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+        pill.layer.borderWidth = 1.0;
+        pill.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.25].CGColor;
+        pill.layer.masksToBounds = YES;
+
+        [pill setTitle:@"✏️ Edit Lines" forState:UIControlStateNormal];
+        [pill setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        UIFont *pFont = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+        UIFontDescriptor *pDesc = [pFont.fontDescriptor fontDescriptorWithDesign:UIFontDescriptorSystemDesignRounded];
+        if (pDesc) pFont = [UIFont fontWithDescriptor:pDesc size:14];
+        pill.titleLabel.font = pFont;
+
+        [pill addTarget:vc action:@selector(sg_openLineSelectorAction) forControlEvents:UIControlEventTouchUpInside];
+        [vc.view addSubview:pill];
+        objc_setAssociatedObject(vc, &kShareEditPillKey, pill, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    } else if (pill) {
+        pill.frame = CGRectMake((vc.view.bounds.size.width - 126) / 2.0, MAX(16, CGRectGetMinY(card.frame) - 44), 126, 34);
+        [vc.view bringSubviewToFront:pill];
+    }
+}
+
+static void openLineSelector(UIViewController *presenter) {
+    NSString *trackID = SGKaraokePlayingTrack();
+    NSArray<SGKaraokeLine *> *lines = SGKaraokeLinesForTrack(trackID);
+    if (!lines.count) {
+        SPTPlayerState *state = SGPlayerState();
+        NSString *uri = SGURIString(state.track.URI);
+        if ([uri hasPrefix:@"spotify:track:"]) {
+            trackID = [uri substringFromIndex:@"spotify:track:".length];
+            lines = SGKaraokeLinesForTrack(trackID);
+        }
+    }
+    if (!lines.count) return;
+
+    SGLyricsSelectionModal *modal = [[SGLyricsSelectionModal alloc] init];
+    modal.formatVC = presenter;
+    modal.lines = lines;
+    modal.selectedIndices = [NSMutableSet set];
+
+    // Pre-select current lead line + next line
+    NSInteger pos = SGKaraokePositionMs();
+    NSInteger lead = SGKaraokeLeadLine(lines, pos);
+    if (lead >= 0 && lead < (NSInteger)lines.count) {
+        [modal.selectedIndices addObject:@(lead)];
+        if (lead + 1 < (NSInteger)lines.count) [modal.selectedIndices addObject:@(lead + 1)];
+    } else if (lines.count > 0) {
+        [modal.selectedIndices addObject:@0];
+        if (lines.count > 1) [modal.selectedIndices addObject:@1];
+    }
+
+    modal.onDone = ^(NSArray<NSString *> *selectedTexts) {
+        if (!selectedTexts.count) return;
+        UIView *card = findCardContainer(presenter.view);
+        if (!card) return;
+
+        NSArray<UILabel *> *labels = findLyricLabels(card);
+        // If we have matching count of labels or can update them
+        for (NSUInteger i = 0; i < labels.count; i++) {
+            if (i < selectedTexts.count) {
+                labels[i].text = selectedTexts[i];
+                labels[i].hidden = NO;
+            } else {
+                labels[i].text = @"";
+                labels[i].hidden = YES;
+            }
+        }
+        applyModdedCardStyle(presenter);
+    };
+
+    if (@available(iOS 15.0, *)) {
+        UISheetPresentationController *sheet = modal.sheetPresentationController;
+        sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent, UISheetPresentationControllerDetent.largeDetent];
+        sheet.prefersGrabberVisible = YES;
+        sheet.preferredCornerRadius = 24;
+    }
+    [presenter presentViewController:modal animated:YES completion:nil];
 }
 
 static NSInteger sg_lastLeadIndex = -999;
@@ -178,13 +479,35 @@ static void updateCardAnimation(UIViewController *vc) {
     updateCardAnimation((UIViewController *)self);
 }
 
+%new
+- (void)sg_openLineSelectorAction {
+    openLineSelector((UIViewController *)self);
+}
+
+%new
+- (void)sg_handleCardTap:(UITapGestureRecognizer *)gesture {
+    openLineSelector((UIViewController *)self);
+}
+
 // When format/text button is tapped in edit mode, present the line selection modal
 - (void)textButtonTapped:(id)sender {
-    if ([self respondsToSelector:@selector(editButtonTapped)]) {
-        [self editButtonTapped];
-    } else {
-        %orig;
-    }
+    openLineSelector((UIViewController *)self);
+}
+
+- (void)editButtonTapped {
+    openLineSelector((UIViewController *)self);
+}
+
+%end
+
+%hook _TtC16Share_LyricsImpl34LyricsShareSelectionViewController
+
+- (NSInteger)maxSelectedLines {
+    return 6;
+}
+
+- (NSInteger)selectionLimit {
+    return 6;
 }
 
 %end
@@ -234,3 +557,4 @@ static void updateCardAnimation(UIViewController *vc) {
         @"UIPasteboard",
     ]);
 }
+
