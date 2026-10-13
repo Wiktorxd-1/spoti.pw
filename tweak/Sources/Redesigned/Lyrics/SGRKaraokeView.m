@@ -1457,6 +1457,42 @@ typedef struct {
     _dots = nil;
 }
 
+static NSString *sgr_romanizeText(NSString *text) {
+    if (!text.length) return nil;
+    NSMutableString *str = [text mutableCopy];
+    if (!CFStringTransform((__bridge CFMutableStringRef)str, NULL, kCFStringTransformToLatin, false)) return nil;
+    CFStringTransform((__bridge CFMutableStringRef)str, NULL, kCFStringTransformStripCombiningMarks, false);
+    if ([str caseInsensitiveCompare:text] == NSOrderedSame) return nil;
+    return [str stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static SGKaraokeLine *sgr_generatePronunciation(SGKaraokeLine *line) {
+    if (!line || !line.words.count) return nil;
+    NSString *full = SGKaraokeLineText(line);
+    NSString *roman = sgr_romanizeText(full);
+    if (!roman.length) return nil;
+
+    SGKaraokeLine *pron = [SGKaraokeLine new];
+    pron.start = line.start;
+    pron.end = line.end;
+    pron.timing = line.timing;
+    pron.voice = line.voice;
+    pron.align = line.align;
+
+    NSMutableArray<SGKaraokeWord *> *pWords = [NSMutableArray arrayWithCapacity:line.words.count];
+    for (SGKaraokeWord *w in line.words) {
+        NSString *wRoman = sgr_romanizeText(w.text) ?: w.text;
+        SGKaraokeWord *pw = [SGKaraokeWord new];
+        pw.text = wRoman;
+        pw.start = w.start;
+        pw.end = w.end;
+        pw.joined = w.joined;
+        [pWords addObject:pw];
+    }
+    pron.words = pWords;
+    return pron;
+}
+
 // When each line is sung and where the breaks are, worked out once per song for the frames to read.
 - (void)timeLines {
     free(_spans);
@@ -1470,6 +1506,12 @@ typedef struct {
     NSInteger sungTo = 0;   // the top of the song counts as where the singing before the first line ends
     for (NSUInteger i = 0; i < count; i++) {
         SGKaraokeLine *line = _lines[i];
+        if (!line.pronunciation) {
+            line.pronunciation = sgr_generatePronunciation(line);
+        }
+        if (line.backing && !line.backing.pronunciation) {
+            line.backing.pronunciation = sgr_generatePronunciation(line.backing);
+        }
         _spans[i] = (SGRKaraokeSpan){line.start, SGKaraokeSungEnd(line)};
         if (!_plain && line.start - sungTo >= kBreakMinMs) _breaks[_breakCount++] = (SGRKaraokeBreak){sungTo, line.start, (NSInteger)i};
         sungTo = MAX(sungTo, _spans[i].end);

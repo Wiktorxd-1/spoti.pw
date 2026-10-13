@@ -34,8 +34,11 @@ static char kVolumeRowKey;
     [self addSubview:_maxIcon];
 
     _volumeView = [[MPVolumeView alloc] initWithFrame:CGRectZero];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     _volumeView.showsRouteButton = NO;
     _volumeView.showsVolumeSlider = YES;
+#pragma clang diagnostic pop
     [self addSubview:_volumeView];
 
     [self styleSlider];
