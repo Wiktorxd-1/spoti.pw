@@ -8,6 +8,7 @@
 #import "Core/SGCore.h"
 #import "SGRAccent.h"
 #import "Settings/SGPageStyle.h"
+#import "Headers/SPTEncoreIconView.h"
 #import "SGRPalette.h"
 #import "SGRBridges.h"
 
@@ -216,10 +217,11 @@ static id swappedValue(id value) {
 - (void)layoutSubviews {
     %orig;
     if (SGRPlainCheckmark()) {
-        for (UIView *sub in self.subviews) {
+        UIView *view = (UIView *)self;
+        for (UIView *sub in view.subviews) {
             if ([sub isKindOfClass:UIImageView.class]) {
                 UIImageView *iv = (UIImageView *)sub;
-                NSString *acc = iv.accessibilityLabel ?: self.accessibilityLabel;
+                NSString *acc = iv.accessibilityLabel ?: view.accessibilityLabel;
                 if ([acc localizedCaseInsensitiveContainsString:@"check"] || [acc localizedCaseInsensitiveContainsString:@"added"]) {
                     iv.image = [UIImage systemImageNamed:@"checkmark"];
                     iv.tintColor = SGRPlayerAccentColor();
