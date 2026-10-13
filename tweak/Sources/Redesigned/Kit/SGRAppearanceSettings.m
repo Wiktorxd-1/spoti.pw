@@ -25,5 +25,7 @@ static void chooseAccent(void) {
 NSArray<SGModRow *> *SGRAppearanceRows(void) {
     return @[
         SGWithSymbol(SGStatActionRow(@"Accent colour", nil, ^NSString *{ return SGRAccentLabel(); }, ^{ chooseAccent(); }), @"paintpalette"),
+        SGWithSymbol(SGOptionRow(@"Plain checkmark", @"Swaps circled ticks for a plain checkmark in the accent colour", SGRKeyPlainCheckmark), @"checkmark"),
+        SGWithSymbol(SGOptionRow(@"Accent follows cover", @"The player's accent colour follows the cover of the song playing", SGRKeyPlayerAccentFollowsArtwork), @"sparkles"),
     ];
 }

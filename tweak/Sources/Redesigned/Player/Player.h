@@ -67,6 +67,11 @@ extern NSNotificationName const SGRPlayerFluidLookDidChangeNotification;
 // The Player page's sections for the background: the choice, then the settings of the one picked.
 NSArray<SGModSection *> *SGRPlayerBackgroundSections(void);
 
+#pragma mark - volume slider (PlayerVolume.x)
+
+#define SGRKeyPlayerVolumeSlider @"spotifyglass.redesign.player.volumeSlider"
+BOOL SGRPlayerVolumeSliderEnabled(void);
+
 #pragma mark - the ⋯ menu (PlayerMenu.x)
 
 // Marks a sheet opened soon after a tap on `button`, the player's ⋯, as the one the menu takes over, and

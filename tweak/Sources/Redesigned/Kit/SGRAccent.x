@@ -8,6 +8,31 @@
 #import "Core/SGCore.h"
 #import "SGRAccent.h"
 #import "Settings/SGPageStyle.h"
+#import "SGRPalette.h"
+#import "SGRBridges.h"
+
+NSNotificationName const SGRPlayerAccentDidChangeNotification = @"spotifyglass.redesign.player.accentDidChange";
+
+static UIColor *sg_artworkAccentColor;
+
+void SGRSetArtworkPaletteAccent(UIColor *color) {
+    sg_artworkAccentColor = color;
+}
+
+BOOL SGRPlayerAccentFollowsArtwork(void) {
+    return SGFlag(SGRKeyPlayerAccentFollowsArtwork, NO);
+}
+
+BOOL SGRPlainCheckmark(void) {
+    return SGFlag(SGRKeyPlainCheckmark, NO);
+}
+
+UIColor *SGRPlayerAccentColor(void) {
+    if (SGRPlayerAccentFollowsArtwork() && sg_artworkAccentColor) {
+        return sg_artworkAccentColor;
+    }
+    return SGRAccentColor() ?: [UIColor colorWithRed:0x1E / 255.0 green:0xD7 / 255.0 blue:0x60 / 255.0 alpha:1];
+}
 
 // The greens the app is known to build from literals: the token, and the older brand green the
 // upsell backend still names.
@@ -168,8 +193,63 @@ static id swappedValue(id value) {
 }
 %end
 
+%hook UIImage
++ (UIImage *)systemImageNamed:(NSString *)name {
+    if (SGRPlainCheckmark()) {
+        if ([name isEqualToString:@"checkmark.circle.fill"] || [name isEqualToString:@"checkmark.circle"]) {
+            return %orig(@"checkmark");
+        }
+    }
+    return %orig(name);
+}
++ (UIImage *)systemImageNamed:(NSString *)name withConfiguration:(UIImageSymbolConfiguration *)configuration {
+    if (SGRPlainCheckmark()) {
+        if ([name isEqualToString:@"checkmark.circle.fill"] || [name isEqualToString:@"checkmark.circle"]) {
+            return %orig(@"checkmark", configuration);
+        }
+    }
+    return %orig(name, configuration);
+}
+%end
+
+%hook SPTEncoreIconView
+- (void)layoutSubviews {
+    %orig;
+    if (SGRPlainCheckmark()) {
+        for (UIView *sub in self.subviews) {
+            if ([sub isKindOfClass:UIImageView.class]) {
+                UIImageView *iv = (UIImageView *)sub;
+                NSString *acc = iv.accessibilityLabel ?: self.accessibilityLabel;
+                if ([acc localizedCaseInsensitiveContainsString:@"check"] || [acc localizedCaseInsensitiveContainsString:@"added"]) {
+                    iv.image = [UIImage systemImageNamed:@"checkmark"];
+                    iv.tintColor = SGRPlayerAccentColor();
+                }
+            }
+        }
+    }
+}
+%end
+
+static void observeArtworkAccent(void) {
+    [NSNotificationCenter.defaultCenter addObserverForName:SGRNowPlayingArtworkDidChangeNotification
+                                                    object:nil
+                                                     queue:[NSOperationQueue mainQueue]
+                                                usingBlock:^(NSNotification *note) {
+        if (!SGRPlayerAccentFollowsArtwork()) return;
+        UIImage *image = SGRNowPlayingArtwork(NULL, NULL);
+        if (!image) return;
+        [SGRPalette tintForImage:image surface:UIColor.blackColor completion:^(UIColor *tint) {
+            if (tint) {
+                SGRSetArtworkPaletteAccent(tint);
+                [NSNotificationCenter.defaultCenter postNotificationName:SGRPlayerAccentDidChangeNotification object:nil];
+            }
+        }];
+    }];
+}
+
 %ctor {
     if (!SGRedesignedUI()) return;
     sg_accent = chosen();
-    if (sg_accent >= 0) %init;
+    %init;
+    observeArtworkAccent();
 }

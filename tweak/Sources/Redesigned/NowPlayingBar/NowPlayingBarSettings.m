@@ -9,6 +9,7 @@ NSArray<SGModSection *> *SGRNowPlayingSections(void) {
     return [@[
         SGSection(nil, @[
             SGHideRow(@"Hide the device button", nil, SGRHideBarConnect),
+            SGWithSymbol(SGOptionRow(@"Volume slider", @"Shows an Apple Music style volume slider under the controls in the full player", SGRKeyPlayerVolumeSlider), @"speaker.wave.2"),
         ]),
     ] arrayByAddingObjectsFromArray:SGRPlayerBackgroundSections()];
 }
