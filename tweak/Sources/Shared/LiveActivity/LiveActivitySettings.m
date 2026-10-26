@@ -97,7 +97,5 @@ UIViewController *SGLiveActivitySettingsPage(void) {
 
 NSString *SGLiveActivitySummary(void) {
     if (!SGFlag(SGKeyLiveActivity, NO)) return @"Off";
-    NSInteger index = SGInt(SGKeyLiveActivityView, SGLiveActivityLyrics);
-    NSArray<NSString *> *names = viewNames();
-    return index >= 0 && index < (NSInteger)names.count ? names[index] : names.firstObject;
+    return @"Lyrics and songs";
 }

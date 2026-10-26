@@ -724,6 +724,11 @@ void SAPDownloadCurrentTrack(void (^message)(NSString *)) {
         if (message) message(SAPL(@"Транспорт ядра Spotify ещё не получен. Начни воспроизведение и повтори.",@"The Spotify core transport is not available yet. Start playback and try again.")); return;
     }
     SAPJournalNoteAction(@"single_track_requested",@{@"track_uri":urlString,@"transport_available":@YES});
+    if (identifier.length) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:identifier];
+        });
+    }
     dispatch_async(worker, ^{
         if (atomic_load(&active)) return;
         jobTraceOperation=trace;

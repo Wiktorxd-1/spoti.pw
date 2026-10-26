@@ -7,6 +7,7 @@
 #import "Settings/SGPageStyle.h"
 #import "Downloads.h"
 #import "DownloadsBridge.h"
+#import "Shared/Lyrics/Lyrics.h"
 
 static NSString *const kPixieURL = @"https://github.com/Glongq/Vitrine-Pixie";
 
@@ -353,14 +354,20 @@ UIViewController *SGDownloadsSettingsPage(void) {
     Class<SGDownloadsCompanion> companion = SGDownloadsCompanion();
     SGSetEnabled(SGKeyDownloadsDiagnostics, [companion diagnosticsEnabled]);
 
-    SGModRow *download = symbolRow(SGActionRow(@"Download current track", @"The song playing right now", ^{ [SGDownloadsCompanion() downloadTrack]; }),
-                                   @"arrow.down.circle.fill", nil);
+    SGModRow *download = symbolRow(SGActionRow(@"Download current track", @"The song playing right now", ^{
+        [SGDownloadsCompanion() downloadTrack];
+        NSString *playing = SGKaraokePlayingTrack();
+        if (playing) SGKaraokeRequestLyrics(playing);
+    }), @"arrow.down.circle.fill", nil);
     download.visible = ^BOOL { return !SGDownloadsActive(); };
     SGModRow *status = symbolRow(SGActionRow(@"Track download status", @"A download is running", ^{ [SGDownloadsCompanion() downloadTrack]; }),
                                  @"arrow.down.circle.fill", nil);
     status.visible = ^BOOL { return SGDownloadsActive(); };
-    SGModRow *album = symbolRow(SGActionRow(@"Download current track's album", @"Every track on its album", ^{ [SGDownloadsCompanion() downloadAlbum]; }),
-                                @"square.stack.fill", nil);
+    SGModRow *album = symbolRow(SGActionRow(@"Download current track's album", @"Every track on its album", ^{
+        [SGDownloadsCompanion() downloadAlbum];
+        NSString *playing = SGKaraokePlayingTrack();
+        if (playing) SGKaraokeRequestLyrics(playing);
+    }), @"square.stack.fill", nil);
     SGModRow *check = symbolRow(SGActionRow(@"Check current track", @"Is it saved for offline listening?", ^{ [SGDownloadsCompanion() checkTrack]; }),
                                 @"checkmark.circle.fill", nil);
     SGModRow *cancel = symbolRow(SGActionRow(@"Cancel download", nil, ^{ [SGDownloadsCompanion() cancelDownload]; changed(); }),

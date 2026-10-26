@@ -282,7 +282,7 @@ static BOOL requestFromSpotify(NSString *trackID) {
               SGKaraokeLinesTiming(lines) == SGKaraokeTimingNone ? @"untimed" : @"line timed", error);
         // A refused authorization is lost too: the captured one may have expired, and Spotify's next
         // spclient request brings a fresh one.
-        BOOL lost = SGLyricsReplyFailed(response, error) || status == 401 || status == 403;
+        BOOL lost = SGLyricsReplyFailed(response, error) || status == 401 || status == 403 || status == 429;
         dispatch_async(dispatch_get_main_queue(), ^{
             if (generation != sg_requestGeneration[trackID].unsignedIntegerValue) return;
             [sg_looking removeObject:trackID];
@@ -638,6 +638,11 @@ static SGKaraokeTrackWatcher *sg_trackWatcher;
                                                 usingBlock:^(NSNotification *note) {
         NSString *playing = SGKaraokePlayingTrack();
         if (playing && !sg_lyrics[playing] && !SGKaraokeLooking(playing)) SGKaraokeRequestLyrics(playing);
+    }];
+    [NSNotificationCenter.defaultCenter addObserverForName:@"SGDownloadTrackRequestedNotification" object:nil queue:NSOperationQueue.mainQueue
+                                                usingBlock:^(NSNotification *note) {
+        NSString *trackID = note.object;
+        if (trackID.length) SGKaraokeRequestLyrics(trackID);
     }];
     sg_trackWatcher = [SGKaraokeTrackWatcher new];
     SGAddPlayerStateObserver(sg_trackWatcher);

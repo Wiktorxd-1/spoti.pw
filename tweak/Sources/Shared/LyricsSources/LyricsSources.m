@@ -74,7 +74,7 @@ static NSMutableURLRequest *requestFor(NSURL *url, NSDictionary<NSString *, NSSt
 }
 
 // The body whatever the status, and the reply it came with; nil for both when there was none.
-static void sendForReply(NSURLRequest *request, void (^done)(NSData *body, NSHTTPURLResponse *response)) {
+static void sendForReplyWithRetry(NSURLRequest *request, NSUInteger retries, void (^done)(NSData *body, NSHTTPURLResponse *response)) {
     if (!request) {
         dispatch_async(dispatch_get_main_queue(), ^{ done(nil, nil); });
         return;
@@ -83,9 +83,23 @@ static void sendForReply(NSURLRequest *request, void (^done)(NSData *body, NSHTT
     [[NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         NSHTTPURLResponse *reply = [response isKindOfClass:NSHTTPURLResponse.class] ? (NSHTTPURLResponse *)response : nil;
         SGLyricsNoteReply(response, error);
+        if (reply.statusCode == 429 && retries > 0) {
+            NSString *retryHeader = reply.allHeaderFields[@"Retry-After"];
+            NSTimeInterval wait = [retryHeader doubleValue] > 0 ? [retryHeader doubleValue] : 5.0;
+            if (wait > 60) wait = 60;
+            SGLog(@"lyrics: rate limit on %@, waiting %.1fs to retry (%lu left)", url.host, wait, (unsigned long)retries);
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(wait * NSEC_PER_SEC)), dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+                sendForReplyWithRetry(request, retries - 1, done);
+            });
+            return;
+        }
         if (error || reply.statusCode >= 400) SGLog(@"lyrics: %@ answered %ld, error %@", url.host, (long)reply.statusCode, error);
         dispatch_async(dispatch_get_main_queue(), ^{ done(data, reply); });
     }] resume];
+}
+
+static void sendForReply(NSURLRequest *request, void (^done)(NSData *body, NSHTTPURLResponse *response)) {
+    sendForReplyWithRetry(request, 3, done);
 }
 
 static void send(NSURLRequest *request, void (^done)(NSData *body)) {

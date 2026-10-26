@@ -8,6 +8,10 @@
 API_AVAILABLE(ios(17.0))
 @interface SGLiveActivityBridge : NSObject
 @property (class, nonatomic, readonly) BOOL isShowing;
++ (void)showLyricsWithPaused:(BOOL)paused line:(NSString *)line nextLine:(NSString *)nextLine;
++ (void)showSongWithPaused:(BOOL)paused titles:(NSArray<NSString *> *)titles artists:(NSArray<NSString *> *)artists uris:(NSArray<NSString *> *)uris
+                       tab:(NSInteger)tab title:(NSString *)title artist:(NSString *)artist shuffle:(BOOL)shuffle repeatMode:(NSInteger)repeatMode
+                  timerEnd:(NSDate *)timerEnd timerEndOfTrack:(BOOL)timerEndOfTrack;
 + (void)showWithView:(NSInteger)view paused:(BOOL)paused line:(NSString *)line nextLine:(NSString *)nextLine
               titles:(NSArray<NSString *> *)titles artists:(NSArray<NSString *> *)artists uris:(NSArray<NSString *> *)uris
                  tab:(NSInteger)tab title:(NSString *)title artist:(NSString *)artist shuffle:(BOOL)shuffle repeatMode:(NSInteger)repeatMode
@@ -36,6 +40,8 @@ static const NSInteger kEndOfTrackMs = 500;
 static NSTimer *sg_timer;
 static NSTimeInterval sg_tickEvery;
 static NSString *sg_shown;
+static NSString *sg_shownLyrics;
+static NSString *sg_shownSong;
 static NSString *sg_missingLyrics;
 static NSDate *sg_lastStart;
 static SGLiveActivityTab sg_tab;
@@ -139,41 +145,50 @@ static void tick(void) API_AVAILABLE(ios(17.0)) {
     NSString *trackID = SGKaraokePlayingTrack();
     checkSleepTimer(player, state, trackID);
 
-    NSInteger view = SGInt(SGKeyLiveActivityView, SGLiveActivityLyrics);
     BOOL paused = state.isPaused;
     NSTimeInterval every = paused ? kPausedTick : kTick;
     if (sg_timer && sg_tickEvery != every) startTimer(every);
-    NSString *line = @"", *next = @"";
-    if (view == SGLiveActivityLyrics) line = lyricsLine(trackID, &next);
 
-    NSMutableArray<NSString *> *titles = [NSMutableArray array], *artists = [NSMutableArray array], *uris = [NSMutableArray array];
-    if (view != SGLiveActivityLyrics) {
-        NSUInteger limit = view == SGLiveActivityQueue ? kUpNextQueue : kUpNextPanel;
-        for (SPTPlayerTrack *upcoming in upNext(state)) {
-            if (titles.count == limit) break;
-            [titles addObject:upcoming.trackTitle];
-            [artists addObject:upcoming.artistName ?: @""];
-            [uris addObject:uriOf(upcoming)];
-        }
+    if (!SGLiveActivityBridge.isShowing) {
+        if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
+        if (sg_lastStart && -sg_lastStart.timeIntervalSinceNow < kStartRetry) return;
+        sg_lastStart = [NSDate date];
     }
 
-    BOOL panel = view == SGLiveActivityPanel;
-    NSString *title = panel ? track.trackTitle : @"", *artist = panel ? track.artistName ?: @"" : @"";
-    BOOL shuffle = panel && state.options.shufflingContext;
-    NSInteger repeatMode = panel ? repeatModeOf(state.options) : 0;
-    NSInteger tab = panel ? sg_tab : 0;
+    NSString *next = @"";
+    NSString *line = lyricsLine(trackID, &next);
+    NSString *lyricsKey = [NSString stringWithFormat:@"%d\n%@\n%@", paused, line, next];
+    if (![lyricsKey isEqualToString:sg_shownLyrics]) {
+        sg_shownLyrics = lyricsKey;
+        [SGLiveActivityBridge showLyricsWithPaused:paused line:line nextLine:next];
+    }
+
+    NSMutableArray<NSString *> *titles = [NSMutableArray array], *artists = [NSMutableArray array], *uris = [NSMutableArray array];
+    for (SPTPlayerTrack *upcoming in upNext(state)) {
+        if (titles.count == kUpNextPanel) break;
+        [titles addObject:upcoming.trackTitle];
+        [artists addObject:upcoming.artistName ?: @""];
+        [uris addObject:uriOf(upcoming)];
+    }
+
+    NSString *title = track.trackTitle ?: @"", *artist = track.artistName ?: @"";
+    BOOL shuffle = state.options.shufflingContext;
+    NSInteger repeatMode = repeatModeOf(state.options);
+    NSInteger tab = sg_tab;
     NSDate *sleepEnd = sg_sleepEnd;
     BOOL endOfTrack = sg_sleepTrack != nil;
 
-    NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithObjects:@(view).stringValue, paused ? @"1" : @"0", line, next,
-        @(tab).stringValue, title, artist, shuffle ? @"1" : @"0", @(repeatMode).stringValue,
+    NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithObjects:
+        paused ? @"1" : @"0", @(tab).stringValue, title, artist, shuffle ? @"1" : @"0", @(repeatMode).stringValue,
         @((long long)sleepEnd.timeIntervalSince1970).stringValue, endOfTrack ? @"1" : @"0", nil];
     for (NSUInteger i = 0; i < titles.count; i++) [parts addObject:[NSString stringWithFormat:@"%@\t%@\t%@", titles[i], artists[i], uris[i]]];
-    send([parts componentsJoinedByString:@"\n"], ^{
-        [SGLiveActivityBridge showWithView:view paused:paused line:line nextLine:next titles:titles artists:artists uris:uris
-                                        tab:tab title:title artist:artist shuffle:shuffle repeatMode:repeatMode
-                                   timerEnd:sleepEnd timerEndOfTrack:endOfTrack];
-    });
+    NSString *songKey = [parts componentsJoinedByString:@"\n"];
+    if (![songKey isEqualToString:sg_shownSong]) {
+        sg_shownSong = songKey;
+        [SGLiveActivityBridge showSongWithPaused:paused titles:titles artists:artists uris:uris
+                                             tab:tab title:title artist:artist shuffle:shuffle repeatMode:repeatMode
+                                        timerEnd:sleepEnd timerEndOfTrack:endOfTrack];
+    }
 }
 
 static void playQueued(NSString *uri) {
@@ -241,6 +256,8 @@ void SGSetLiveActivityEnabled(BOOL on) {
         [sg_timer invalidate];
         sg_timer = nil;
         sg_shown = nil;
+        sg_shownLyrics = nil;
+        sg_shownSong = nil;
         sg_lastStart = nil;
         clearSleepTimer();
         if (!on) {

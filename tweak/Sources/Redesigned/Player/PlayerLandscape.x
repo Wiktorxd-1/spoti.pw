@@ -143,6 +143,8 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
     [self playerStateDidChange:SGPlayerState()];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(artworkChanged)
                                                name:SGRNowPlayingArtworkDidChangeNotification object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(linesChanged)
+                                               name:SGKaraokeLinesDidChangeNotification object:nil];
     // The shield is hidden from VoiceOver, so turning it on brings the controls back and keeps them.
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(wake)
                                                name:UIAccessibilityVoiceOverStatusDidChangeNotification object:nil];
@@ -153,25 +155,46 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
     [_rest invalidate];
 }
 
+- (void)linesChanged {
+    [self.view setNeedsLayout];
+}
+
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     CGRect safe = UIEdgeInsetsInsetRect(self.view.bounds, self.view.safeAreaInsets);
-    CGFloat column = round(safe.size.width * kColumnShare);
-    CGFloat left = CGRectGetMinX(safe) + kSide;
-    CGFloat titleHeight = ceil(_title.font.lineHeight), artistHeight = ceil(_artist.font.lineHeight);
-    CGFloat textHeight = MAX(titleHeight + artistHeight, kControlSide), controlsHeight = kControlSide;
-    CGFloat side = MIN(column - kSide, safe.size.height - 2 * kSide - textHeight - controlsHeight - 2 * kCoverGap);
-    CGFloat top = CGRectGetMidY(safe) - (side + kCoverGap + textHeight + kCoverGap + controlsHeight) / 2;
-    _cover.frame = CGRectMake(left, top, side, side);
-    // The close button at the text's trailing end, its glyph (about 20pt in the 44pt square) at the cover's edge.
-    CGFloat textTop = CGRectGetMaxY(_cover.frame) + kCoverGap;
-    _close.frame = CGRectMake(left + side - kControlSide + 12, textTop + (textHeight - kControlSide) / 2, kControlSide, kControlSide);
-    _title.frame = CGRectMake(left, textTop + (textHeight - titleHeight - artistHeight) / 2, side - kControlSide, titleHeight);
-    _artist.frame = CGRectMake(left, CGRectGetMaxY(_title.frame), side - kControlSide, artistHeight);
-    _controls.frame = CGRectMake(left + side * 0.1, textTop + textHeight + kCoverGap, side * 0.8, controlsHeight);
-    CGFloat linesLeft = left + side + kSide;
-    _stage.frame = CGRectMake(linesLeft, CGRectGetMinY(safe), CGRectGetMaxX(safe) - linesLeft, safe.size.height);
-    _lyrics.frame = _stage.bounds;
+    BOOL hasLyrics = SGRPlayerLyricsAvailable();
+    if (!hasLyrics) {
+        _stage.hidden = YES;
+        CGFloat titleHeight = ceil(_title.font.lineHeight), artistHeight = ceil(_artist.font.lineHeight);
+        CGFloat textHeight = MAX(titleHeight + artistHeight, kControlSide), controlsHeight = kControlSide;
+        CGFloat side = MIN(round(safe.size.width * 0.42), safe.size.height - 2 * kSide - textHeight - controlsHeight - 2 * kCoverGap);
+        CGFloat left = round(CGRectGetMidX(safe) - side / 2);
+        CGFloat top = round(CGRectGetMidY(safe) - (side + kCoverGap + textHeight + kCoverGap + controlsHeight) / 2);
+        _cover.frame = CGRectMake(left, top, side, side);
+        CGFloat textTop = CGRectGetMaxY(_cover.frame) + kCoverGap;
+        _close.frame = CGRectMake(left + side - kControlSide + 12, textTop + (textHeight - kControlSide) / 2, kControlSide, kControlSide);
+        _title.frame = CGRectMake(left, textTop + (textHeight - titleHeight - artistHeight) / 2, side - kControlSide, titleHeight);
+        _artist.frame = CGRectMake(left, CGRectGetMaxY(_title.frame), side - kControlSide, artistHeight);
+        _controls.frame = CGRectMake(left + side * 0.1, textTop + textHeight + kCoverGap, side * 0.8, controlsHeight);
+    } else {
+        _stage.hidden = NO;
+        CGFloat column = round(safe.size.width * kColumnShare);
+        CGFloat left = CGRectGetMinX(safe) + kSide;
+        CGFloat titleHeight = ceil(_title.font.lineHeight), artistHeight = ceil(_artist.font.lineHeight);
+        CGFloat textHeight = MAX(titleHeight + artistHeight, kControlSide), controlsHeight = kControlSide;
+        CGFloat side = MIN(column - kSide, safe.size.height - 2 * kSide - textHeight - controlsHeight - 2 * kCoverGap);
+        CGFloat top = CGRectGetMidY(safe) - (side + kCoverGap + textHeight + kCoverGap + controlsHeight) / 2;
+        _cover.frame = CGRectMake(left, top, side, side);
+        // The close button at the text's trailing end, its glyph (about 20pt in the 44pt square) at the cover's edge.
+        CGFloat textTop = CGRectGetMaxY(_cover.frame) + kCoverGap;
+        _close.frame = CGRectMake(left + side - kControlSide + 12, textTop + (textHeight - kControlSide) / 2, kControlSide, kControlSide);
+        _title.frame = CGRectMake(left, textTop + (textHeight - titleHeight - artistHeight) / 2, side - kControlSide, titleHeight);
+        _artist.frame = CGRectMake(left, CGRectGetMaxY(_title.frame), side - kControlSide, artistHeight);
+        _controls.frame = CGRectMake(left + side * 0.1, textTop + textHeight + kCoverGap, side * 0.8, controlsHeight);
+        CGFloat linesLeft = left + side + kSide;
+        _stage.frame = CGRectMake(linesLeft, CGRectGetMinY(safe), CGRectGetMaxX(safe) - linesLeft, safe.size.height);
+        _lyrics.frame = _stage.bounds;
+    }
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -251,7 +274,6 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
 
 // The lines on their own, unless VoiceOver needs the controls to be there.
 - (void)rest {
-    if (!UIAccessibilityIsVoiceOverRunning()) [self setControlsShown:NO];
 }
 
 - (void)wake {
@@ -261,32 +283,18 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
 - (void)setControlsShown:(BOOL)shown {
     [_rest invalidate];
     _rest = nil;
-    _hide.enabled = shown;
-    if (shown) [_shield removeFromSuperview];
-    else if (!_shield.superview) {
-        _shield.frame = self.view.bounds;
-        [self.view addSubview:_shield];
-    }
-    // Back at a tap with the Kit's response, from where a fade out is; they go with the slow fade, as the
-    // portrait player's do (PlayerLyrics.x).
-    SGRAnimate(shown ? SGRMotionRespond : SGRMotionFade, ^{
-        for (UIView *view in @[self->_controls, self->_close, self->_title, self->_artist]) view.alpha = shown ? 1 : 0;
-        self->_lyrics.extrasHidden = !shown;
-    }, nil);
-    if (shown) [self restartRest];
+    _hide.enabled = NO;
+    [_shield removeFromSuperview];
+    self->_controls.alpha = 1;
+    self->_close.alpha = 1;
+    self->_title.alpha = 1;
+    self->_artist.alpha = 1;
+    self->_lyrics.extrasHidden = NO;
 }
 
 - (void)restartRest {
     [_rest invalidate];
     _rest = nil;
-    if (!SGEnabled(SGRKeyLyricsLandscapeAutoHide) || SGPlayerState().isPaused || UIAccessibilityIsVoiceOverRunning()) return;
-    __weak SGRLandscapeLyricsController *weakSelf = self;
-    _rest = [NSTimer scheduledTimerWithTimeInterval:kLandscapeRest repeats:NO block:^(NSTimer *timer) {
-        // A sheet over the lines (a line's meanings) keeps them up, and the clock runs again behind it.
-        SGRLandscapeLyricsController *strongSelf = weakSelf;
-        if (strongSelf.presentedViewController) [strongSelf restartRest];
-        else [strongSelf rest];
-    }];
 }
 
 @end
@@ -372,7 +380,7 @@ void SGRPlayerShowLandscape(BOOL show) {
 static void orientationChanged(void) {
     UIDeviceOrientation orientation = UIDevice.currentDevice.orientation;
     if (UIDeviceOrientationIsLandscape(orientation)) {
-        if (!sg_shut && SGEnabled(SGRKeyLyricsLandscape) && SGRPlayerLyricsOpen()) SGRPlayerShowLandscape(YES);
+        if (!sg_shut && SGEnabled(SGRKeyLyricsLandscape) && (SGRPlayerLyricsOpen() || SGRPlayerCoverList().window != nil)) SGRPlayerShowLandscape(YES);
     } else if (orientation == UIDeviceOrientationPortrait) {
         sg_shut = NO;
         SGRPlayerShowLandscape(NO);

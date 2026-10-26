@@ -80,12 +80,14 @@ static void restartRest(void);
 @property (nonatomic, readonly) UIImageView *cover;
 @property (nonatomic, readonly) UIView *stage;       // holds the lines' view alone
 @property (nonatomic, readonly) SGRKaraokeView *lyrics;
+@property (nonatomic, readonly) UILabel *noLyrics;
 @end
 
 @implementation SGRPlayerLyricsOverlay {
     UIView *_thumb, *_stage;
     UIImageView *_cover;
     SGRKaraokeView *_lyrics;
+    UILabel *_noLyrics;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -103,6 +105,13 @@ static void restartRest(void);
     _cover.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [_thumb addSubview:_cover];
     _stage = [[UIView alloc] initWithFrame:CGRectZero];
+    _noLyrics = [[UILabel alloc] initWithFrame:CGRectZero];
+    _noLyrics.text = @"No lyrics found";
+    _noLyrics.textColor = [UIColor colorWithWhite:1 alpha:0.6];
+    _noLyrics.font = SGRFont(UIFontTextStyleTitle2, UIFontWeightBold, UIContentSizeCategoryExtraExtraLarge);
+    _noLyrics.textAlignment = NSTextAlignmentCenter;
+    _noLyrics.hidden = YES;
+    [_stage addSubview:_noLyrics];
     [self addSubview:_stage];
     [self addSubview:_thumb];
     return self;
@@ -115,6 +124,7 @@ static void restartRest(void);
 - (UIView *)thumb { return _thumb; }
 - (UIImageView *)cover { return _cover; }
 - (UIView *)stage { return _stage; }
+- (UILabel *)noLyrics { return _noLyrics; }
 
 // The lines seek when they are tapped and the thumbnail brings the player back, so everywhere else the
 // overlay would only swallow touches: a view that takes them does, even with nothing on it.
@@ -293,6 +303,10 @@ static void place(SGRPlayerLyricsOverlay *overlay, UIView *host, SGRLyricsLayout
     overlay.stage.bounds = (CGRect){CGPointZero, stage.size};
     overlay.stage.center = CGPointMake(CGRectGetMidX(stage), CGRectGetMidY(stage));
     overlay.lyrics.frame = overlay.stage.bounds;
+    overlay.noLyrics.frame = overlay.stage.bounds;
+    BOOL hasLyrics = SGRPlayerLyricsAvailable();
+    overlay.lyrics.hidden = !hasLyrics;
+    overlay.noLyrics.hidden = hasLyrics;
     overlay.lyrics.extrasEnabled = SGEnabled(SGRKeyPlayerTranslateButton);
     syncSingControl(overlay);
 }
@@ -629,6 +643,10 @@ static void setOpen(BOOL open, BOOL animated) {
         overlay.cover.image = SGRNowPlayingArtwork(NULL, NULL);
         overlay.stage.alpha = 0;
         overlay.stage.transform = entering;
+        BOOL hasLyrics = SGRPlayerLyricsAvailable();
+        overlay.noLyrics.frame = overlay.stage.bounds;
+        overlay.noLyrics.hidden = hasLyrics;
+        overlay.lyrics.hidden = !hasLyrics;
         // Not under VoiceOver, which keeps the controls up, nor under a sheet.
         overlay.lyrics.browsingBegan = ^{
             if (!UIAccessibilityIsVoiceOverRunning() && !coveredBySheet()) setAlone(YES, YES);
@@ -694,7 +712,6 @@ static void setOpen(BOOL open, BOOL animated) {
 }
 
 void SGRPlayerToggleLyrics(void) {
-    if (!sg_open && !SGRPlayerLyricsAvailable()) return;
     setOpen(!sg_open, YES);
 }
 
@@ -719,6 +736,10 @@ static void replace(void) {
     overlay.thumb.transform = thumbTransform(l);
     overlay.cover.layer.cornerRadius = thumbRadius(l, YES);
     overlay.lyrics.frame = overlay.stage.bounds;
+    overlay.noLyrics.frame = overlay.stage.bounds;
+    BOOL hasLyrics = SGRPlayerLyricsAvailable();
+    overlay.lyrics.hidden = !hasLyrics;
+    overlay.noLyrics.hidden = hasLyrics;
     SGRPlayerCoverList().alpha = 0;
 }
 
@@ -816,18 +837,14 @@ static void replace(void) {
 // Lines kept for the track playing, or the look for them over with none. The glyph is told only when they
 // are here, since SGRPlayerLyricsChanged sets the animated artwork's blur each time.
 - (void)linesKept:(NSNotification *)note {
-    if (SGRPlayerLyricsAvailable()) {
-        SGRPlayerLyricsChanged();
-        return;
-    }
-    if ([note.object isEqual:SGKaraokePlayingTrack()]) [self closeIfNone];
+    SGRPlayerLyricsChanged();
+    replace();
 }
 
 // The lines go once the grace is over and nothing is looking for the track's own any more.
 - (void)closeIfNone {
-    if (!_graceOver || !sg_open || SGRPlayerLyricsAvailable() || SGKaraokeLooking(SGKaraokePlayingTrack())) return;
-    SGLog(@"redesign player: no lyrics for the track that came on, the cover is back");
-    setOpen(NO, YES);
+    if (!_graceOver || !sg_open || SGKaraokeLooking(SGKaraokePlayingTrack())) return;
+    replace();
 }
 
 - (void)playerStateDidChange:(SPTPlayerState *)state {
