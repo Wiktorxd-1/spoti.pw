@@ -5,22 +5,36 @@ on:
     inputs:
       ipa_url:
         description: "Direct link to a decrypted Spotify IPA"
-        required: true
+        default: "https://cdn.wiktorxd-1.dev/f/wiktor/d/tqkcW2bVDPh5vYiF.ipa"
+        required: false
         type: string
       upload_method:
         description: "Where to put the result"
         default: artifacts
         type: choice
         options: [artifacts, filebin, both]
+  push:
+    branches:
+      - main
 
 env:
   THEOS: ${{ github.workspace }}/theos
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+          fetch-depth: 0
 
       - uses: levibostian/action-hide-sensitive-inputs@v1
 
@@ -28,30 +42,138 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Cache Theos
+        id: cache-theos
+        uses: actions/cache@v4
+        with:
+          path: theos
+          key: theos-v2-${{ runner.os }}
+
       - uses: actions/checkout@v5
+        if: steps.cache-theos.outputs.cache-hit != 'true'
         with:
           repository: theos/theos
           path: theos
           submodules: recursive
+          fetch-depth: 1
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('scripts/pipeline.sh') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
 
       - name: Install tools
         run: |
           brew install make dpkg ldid
           python3 -m pip install --break-system-packages git+https://github.com/asdfzxcvbn/pyzule-rw.git
 
+      - name: Cache base IPA
+        id: cache-ipa
+        uses: actions/cache@v4
+        with:
+          path: ipa/spotify.ipa
+          key: base-ipa-${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/tqkcW2bVDPh5vYiF.ipa' }}
+
+      - name: Cache Flag Table
+        uses: actions/cache@v4
+        with:
+          path: tweak/Sources/Shared/Flags/SGFlagList.m
+          key: flag-table-9.1.84
+
       - name: Download IPA
+        if: steps.cache-ipa.outputs.cache-hit != 'true'
         run: |
           mkdir -p ipa
-          curl -fsSL "${{ inputs.ipa_url }}" -o ipa/spotify.ipa
+          curl -fsSL "${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/tqkcW2bVDPh5vYiF.ipa' }}" -o ipa/spotify.ipa
           case "$(file --mime-type -b ipa/spotify.ipa)" in application/zip|application/x-ios-app) ;; *) echo "::error::Not an IPA"; exit 1 ;; esac
 
-      - run: make release
+      - name: Build modded release IPA
+        env:
+          SPOTIFY_APP_VERSION: 9.1.84.${{ github.run_number }}
+        run: make release
+
+      - name: Create or update GitHub Release with modded IPA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IPA_FILE=$(ls out/*.ipa | head -n 1)
+          cp "$IPA_FILE" out/spoti.pw.ipa
+          if ! gh release view v9.1.84 >/dev/null 2>&1; then
+            gh release create v9.1.84 out/spoti.pw.ipa --title "spoti.pw 9.1.84" --notes "Spotify 9.1.84 with spoti.pw Liquid Glass UI and synced lyrics"
+          else
+            gh release upload v9.1.84 out/spoti.pw.ipa --clobber
+          fi
+
+      - name: Generate apps.json for SideStore
+        run: |
+          IPA_FILE="out/spoti.pw.ipa"
+          IPA_SIZE=$(stat -f%z "$IPA_FILE" 2>/dev/null || stat -c%s "$IPA_FILE")
+          VERSION="9.1.84.${{ github.run_number }}"
+          TODAY=$(date -u +"%Y-%m-%d")
+          
+          python3 -c "
+          import json, os
+          repo = os.environ.get('GITHUB_REPOSITORY', 'Wiktorxd-1/spoti.pw')
+          download_url = f'https://github.com/{repo}/releases/download/v9.1.84/spoti.pw.ipa'
+          data = {
+            'name': 'spoti.pw',
+            'identifier': 'pw.spoti.source',
+            'subtitle': 'Liquid Glass UI for Spotify',
+            'description': 'Liquid Glass UI for the decrypted Spotify iOS app with real-time synced lyrics, Sing vocal control, and Live Activity support.',
+            'iconURL': 'https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png',
+            'website': 'https://spoti.pw',
+            'tintColor': '1ED760',
+            'apps': [
+              {
+                'name': 'Spotify',
+                'bundleIdentifier': 'com.spotify.client',
+                'developerName': 'Spotify & spoti.pw',
+                'subtitle': 'Liquid Glass UI & Lyrics',
+                'version': '${VERSION}',
+                'versionDate': '${TODAY}',
+                'versionDescription': 'Spotify ${VERSION} with spoti.pw Liquid Glass UI, real-time Live Activity lyrics, Quick Sing karaoke toggle, and scrubbing haptics.',
+                'downloadURL': download_url,
+                'localizedDescription': 'A complete Liquid Glass redesign for the Spotify iOS app. Includes Apple Music style real-time synced lyrics, Live Activity support in Dynamic Island & Lock Screen, vocal volume control (Sing), AMOLED dark mode, and seamless physical haptics.',
+                'iconURL': 'https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png',
+                'tintColor': '1ED760',
+                'size': int('${IPA_SIZE}')
+              }
+            ],
+            'news': [
+              {
+                'appID': 'com.spotify.client',
+                'title': 'spoti.pw ${VERSION}',
+                'identifier': f'spoti-pw-${VERSION}-release',
+                'caption': 'Spotify ${VERSION} Support & Live Activity Lyrics',
+                'date': '${TODAY}',
+                'tintColor': '1ED760',
+                'notify': True,
+                'url': 'https://github.com/Wiktorxd-1/spoti.pw'
+              }
+            ]
+          }
+          with open('apps.json', 'w') as f:
+            json.dump(data, f, indent=2)
+          with open('sidestore.json', 'w') as f:
+            json.dump(data, f, indent=2)
+          "
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps.json sidestore.json tweak/Sources/Shared/Flags/SGFlagList.m 2>/dev/null || true
+          git diff --staged --quiet || (git commit -m "chore(actions): update apps.json to $VERSION" && git push origin HEAD:main)
 
       - uses: actions/upload-artifact@v5
         if: inputs.upload_method != 'filebin'
         with:
           name: spoti.ipa
-          path: out/*.ipa
+          path: |
+            out/*.ipa
+            apps.json
+            sidestore.json
           if-no-files-found: error
 
       - name: Upload to filebin.net
@@ -64,3 +186,4 @@ jobs:
             echo "- https://filebin.net/$BIN/$(basename "$f")" >> "$GITHUB_STEP_SUMMARY"
           done
           echo "- _filebin deletes bins after a few days of inactivity, download promptly._" >> "$GITHUB_STEP_SUMMARY"
+
