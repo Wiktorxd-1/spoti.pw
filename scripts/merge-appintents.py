@@ -14,11 +14,12 @@ import sys
 import tempfile
 import zipfile
 
-def merge_list(theirs, added, identity):
+def merge_list(theirs, added, identity=None):
     merged = list(theirs or [])
-    positions = {item.get(identity): i for i, item in enumerate(merged) if isinstance(item, dict)}
+    positions = ({item.get(identity): i for i, item in enumerate(merged)
+                  if isinstance(item, dict) and item.get(identity) is not None} if identity else {})
     for item in added or []:
-        key = item.get(identity) if isinstance(item, dict) else None
+        key = item.get(identity) if identity and isinstance(item, dict) else None
         if key is not None and key in positions:
             merged[positions[key]] = item
         elif item not in merged:
@@ -28,16 +29,37 @@ def merge_list(theirs, added, identity):
     return merged
 
 
+def merge_section(name, theirs, added, identity=None):
+    if theirs is None:
+        return added
+    if added is None or not added:
+        return theirs
+    if not theirs:
+        return added
+    if isinstance(theirs, dict) and isinstance(added, dict):
+        return {**theirs, **added}
+    if isinstance(theirs, list) and isinstance(added, list):
+        return merge_list(theirs, added, identity)
+    raise TypeError(f"App Intents section {name!r} changed shape from "
+                    f"{type(theirs).__name__} to {type(added).__name__}")
+
+
 def merge_metadata(theirs, added):
     if theirs is None:
         return added
     merged = dict(theirs)
-    for section in ("actions", "assistantEntities", "assistantIntents", "entities", "queries"):
+    sections = {
+        "actions": None,
+        "assistantEntities": "identifier",
+        "assistantIntents": "identifier",
+        "entities": None,
+        "queries": None,
+        "enums": "identifier",
+        "autoShortcuts": "actionIdentifier",
+    }
+    for section, identity in sections.items():
         if section in added:
-            merged[section] = {**theirs.get(section, {}), **added[section]}
-    for section, identity in (("enums", "identifier"), ("autoShortcuts", "actionIdentifier")):
-        if section in added:
-            merged[section] = merge_list(theirs.get(section), added[section], identity)
+            merged[section] = merge_section(section, theirs.get(section), added[section], identity)
     # A bundle records one provider. Keep Spotify's when it has one; the merged static shortcut
     # descriptions still expose Taurus's shortcuts without replacing Spotify's provider.
     if "autoShortcutProviderMangledName" not in merged and "autoShortcutProviderMangledName" in added:
