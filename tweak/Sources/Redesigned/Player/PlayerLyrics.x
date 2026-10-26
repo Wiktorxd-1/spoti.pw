@@ -49,7 +49,7 @@ static const NSTimeInterval kLyricsIn = 0.3, kLyricsInDelay = 0.12, kLyricsOut =
 // A track that changes while the lines are up has this long to bring its own before they are put away. A
 // look for them still running then is waited out, since a local file's sources are asked one after another,
 // up to 6 s each, with a Musixmatch token fetched first the first time.
-static const NSTimeInterval kLyricsGrace = 3;
+static const NSTimeInterval kLyricsGrace = 6;
 // Below this the player has not laid out yet and nothing can be measured from it.
 static const CGFloat kLivingHeight = 200;
 // The lines on their own: the controls under them fade after this long without a touch.
@@ -199,16 +199,16 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     CGRect area = SGRPlayerArtworkAreaIn(host), cover = SGRPlayerCoverFrameIn(host);
     if (CGRectIsNull(area) || CGRectIsNull(cover)) return l;
     CGRect row = untransformed(info, host), bar = untransformed(duration, host);
-    // The thumbnail takes the title's own leading edge, so the two line up down the page.
-    CGFloat leading = title ? CGRectGetMinX(untransformed(title, host)) : CGRectGetMinX(area) + SGRSideMargin;
+    CGFloat hostWidth = host.bounds.size.width;
+    CGFloat leading = title ? CGRectGetMinX(untransformed(title, host)) : SGRSideMargin;
+    leading = MAX(SGRSideMargin, MIN(leading, hostWidth - kThumbSide - SGRSideMargin));
     l.cover = cover;
     l.thumb = CGRectMake(leading, CGRectGetMinY(area) + kThumbTop, kThumbSide, kThumbSide);
-    // Beside the thumbnail when the title can be moved clear of it, under it when it cannot be found.
     CGFloat top = title ? CGRectGetMidY(l.thumb) - row.size.height / 2 : CGRectGetMaxY(l.thumb) + SGRGrid;
     l.lift = top - CGRectGetMinY(row);
     l.shift = title ? kThumbSide + kThumbGap : 0;
     CGFloat lines = MAX(CGRectGetMaxY(l.thumb), top + row.size.height) + kLyricsTop;
-    l.stage = CGRectMake(CGRectGetMinX(area), lines, area.size.width, CGRectGetMinY(bar) - kLyricsBottom - lines);
+    l.stage = CGRectMake(0, lines, hostWidth, CGRectGetMinY(bar) - kLyricsBottom - lines);
     l.ok = l.stage.size.height > kLivingHeight / 2 && l.lift < 0;
     return l;
 }
@@ -290,9 +290,9 @@ BOOL SGRPlayerLyricsOpen(void) {
 
 static BOOL shouldShowNoLyrics(void) {
     if (SGRPlayerLyricsAvailable()) return NO;
-    if (!sg_graceOver) return NO;
     NSString *track = SGKaraokePlayingTrack();
     if (track && SGKaraokeLooking(track)) return NO;
+    if (!sg_graceOver) return NO;
     return YES;
 }
 

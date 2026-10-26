@@ -6,7 +6,7 @@
 #import "SGLiveActivityPreview.h"
 
 static NSArray<NSString *> *viewNames(void) {
-    return @[@"Lyrics", @"Queue", @"Control menu"];
+    return @[@"Lyrics", @"Queue", @"Control menu", @"Both"];
 }
 
 static NSArray<NSString *> *colorNames(void) {

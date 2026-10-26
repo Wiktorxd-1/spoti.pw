@@ -346,8 +346,15 @@ UIViewController *SGDownloadsSettingsPage(void) {
         SGModRow *why = SGWarningRow(@"Downloads are unavailable in this build", @"Tap to see why", ^{
             say(@"Downloads", SGDownloadsUnavailableReason());
         });
+        SGModRow *offlineLyrics = symbolRow(SGStatRow(@"Offline lyrics cache", @"Downloaded lyrics available offline", ^NSString * {
+            NSUInteger cached = SGKaraokeDownloadedLyricsCount();
+            NSUInteger queued = SGKaraokeQueuedLyricsCount();
+            if (queued > 0) return [NSString stringWithFormat:@"%lu saved (%lu queued)", (unsigned long)cached, (unsigned long)queued];
+            return [NSString stringWithFormat:@"%lu saved", (unsigned long)cached];
+        }), @"music.note.list", nil);
+        offlineLyrics.refreshOn = SGKaraokeLinesDidChangeNotification;
         return [[SGDownloadsPage alloc] initWithTitle:@"Downloads" intro:nil sections:@[
-            SGSection(nil, @[why]),
+            SGSection(nil, @[why, offlineLyrics]),
             SGSection(@"About", @[symbolRow(SGLinkRow(@"Pixie Download Manager", @"Glongq/Vitrine-Pixie, where the downloads come from", kPixieURL), @"link", nil)]),
         ] footer:nil];
     }
@@ -357,7 +364,7 @@ UIViewController *SGDownloadsSettingsPage(void) {
     SGModRow *download = symbolRow(SGActionRow(@"Download current track", @"The song playing right now", ^{
         [SGDownloadsCompanion() downloadTrack];
         NSString *playing = SGKaraokePlayingTrack();
-        if (playing) SGKaraokeRequestLyrics(playing);
+        if (playing) SGDownloadLyricsForTrack(playing);
     }), @"arrow.down.circle.fill", nil);
     download.visible = ^BOOL { return !SGDownloadsActive(); };
     SGModRow *status = symbolRow(SGActionRow(@"Track download status", @"A download is running", ^{ [SGDownloadsCompanion() downloadTrack]; }),
@@ -366,7 +373,7 @@ UIViewController *SGDownloadsSettingsPage(void) {
     SGModRow *album = symbolRow(SGActionRow(@"Download current track's album", @"Every track on its album", ^{
         [SGDownloadsCompanion() downloadAlbum];
         NSString *playing = SGKaraokePlayingTrack();
-        if (playing) SGKaraokeRequestLyrics(playing);
+        if (playing) SGDownloadLyricsForTrack(playing);
     }), @"square.stack.fill", nil);
     SGModRow *check = symbolRow(SGActionRow(@"Check current track", @"Is it saved for offline listening?", ^{ [SGDownloadsCompanion() checkTrack]; }),
                                 @"checkmark.circle.fill", nil);
@@ -393,11 +400,19 @@ UIViewController *SGDownloadsSettingsPage(void) {
     SGModRow *send = symbolRow(SGActionRow(@"Send log", @"One package: report, events and download history", ^{ [SGDownloadsCompanion() sendLog]; }),
                                @"square.and.arrow.up", nil);
 
+    SGModRow *offlineLyrics = symbolRow(SGStatRow(@"Offline lyrics cache", @"Downloaded lyrics available offline", ^NSString * {
+        NSUInteger cached = SGKaraokeDownloadedLyricsCount();
+        NSUInteger queued = SGKaraokeQueuedLyricsCount();
+        if (queued > 0) return [NSString stringWithFormat:@"%lu saved (%lu queued)", (unsigned long)cached, (unsigned long)queued];
+        return [NSString stringWithFormat:@"%lu saved", (unsigned long)cached];
+    }), @"music.note.list", nil);
+    offlineLyrics.refreshOn = SGKaraokeLinesDidChangeNotification;
+
     NSArray<SGModSection *> *sections = @[
         SGNotedSection(@"Current track", @[download, status, album, check, cancel], @"Tracks are saved in Spotify for offline listening."),
         SGNotedSection(@"Download compatibility", @[mode, quotas, slots, enable],
                        @"5 licenses = up to 5 devices with offline music.\n\nOnly change settings in this menu if downloads are not working."),
-        SGSection(@"Status", @[log]),
+        SGSection(@"Status", @[log, offlineLyrics]),
         SGNotedSection(@"Diagnostics", @[diagnostics, send], @"Enable Diagnostics for detailed passive events."),
         SGNotedSection(@"About", @[symbolRow(SGLinkRow(@"Pixie Download Manager", @"Glongq/Vitrine-Pixie, the engine behind this page", kPixieURL), @"link", nil)],
                        @"Spotify's own download buttons on playlists, albums and menus work too. Music stays in Spotify's offline storage."),

@@ -141,39 +141,43 @@ static void tick(void) API_AVAILABLE(ios(17.0)) {
         sg_lastStart = [NSDate date];
     }
 
-    NSString *next = @"";
-    NSString *line = lyricsLine(trackID, &next);
-    NSString *lyricsKey = [NSString stringWithFormat:@"%d\n%@\n%@", paused, line, next];
-    if (![lyricsKey isEqualToString:sg_shownLyrics]) {
-        sg_shownLyrics = lyricsKey;
-        [SGLiveActivityBridge showLyricsWithPaused:paused line:line nextLine:next];
+    NSInteger view = SGInt(SGKeyLiveActivityView, SGLiveActivityLyrics);
+    if (view == SGLiveActivityLyrics || view == SGLiveActivityBoth) {
+        NSString *next = @"";
+        NSString *line = lyricsLine(trackID, &next);
+        NSString *lyricsKey = [NSString stringWithFormat:@"%d\n%@\n%@", paused, line, next];
+        if (![lyricsKey isEqualToString:sg_shownLyrics]) {
+            sg_shownLyrics = lyricsKey;
+            [SGLiveActivityBridge showLyricsWithPaused:paused line:line nextLine:next];
+        }
     }
+    if (view != SGLiveActivityLyrics) {
+        NSMutableArray<NSString *> *titles = [NSMutableArray array], *artists = [NSMutableArray array], *uris = [NSMutableArray array];
+        for (SPTPlayerTrack *upcoming in upNext(state)) {
+            if (titles.count == kUpNextPanel) break;
+            [titles addObject:upcoming.trackTitle];
+            [artists addObject:upcoming.artistName ?: @""];
+            [uris addObject:uriOf(upcoming)];
+        }
 
-    NSMutableArray<NSString *> *titles = [NSMutableArray array], *artists = [NSMutableArray array], *uris = [NSMutableArray array];
-    for (SPTPlayerTrack *upcoming in upNext(state)) {
-        if (titles.count == kUpNextPanel) break;
-        [titles addObject:upcoming.trackTitle];
-        [artists addObject:upcoming.artistName ?: @""];
-        [uris addObject:uriOf(upcoming)];
-    }
+        NSString *title = track.trackTitle ?: @"", *artist = track.artistName ?: @"";
+        BOOL shuffle = state.options.shufflingContext;
+        NSInteger repeatMode = repeatModeOf(state.options);
+        NSInteger tab = sg_tab;
+        NSDate *sleepEnd = sg_sleepEnd;
+        BOOL endOfTrack = sg_sleepTrack != nil;
 
-    NSString *title = track.trackTitle ?: @"", *artist = track.artistName ?: @"";
-    BOOL shuffle = state.options.shufflingContext;
-    NSInteger repeatMode = repeatModeOf(state.options);
-    NSInteger tab = sg_tab;
-    NSDate *sleepEnd = sg_sleepEnd;
-    BOOL endOfTrack = sg_sleepTrack != nil;
-
-    NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithObjects:
-        paused ? @"1" : @"0", @(tab).stringValue, title, artist, shuffle ? @"1" : @"0", @(repeatMode).stringValue,
-        @((long long)sleepEnd.timeIntervalSince1970).stringValue, endOfTrack ? @"1" : @"0", nil];
-    for (NSUInteger i = 0; i < titles.count; i++) [parts addObject:[NSString stringWithFormat:@"%@\t%@\t%@", titles[i], artists[i], uris[i]]];
-    NSString *songKey = [parts componentsJoinedByString:@"\n"];
-    if (![songKey isEqualToString:sg_shownSong]) {
-        sg_shownSong = songKey;
-        [SGLiveActivityBridge showSongWithPaused:paused titles:titles artists:artists uris:uris
-                                             tab:tab title:title artist:artist shuffle:shuffle repeatMode:repeatMode
-                                        timerEnd:sleepEnd timerEndOfTrack:endOfTrack];
+        NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithObjects:
+            paused ? @"1" : @"0", @(tab).stringValue, title, artist, shuffle ? @"1" : @"0", @(repeatMode).stringValue,
+            @((long long)sleepEnd.timeIntervalSince1970).stringValue, endOfTrack ? @"1" : @"0", nil];
+        for (NSUInteger i = 0; i < titles.count; i++) [parts addObject:[NSString stringWithFormat:@"%@\t%@\t%@", titles[i], artists[i], uris[i]]];
+        NSString *songKey = [parts componentsJoinedByString:@"\n"];
+        if (![songKey isEqualToString:sg_shownSong]) {
+            sg_shownSong = songKey;
+            [SGLiveActivityBridge showSongWithPaused:paused titles:titles artists:artists uris:uris
+                                                 tab:tab title:title artist:artist shuffle:shuffle repeatMode:repeatMode
+                                            timerEnd:sleepEnd timerEndOfTrack:endOfTrack];
+        }
     }
 }
 

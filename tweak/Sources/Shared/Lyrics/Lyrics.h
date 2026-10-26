@@ -82,6 +82,9 @@ void SGKaraokeKeepLines(NSString *trackID, NSArray<SGKaraokeLine *> *lines);
 // Posted on the main queue when a track's lines are kept, with the track's id as the object.
 extern NSNotificationName const SGKaraokeLinesDidChangeNotification;
 void SGKaraokeRequestLyrics(NSString *trackID);
+void SGDownloadLyricsForTrack(NSString *trackID);
+NSUInteger SGKaraokeDownloadedLyricsCount(void);
+NSUInteger SGKaraokeQueuedLyricsCount(void);
 // Replaces this track's source choice and refreshes its lyrics immediately; nil restores Automatic.
 void SGKaraokeSetProviderForTrack(NSString *trackID, NSString *providerKey);
 // YES while this track's own timed lyrics are still being looked up (KaraokeSource.x).
