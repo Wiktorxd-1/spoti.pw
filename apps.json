@@ -1,0 +1,37 @@
+{
+  "name": "spoti.pw",
+  "identifier": "pw.spoti.source",
+  "subtitle": "Liquid Glass UI for Spotify",
+  "description": "Liquid Glass UI for the decrypted Spotify iOS app with real-time synced lyrics, Sing vocal control, and Live Activity support.",
+  "iconURL": "https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png",
+  "website": "https://spoti.pw",
+  "tintColor": "1ED760",
+  "apps": [
+    {
+      "name": "Spotify",
+      "bundleIdentifier": "com.spotify.client",
+      "developerName": "Spotify & spoti.pw",
+      "subtitle": "Liquid Glass UI & Lyrics",
+      "version": "9.1.84.52",
+      "versionDate": "2026-10-26",
+      "versionDescription": "Spotify 9.1.84.52 with spoti.pw Liquid Glass UI, real-time Live Activity lyrics, Quick Sing karaoke toggle, and scrubbing haptics.",
+      "downloadURL": "https://github.com/Wiktorxd-1/spoti.pw/releases/download/v9.1.84/spoti.pw.ipa",
+      "localizedDescription": "A complete Liquid Glass redesign for the Spotify iOS app. Includes Apple Music style real-time synced lyrics, Live Activity support in Dynamic Island & Lock Screen, vocal volume control (Sing), AMOLED dark mode, and seamless physical haptics.",
+      "iconURL": "https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png",
+      "tintColor": "1ED760",
+      "size": 131346479
+    }
+  ],
+  "news": [
+    {
+      "appID": "com.spotify.client",
+      "title": "spoti.pw 9.1.84.52",
+      "identifier": "spoti-pw-9.1.84.52-release",
+      "caption": "Spotify 9.1.84.52 Support & Live Activity Lyrics",
+      "date": "2026-10-26",
+      "tintColor": "1ED760",
+      "notify": true,
+      "url": "https://github.com/Wiktorxd-1/spoti.pw"
+    }
+  ]
+}
