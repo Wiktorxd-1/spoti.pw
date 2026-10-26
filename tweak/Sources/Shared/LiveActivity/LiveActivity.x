@@ -32,14 +32,12 @@ static const NSTimeInterval kPausedTick = 1;
 static const NSInteger kBreakMs = 4000;
 // Seconds between attempts to start one, so a refused request (activities turned off) is not retried every tick.
 static const NSTimeInterval kStartRetry = 10;
-static const NSUInteger kUpNextQueue = 4;
 static const NSUInteger kUpNextPanel = 3;
 // The end of track timer pauses this close to the end, so the next track never starts.
 static const NSInteger kEndOfTrackMs = 500;
 
 static NSTimer *sg_timer;
 static NSTimeInterval sg_tickEvery;
-static NSString *sg_shown;
 static NSString *sg_shownLyrics;
 static NSString *sg_shownSong;
 static NSString *sg_missingLyrics;
@@ -57,18 +55,6 @@ static void startTimer(NSTimeInterval every) API_AVAILABLE(ios(17.0)) {
     sg_tickEvery = every;
     sg_timer = [NSTimer timerWithTimeInterval:every repeats:YES block:^(NSTimer *t) { tick(); }];
     [NSRunLoop.mainRunLoop addTimer:sg_timer forMode:NSRunLoopCommonModes];
-}
-
-static void send(NSString *shown, void (^show)(void)) API_AVAILABLE(ios(17.0)) {
-    if (SGLiveActivityBridge.isShowing) {
-        if ([shown isEqualToString:sg_shown]) return;
-    } else {
-        if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
-        if (sg_lastStart && -sg_lastStart.timeIntervalSinceNow < kStartRetry) return;
-        sg_lastStart = [NSDate date];
-    }
-    sg_shown = shown;
-    show();
 }
 
 // A track's URI as a string; the player hands out NSURL or NSString.
@@ -255,7 +241,6 @@ void SGSetLiveActivityEnabled(BOOL on) {
     if (@available(iOS 17.0, *)) {
         [sg_timer invalidate];
         sg_timer = nil;
-        sg_shown = nil;
         sg_shownLyrics = nil;
         sg_shownSong = nil;
         sg_lastStart = nil;

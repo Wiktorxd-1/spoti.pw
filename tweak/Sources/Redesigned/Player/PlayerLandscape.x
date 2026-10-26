@@ -18,7 +18,6 @@
 #import "Player.h"
 
 static const CGFloat kSide = 32, kCoverGap = 16, kControlSide = 44, kColumnShare = 0.38;
-static const NSTimeInterval kLandscapeRest = 4;
 
 static UIWindow *sg_window;
 // Shut from the screen: turning the phone again does not reopen it until it has stood upright.
