@@ -164,6 +164,7 @@ static NSString *legacyLyricsCacheDirectory(void) {
 
 
 static NSMutableArray<NSString *> *sg_downloadQueue;
+static NSMutableSet<NSString *> *sg_processedDownloads;
 static BOOL sg_downloadQueueRunning;
 static NSTimeInterval sg_rateLimitBackoff;
 static NSMutableSet<NSString *> *sg_diskCheckedMissing;
@@ -293,10 +294,17 @@ void SGDownloadLyricsForTrack(NSString *trackID) {
     NSString *cleanID = [trackID hasPrefix:@"spotify:track:"] ? [trackID substringFromIndex:14] : trackID;
     if (!cleanID.length) return;
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (sg_lyrics[cleanID]) return;
+        if (!sg_processedDownloads) sg_processedDownloads = [NSMutableSet set];
+        if ([sg_processedDownloads containsObject:cleanID]) return;
+        if (isLyricsCachedOnDisk(cleanID)) {
+            [sg_processedDownloads addObject:cleanID];
+            return;
+        }
+        [sg_processedDownloads addObject:cleanID];
         if (!sg_downloadQueue) sg_downloadQueue = [NSMutableArray array];
         if (![sg_downloadQueue containsObject:cleanID]) {
             [sg_downloadQueue addObject:cleanID];
+            announce(cleanID);
             processDownloadQueue();
         }
     });
@@ -314,30 +322,19 @@ static void processDownloadQueue(void) {
     sg_downloadQueueRunning = YES;
     NSString *trackID = sg_downloadQueue.firstObject;
     [sg_downloadQueue removeObjectAtIndex:0];
+    announce(trackID);
 
-    if (sg_lyrics[trackID]) {
+    if (isLyricsCachedOnDisk(trackID)) {
         sg_downloadQueueRunning = NO;
         dispatch_async(dispatch_get_main_queue(), ^{ processDownloadQueue(); });
         return;
     }
 
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        if (isLyricsCachedOnDisk(trackID)) {
-            NSArray<SGKaraokeLine *> *lines = loadLinesFromDisk(trackID);
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (lines.count) sg_lyrics[trackID] = lines;
-                sg_downloadQueueRunning = NO;
-                processDownloadQueue();
-            });
-            return;
-        }
-        dispatch_async(dispatch_get_main_queue(), ^{
-            requestFromSpotifyEx(trackID, YES, ^(BOOL found) {
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                    sg_downloadQueueRunning = NO;
-                    processDownloadQueue();
-                });
-            });
+    requestFromSpotifyEx(trackID, YES, ^(BOOL found) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            sg_downloadQueueRunning = NO;
+            announce(trackID);
+            processDownloadQueue();
         });
     });
 }

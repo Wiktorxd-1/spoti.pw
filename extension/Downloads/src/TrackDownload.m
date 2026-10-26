@@ -646,8 +646,7 @@ void SAPInstallTrackDownloader(void) {
                     rememberNativeCall(self, serviceName, methodName);
 #endif
                     BOOL offline=[serviceName isKindOfClass:NSString.class] && [serviceName isEqual:service];
-                    BOOL playlist=[serviceName isKindOfClass:NSString.class] && ([serviceName containsString:@"playlist"] || [serviceName containsString:@"collection"]);
-                    if (offline || playlist) {
+                    if (offline) {
                         notifyOfflineTracksFromData(payload);
                         if ([commandName hasPrefix:@"callSingle:"]) {
                             void (^origCb)(NSData *) = callback;
