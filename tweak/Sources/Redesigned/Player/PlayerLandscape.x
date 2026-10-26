@@ -171,10 +171,15 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
         CGFloat top = round(CGRectGetMidY(safe) - (side + kCoverGap + textHeight + kCoverGap + controlsHeight) / 2);
         _cover.frame = CGRectMake(left, top, side, side);
         CGFloat textTop = CGRectGetMaxY(_cover.frame) + kCoverGap;
-        _close.frame = CGRectMake(left + side - kControlSide + 12, textTop + (textHeight - kControlSide) / 2, kControlSide, kControlSide);
-        _title.frame = CGRectMake(left, textTop + (textHeight - titleHeight - artistHeight) / 2, side - kControlSide, titleHeight);
-        _artist.frame = CGRectMake(left, CGRectGetMaxY(_title.frame), side - kControlSide, artistHeight);
-        _controls.frame = CGRectMake(left + side * 0.1, textTop + textHeight + kCoverGap, side * 0.8, controlsHeight);
+        _close.frame = CGRectMake(CGRectGetMaxX(safe) - kControlSide - kSide, CGRectGetMinY(safe) + kSide, kControlSide, kControlSide);
+        CGFloat titleWidth = MIN(side + 120, safe.size.width - 2 * kSide);
+        CGFloat titleLeft = round(CGRectGetMidX(safe) - titleWidth / 2);
+        _title.textAlignment = NSTextAlignmentCenter;
+        _artist.textAlignment = NSTextAlignmentCenter;
+        _title.frame = CGRectMake(titleLeft, textTop + (textHeight - titleHeight - artistHeight) / 2, titleWidth, titleHeight);
+        _artist.frame = CGRectMake(titleLeft, CGRectGetMaxY(_title.frame), titleWidth, artistHeight);
+        CGFloat controlsWidth = MIN(side, 240);
+        _controls.frame = CGRectMake(round(CGRectGetMidX(safe) - controlsWidth / 2), textTop + textHeight + kCoverGap, controlsWidth, controlsHeight);
     } else {
         _stage.hidden = NO;
         CGFloat column = round(safe.size.width * kColumnShare);
@@ -187,6 +192,8 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
         // The close button at the text's trailing end, its glyph (about 20pt in the 44pt square) at the cover's edge.
         CGFloat textTop = CGRectGetMaxY(_cover.frame) + kCoverGap;
         _close.frame = CGRectMake(left + side - kControlSide + 12, textTop + (textHeight - kControlSide) / 2, kControlSide, kControlSide);
+        _title.textAlignment = NSTextAlignmentLeft;
+        _artist.textAlignment = NSTextAlignmentLeft;
         _title.frame = CGRectMake(left, textTop + (textHeight - titleHeight - artistHeight) / 2, side - kControlSide, titleHeight);
         _artist.frame = CGRectMake(left, CGRectGetMaxY(_title.frame), side - kControlSide, artistHeight);
         _controls.frame = CGRectMake(left + side * 0.1, textTop + textHeight + kCoverGap, side * 0.8, controlsHeight);
@@ -234,6 +241,7 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
     // clock. The tap on the play button cannot: the state saying so arrives a beat after it.
     if (state.isPaused) [self setControlsShown:YES];
     else if (!_rest && !_shield.superview) [self restartRest];
+    [self.view setNeedsLayout];
 }
 
 #pragma mark - controls

@@ -109,7 +109,7 @@ static BOOL readsRightToLeft(NSString *text) {
 
 // Laid against the right edge: a line written right to left, or a second voice's written left to right.
 static BOOL alignsRight(SGKaraokeLine *line) {
-    return (line.align == SGKaraokeAlignTrailing) != readsRightToLeft(SGKaraokeLineText(line));
+    return readsRightToLeft(SGKaraokeLineText(line));
 }
 
 static UILabel *wordLabel(NSString *text, UIFont *font, UIColor *color, CGRect frame, BOOL rightToLeft) {

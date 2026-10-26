@@ -58,6 +58,7 @@ static const NSTimeInterval kRest = 4;
 static char kOverlayKey, kPlateKey, kTitleKey, kStackKey;
 static BOOL sg_open;
 static BOOL sg_moving;                      // the transition is in flight, so no layout pass may re-place it
+static BOOL sg_graceOver;
 static __weak UIView *sg_host;              // SPTNowPlayingView
 static __weak UIViewController *sg_info, *sg_duration, *sg_floating;
 static __weak UIView *sg_titleElement;      // the arranged element view holding the title and the artist
@@ -287,6 +288,14 @@ BOOL SGRPlayerLyricsOpen(void) {
     return sg_open;
 }
 
+static BOOL shouldShowNoLyrics(void) {
+    if (SGRPlayerLyricsAvailable()) return NO;
+    if (!sg_graceOver) return NO;
+    NSString *track = SGKaraokePlayingTrack();
+    if (track && SGKaraokeLooking(track)) return NO;
+    return YES;
+}
+
 // Puts the overlay's own views where the measurements say, without animating. The thumbnail is laid out
 // at the size and place Spotify draws its cover at and moved by its transform alone, so a pass that
 // runs while it is up leaves it exactly where the eye has it: the two are worked out from one
@@ -306,7 +315,7 @@ static void place(SGRPlayerLyricsOverlay *overlay, UIView *host, SGRLyricsLayout
     overlay.noLyrics.frame = overlay.stage.bounds;
     BOOL hasLyrics = SGRPlayerLyricsAvailable();
     overlay.lyrics.hidden = !hasLyrics;
-    overlay.noLyrics.hidden = hasLyrics;
+    overlay.noLyrics.hidden = !shouldShowNoLyrics();
     overlay.lyrics.extrasEnabled = SGEnabled(SGRKeyPlayerTranslateButton);
     syncSingControl(overlay);
 }
@@ -645,7 +654,7 @@ static void setOpen(BOOL open, BOOL animated) {
         overlay.stage.transform = entering;
         BOOL hasLyrics = SGRPlayerLyricsAvailable();
         overlay.noLyrics.frame = overlay.stage.bounds;
-        overlay.noLyrics.hidden = hasLyrics;
+        overlay.noLyrics.hidden = !shouldShowNoLyrics();
         overlay.lyrics.hidden = !hasLyrics;
         // Not under VoiceOver, which keeps the controls up, nor under a sheet.
         overlay.lyrics.browsingBegan = ^{
@@ -739,7 +748,7 @@ static void replace(void) {
     overlay.noLyrics.frame = overlay.stage.bounds;
     BOOL hasLyrics = SGRPlayerLyricsAvailable();
     overlay.lyrics.hidden = !hasLyrics;
-    overlay.noLyrics.hidden = hasLyrics;
+    overlay.noLyrics.hidden = !shouldShowNoLyrics();
     SGRPlayerCoverList().alpha = 0;
 }
 
@@ -843,7 +852,7 @@ static void replace(void) {
 
 // The lines go once the grace is over and nothing is looking for the track's own any more.
 - (void)closeIfNone {
-    if (!_graceOver || !sg_open || SGKaraokeLooking(SGKaraokePlayingTrack())) return;
+    if (!sg_open) return;
     replace();
 }
 
@@ -860,6 +869,11 @@ static void replace(void) {
     if (!track || [track isEqualToString:_track]) return;
     _track = track;
     _graceOver = NO;
+    sg_graceOver = NO;
+    if (sg_host) {
+        SGRPlayerLyricsOverlay *overlay = objc_getAssociatedObject(sg_host, &kOverlayKey);
+        overlay.noLyrics.hidden = YES;
+    }
     SGRPlayerLyricsChanged();
     // Playback state and the lyrics cache can publish a track on adjacent callbacks.
     for (NSNumber *wait in @[@0.25, @1]) {
@@ -871,6 +885,7 @@ static void replace(void) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kLyricsGrace * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         if (![self->_track isEqualToString:track]) return;
         self->_graceOver = YES;
+        sg_graceOver = YES;
         [self closeIfNone];
     });
 }
