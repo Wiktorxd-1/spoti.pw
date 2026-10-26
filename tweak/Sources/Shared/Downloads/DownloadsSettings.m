@@ -346,7 +346,7 @@ UIViewController *SGDownloadsSettingsPage(void) {
         SGModRow *why = SGWarningRow(@"Downloads are unavailable in this build", @"Tap to see why", ^{
             say(@"Downloads", SGDownloadsUnavailableReason());
         });
-        SGModRow *offlineLyrics = symbolRow(SGStatRow(@"Offline lyrics cache", @"Downloaded lyrics available offline", ^NSString * {
+        SGModRow *offlineLyrics = symbolRow(SGStatRow(@"Offline lyrics cache", ^NSString * {
             NSUInteger cached = SGKaraokeDownloadedLyricsCount();
             NSUInteger queued = SGKaraokeQueuedLyricsCount();
             if (queued > 0) return [NSString stringWithFormat:@"%lu saved (%lu queued)", (unsigned long)cached, (unsigned long)queued];
@@ -400,7 +400,7 @@ UIViewController *SGDownloadsSettingsPage(void) {
     SGModRow *send = symbolRow(SGActionRow(@"Send log", @"One package: report, events and download history", ^{ [SGDownloadsCompanion() sendLog]; }),
                                @"square.and.arrow.up", nil);
 
-    SGModRow *offlineLyrics = symbolRow(SGStatRow(@"Offline lyrics cache", @"Downloaded lyrics available offline", ^NSString * {
+    SGModRow *offlineLyrics = symbolRow(SGStatRow(@"Offline lyrics cache", ^NSString * {
         NSUInteger cached = SGKaraokeDownloadedLyricsCount();
         NSUInteger queued = SGKaraokeQueuedLyricsCount();
         if (queued > 0) return [NSString stringWithFormat:@"%lu saved (%lu queued)", (unsigned long)cached, (unsigned long)queued];
