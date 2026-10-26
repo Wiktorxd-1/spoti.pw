@@ -360,6 +360,7 @@ UIViewController *SGDownloadsSettingsPage(void) {
     }
     Class<SGDownloadsCompanion> companion = SGDownloadsCompanion();
     SGSetEnabled(SGKeyDownloadsDiagnostics, [companion diagnosticsEnabled]);
+    if ([companion respondsToSelector:@selector(syncOfflineTracks)]) [companion syncOfflineTracks];
 
     SGModRow *download = symbolRow(SGActionRow(@"Download current track", @"The song playing right now", ^{
         [SGDownloadsCompanion() downloadTrack];
@@ -408,11 +409,16 @@ UIViewController *SGDownloadsSettingsPage(void) {
     }), @"music.note.list", nil);
     offlineLyrics.refreshOn = SGKaraokeLinesDidChangeNotification;
 
+    SGModRow *scanOffline = symbolRow(SGActionRow(@"Scan downloaded playlists", @"Find and queue lyrics for previously downloaded songs", ^{
+        if ([companion respondsToSelector:@selector(syncOfflineTracks)]) [companion syncOfflineTracks];
+        changed();
+    }), @"arrow.triangle.2.circlepath", nil);
+
     NSArray<SGModSection *> *sections = @[
         SGNotedSection(@"Current track", @[download, status, album, check, cancel], @"Tracks are saved in Spotify for offline listening."),
         SGNotedSection(@"Download compatibility", @[mode, quotas, slots, enable],
                        @"5 licenses = up to 5 devices with offline music.\n\nOnly change settings in this menu if downloads are not working."),
-        SGSection(@"Status", @[log, offlineLyrics]),
+        SGSection(@"Status", @[log, offlineLyrics, scanOffline]),
         SGNotedSection(@"Diagnostics", @[diagnostics, send], @"Enable Diagnostics for detailed passive events."),
         SGNotedSection(@"About", @[symbolRow(SGLinkRow(@"Pixie Download Manager", @"Glongq/Vitrine-Pixie, the engine behind this page", kPixieURL), @"link", nil)],
                        @"Spotify's own download buttons on playlists, albums and menus work too. Music stays in Spotify's offline storage."),

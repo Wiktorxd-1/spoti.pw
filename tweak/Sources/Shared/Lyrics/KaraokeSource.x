@@ -239,12 +239,15 @@ static BOOL isLyricsCachedOnDisk(NSString *trackID) {
     return [NSFileManager.defaultManager fileExistsAtPath:filePath];
 }
 
-static void saveLinesToDisk(NSString *trackID, NSArray<SGKaraokeLine *> *lines) {
+static void saveLinesToDisk(NSString *trackID, NSArray<SGKaraokeLine *> *lines, NSString *credit) {
     if (!trackID.length) return;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
         NSMutableArray *arr = [NSMutableArray arrayWithCapacity:lines.count];
         for (SGKaraokeLine *l in lines) [arr addObject:dictFromLine(l)];
-        NSData *data = [NSJSONSerialization dataWithJSONObject:arr options:0 error:nil];
+        NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+        dict[@"lines"] = arr;
+        if (credit.length) dict[@"credit"] = credit;
+        NSData *data = [NSJSONSerialization dataWithJSONObject:dict options:0 error:nil];
         NSString *filePath = [[lyricsCacheDirectory() stringByAppendingPathComponent:trackID] stringByAppendingPathExtension:@"json"];
         if (data && filePath) [data writeToFile:filePath atomically:YES];
     });
@@ -261,12 +264,25 @@ static NSArray<SGKaraokeLine *> *loadLinesFromDisk(NSString *trackID) {
         data = [NSData dataWithContentsOfFile:legacyPath];
     }
     if (!data.length) return nil;
-    NSArray *arr = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    id obj = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    NSArray *arr = nil;
+    NSString *credit = nil;
+    if ([obj isKindOfClass:NSDictionary.class]) {
+        arr = obj[@"lines"];
+        credit = obj[@"credit"] ?: obj[@"source"] ?: obj[@"provider"];
+    } else if ([obj isKindOfClass:NSArray.class]) {
+        arr = (NSArray *)obj;
+    }
     if (![arr isKindOfClass:NSArray.class]) return nil;
     NSMutableArray *lines = [NSMutableArray arrayWithCapacity:arr.count];
     for (NSDictionary *d in arr) {
         SGKaraokeLine *l = lineFromDict(d);
         if (l) [lines addObject:l];
+    }
+    if (credit.length) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            SGLyricsSetCredit(trackID, credit);
+        });
     }
     return lines.count ? lines : nil;
 }
@@ -344,7 +360,7 @@ static void keep(NSString *track, NSArray<SGKaraokeLine *> *lines) {
     sg_lyrics[track] = SGKaraokeInTimeOrder(lines);
     [sg_diskCheckedMissing removeObject:track];
     if (lines.count) {
-        saveLinesToDisk(track, lines);
+        saveLinesToDisk(track, lines, SGLyricsCreditFor(track));
         translate(track);
     }
     announce(track);
@@ -373,7 +389,20 @@ static void completed(NSURLSessionTask *task, NSError *error) {
     NSString *track = trackInURL(SGURLSessionTaskURL(task));
     if (error || !track) return;
     NSArray<SGKaraokeLine *> *lines = SGKaraokeLinesFromBody(body);
-    SGLog(@"karaoke: lyrics for %@, %lu bytes, %lu synced lines", track, (unsigned long)body.length, (unsigned long)lines.count);
+    NSString *provider = nil;
+    if ([body isKindOfClass:NSData.class] && body.length) {
+        NSDictionary *root = [NSJSONSerialization JSONObjectWithData:body options:0 error:nil];
+        NSDictionary *lyr = [root isKindOfClass:NSDictionary.class] ? root[@"lyrics"] : nil;
+        if ([lyr isKindOfClass:NSDictionary.class]) {
+            provider = lyr[@"providerDisplayName"] ?: lyr[@"provider"] ?: lyr[@"providerName"];
+        }
+    }
+    if (!provider.length) provider = SGLyricsCreditFor(track);
+    if (!provider.length) provider = @"Spotify";
+    dispatch_async(dispatch_get_main_queue(), ^{
+        SGLyricsSetCredit(track, provider);
+    });
+    SGLog(@"karaoke: lyrics for %@, %lu bytes, %lu synced lines (source: %@)", track, (unsigned long)body.length, (unsigned long)lines.count, provider);
     if (lines) SGKaraokeKeepLines(track, lines);
 }
 
@@ -483,6 +512,16 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
     [NSURLProtocol setProperty:@YES forKey:SGLyricsOwnRequestKey inRequest:request];
     [[NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *body, NSURLResponse *response, NSError *error) {
         NSArray<SGKaraokeLine *> *lines = SGKaraokeLinesFromBody(body);
+        NSString *provider = nil;
+        if ([body isKindOfClass:NSData.class] && body.length) {
+            NSDictionary *root = [NSJSONSerialization JSONObjectWithData:body options:0 error:nil];
+            NSDictionary *lyr = [root isKindOfClass:NSDictionary.class] ? root[@"lyrics"] : nil;
+            if ([lyr isKindOfClass:NSDictionary.class]) {
+                provider = lyr[@"providerDisplayName"] ?: lyr[@"provider"] ?: lyr[@"providerName"];
+            }
+        }
+        if (!provider.length) provider = SGLyricsCreditFor(trackID);
+        if (!provider.length) provider = @"Spotify";
         NSInteger status = [response isKindOfClass:NSHTTPURLResponse.class] ? ((NSHTTPURLResponse *)response).statusCode : 0;
         SGLog(@"karaoke: fetched lyrics for %@: status %ld, %lu lines (%@), error %@", trackID,
               (long)status, (unsigned long)lines.count,
@@ -506,12 +545,12 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
                 // Asked after the chain found plain text only: Spotify's replace it only when they are timed.
                 NSArray<SGKaraokeLine *> *kept = sg_lyrics[trackID];
                 if (lines.count && !(kept && SGKaraokeLinesTiming(kept) <= SGKaraokeLinesTiming(lines))) {
+                    SGLyricsSetCredit(trackID, provider);
                     keep(trackID, lines);
-                    SGLyricsSetCredit(trackID, @"Spotify");
                     if (completion) completion(YES);
                     return;
                 } else if (force) {
-                    saveLinesToDisk(trackID, @[]);
+                    saveLinesToDisk(trackID, @[], nil);
                 }
                 if (completion) completion(NO);
             }

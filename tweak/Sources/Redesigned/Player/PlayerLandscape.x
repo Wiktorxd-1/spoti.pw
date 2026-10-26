@@ -155,7 +155,14 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
 }
 
 - (void)linesChanged {
-    [self.view setNeedsLayout];
+    if (self.view.window) {
+        [UIView animateWithDuration:0.6 delay:0 usingSpringWithDamping:0.85 initialSpringVelocity:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
+            [self.view setNeedsLayout];
+            [self.view layoutIfNeeded];
+        } completion:nil];
+    } else {
+        [self.view setNeedsLayout];
+    }
 }
 
 - (void)viewDidLayoutSubviews {
@@ -163,7 +170,8 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
     CGRect safe = UIEdgeInsetsInsetRect(self.view.bounds, self.view.safeAreaInsets);
     BOOL hasLyrics = SGRPlayerLyricsAvailable();
     if (!hasLyrics) {
-        _stage.hidden = YES;
+        _stage.alpha = 0;
+        _stage.transform = CGAffineTransformMakeTranslation(40, 0);
         CGFloat titleHeight = ceil(_title.font.lineHeight), artistHeight = ceil(_artist.font.lineHeight);
         CGFloat textHeight = MAX(titleHeight + artistHeight, kControlSide), controlsHeight = kControlSide;
         CGFloat side = MIN(round(safe.size.width * 0.42), safe.size.height - 2 * kSide - textHeight - controlsHeight - 2 * kCoverGap);
@@ -182,6 +190,8 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
         _controls.frame = CGRectMake(round(CGRectGetMidX(safe) - controlsWidth / 2), textTop + textHeight + kCoverGap, controlsWidth, controlsHeight);
     } else {
         _stage.hidden = NO;
+        _stage.alpha = 1;
+        _stage.transform = CGAffineTransformIdentity;
         CGFloat column = round(safe.size.width * kColumnShare);
         CGFloat left = CGRectGetMinX(safe) + kSide;
         CGFloat titleHeight = ceil(_title.font.lineHeight), artistHeight = ceil(_artist.font.lineHeight);
@@ -241,7 +251,14 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
     // clock. The tap on the play button cannot: the state saying so arrives a beat after it.
     if (state.isPaused) [self setControlsShown:YES];
     else if (!_rest && !_shield.superview) [self restartRest];
-    [self.view setNeedsLayout];
+    if (self.view.window) {
+        [UIView animateWithDuration:0.6 delay:0 usingSpringWithDamping:0.85 initialSpringVelocity:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
+            [self.view setNeedsLayout];
+            [self.view layoutIfNeeded];
+        } completion:nil];
+    } else {
+        [self.view setNeedsLayout];
+    }
 }
 
 #pragma mark - controls

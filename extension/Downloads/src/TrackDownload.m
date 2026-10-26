@@ -636,11 +636,18 @@ void SAPInstallTrackDownloader(void) {
                 IMP original = method_getImplementation(method);
                 putHook(cls, command, method, ^id(id self, id serviceName, id methodName, id payload, id callback) {
                     rememberTransport(self, NO, NO);
+                    static dispatch_once_t onceQuery;
+                    dispatch_once(&onceQuery, ^{
+                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                            SAPQueryOfflineItems();
+                        });
+                    });
 #ifdef SAP_RUNTIME_TESTING
                     rememberNativeCall(self, serviceName, methodName);
 #endif
                     BOOL offline=[serviceName isKindOfClass:NSString.class] && [serviceName isEqual:service];
-                    if (offline) {
+                    BOOL playlist=[serviceName isKindOfClass:NSString.class] && ([serviceName containsString:@"playlist"] || [serviceName containsString:@"collection"]);
+                    if (offline || playlist) {
                         notifyOfflineTracksFromData(payload);
                         if ([commandName hasPrefix:@"callSingle:"]) {
                             void (^origCb)(NSData *) = callback;
@@ -978,6 +985,42 @@ NSDictionary *SAPTrackDownloadReportWithJournal(NSDictionary *journalReport) {
 NSString *SAPTrackDownloadSummary(void) {
     os_unfair_lock_lock(&reportLock);NSDictionary *report=reportSnapshot;os_unfair_lock_unlock(&reportLock);
     return [NSString stringWithFormat:@"%@%@%@", report[@"track_title"] ?: @"", [report[@"track_title"] length] ? @"\n" : @"", report[@"detail"] ?: SAPL(@"Загрузка не запускалась",@"No download started")];
+}
+
+void SAPRemoveDownloadForURI(NSString *uriString) {
+    if (![uriString isKindOfClass:NSString.class] || !uriString.length) return;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        NSData *payload = SAPProtoBytes(2, [uriString dataUsingEncoding:NSUTF8StringEncoding]);
+        SEL sel = NSSelectorFromString(@"callSingle:method:payload:onResponse:");
+        for (id candidate in transportCandidates()) {
+            Method method;
+            if (signature(object_getClass(candidate), sel, 6, '@', &method)) {
+                @try {
+                    ((id (*)(id, SEL, id, id, id, id))objc_msgSend)(candidate, sel, service, @"RemoveDownload", payload, ^(NSData *resp){});
+                } @catch (NSException *e) {}
+                break;
+            }
+        }
+    });
+}
+
+void SAPQueryOfflineItems(void) {
+    NSArray *candidates = transportCandidates();
+    if (!candidates.count) return;
+    id endpoint = candidates.firstObject;
+    SEL command = NSSelectorFromString(@"callSingle:method:payload:onResponse:");
+    Method method;
+    if (!signature(object_getClass(endpoint), command, 6, '@', &method)) return;
+    @try {
+        ((id (*)(id, SEL, id, id, id, id))objc_msgSend)(endpoint, command, service, @"GetItems", [NSData data], ^(NSData *response) {
+            notifyOfflineTracksFromData(response);
+        });
+    } @catch (NSException *e) {}
+    @try {
+        ((id (*)(id, SEL, id, id, id, id))objc_msgSend)(endpoint, command, service, @"GetContexts", [NSData data], ^(NSData *response) {
+            notifyOfflineTracksFromData(response);
+        });
+    } @catch (NSException *e) {}
 }
 #ifdef SAP_RUNTIME_TESTING
 id SAP14PlayerForTesting(void) { return player; }

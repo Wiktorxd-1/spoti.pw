@@ -309,7 +309,7 @@ void SAPInstallNativeOffline(void) {
                 SAPTraceHookCalled(object_getClass(receiver),stateSelector);
                 unsigned long long result=originalStateForTrack(receiver,stateSelector,url);
                 if(SAPDiagnosticsEnabled())SAPJournalNoteRowState(urlText(url),(NSUInteger)result);
-                if (result >= 2 && result <= 5) {
+                if (result >= 1 && result <= 5) {
                     NSString *u = urlText(url);
                     if ([u containsString:@"spotify:track:"]) {
                         dispatch_async(dispatch_get_main_queue(), ^{
@@ -388,6 +388,12 @@ void SAPInstallNativeOffline(void) {
                 if(SAPDiagnosticsEnabled())SAPJournalNoteEntityReset(urlText(url));
                 SAPJournalNoteAction(@"native_entity_remove_called",@{@"entity_uri":urlText(url)?:@"",
                     @"result_observed":@NO});
+                NSString *entityUri = urlText(url);
+                if (entityUri.length) {
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        SAPRemoveDownloadForURI(entityUri);
+                    });
+                }
                 SAPTraceWithOperation(trace,^{originalResetEntity(receiver,resetSelector,url);});
                 SAP_TRACE("native_entity","handler_returned",trace,@{@"removal_completion_confirmed":@NO});
             });
@@ -403,6 +409,14 @@ void SAPInstallNativeOffline(void) {
                 SAPTraceHookCalled(object_getClass(receiver),iconSelector);
                 NSInteger status=originalSyncStatus(receiver,iconSelector,url);
                 if(SAPDiagnosticsEnabled())SAPJournalNoteUIStatus(urlText(url),status);
+                if (status >= 1 && status <= 3) {
+                    NSString *u = urlText(url);
+                    if ([u containsString:@"spotify:track:"]) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:u];
+                        });
+                    }
+                }
                 return status;
             });
             if(!class_addMethod(iconClass,iconSelector,replacement,method_getTypeEncoding(iconMethod)))
