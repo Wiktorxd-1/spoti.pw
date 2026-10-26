@@ -660,7 +660,6 @@ void SAPInstallTrackDownloader(void) {
                     SAPTraceHookCalled(object_getClass(self),command);
                     SAPTraceRPC *trace=traceHookDepth==0?SAPTraceRPCBegin(serviceName,methodName,payload,
                         SAPJournalOnOwnQueue()?@"pixie_diagnostic_query":dispatch_get_specific(downloadWorkerKey)?@"pixie_service":@"spotify",self,[commandName hasPrefix:@"callStream:"]):nil;
-                    BOOL offline=[serviceName isKindOfClass:NSString.class] && [serviceName isEqual:service];
                     BOOL playerCall=[serviceName isKindOfClass:NSString.class] && [serviceName isEqual:@"spotify.player.esperanto.proto.ContextPlayer"];
                     if(SAPDiagnosticsEnabled() && playerCall && playerHookDepth==0)SAPTraceWithOperation(trace?trace.identifier:SAPTraceCurrentOperation(),^{SAPObservePlayerRequest(serviceName,methodName,payload);});
                     BOOL outer=offlineHookDepth==0, own=SAPJournalOnOwnQueue();
