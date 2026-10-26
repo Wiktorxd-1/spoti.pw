@@ -5,7 +5,7 @@ on:
     inputs:
       ipa_url:
         description: "Direct link to a decrypted Spotify IPA"
-        default: "https://cdn.wiktorxd-1.dev/f/wiktor/d/tqkcW2bVDPh5vYiF.ipa"
+        default: "https://cdn.wiktorxd-1.dev/f/wiktor/d/f5SHAytOWckTxIaM.ipa"
         required: false
         type: string
       upload_method:
@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ipa/spotify.ipa
-          key: base-ipa-${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/tqkcW2bVDPh5vYiF.ipa' }}
+          key: base-ipa-${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/f5SHAytOWckTxIaM.ipa' }}
 
       - name: Cache Flag Table
         uses: actions/cache@v4
@@ -87,7 +87,7 @@ jobs:
         if: steps.cache-ipa.outputs.cache-hit != 'true'
         run: |
           mkdir -p ipa
-          curl -fsSL "${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/tqkcW2bVDPh5vYiF.ipa' }}" -o ipa/spotify.ipa
+          curl -fsSL "${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/f5SHAytOWckTxIaM.ipa' }}" -o ipa/spotify.ipa
           case "$(file --mime-type -b ipa/spotify.ipa)" in application/zip|application/x-ios-app) ;; *) echo "::error::Not an IPA"; exit 1 ;; esac
 
       - name: Build modded release IPA
