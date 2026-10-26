@@ -328,6 +328,22 @@ void SAPInstallNativeOffline(void) {
                 SAPJournalNoteAction(@"native_entity_add_called",@{@"entity_uri":urlText(url)?:@"",
                     @"track_count":@([trackURLs isKindOfClass:NSArray.class]?[(NSArray *)trackURLs count]:0),
                     @"result_observed":@NO});
+                if ([trackURLs isKindOfClass:NSArray.class]) {
+                    for (id item in (NSArray *)trackURLs) {
+                        NSString *uri = [item respondsToSelector:@selector(absoluteString)] ? [item absoluteString] : [item description];
+                        if ([uri containsString:@"spotify:track:"]) {
+                            dispatch_async(dispatch_get_main_queue(), ^{
+                                [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:uri];
+                            });
+                        }
+                    }
+                }
+                NSString *entityUri = urlText(url);
+                if ([entityUri containsString:@"spotify:track:"]) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:entityUri];
+                    });
+                }
                 SAPTraceWithOperation(trace,^{originalMakeEntity(receiver,entitySelector,url,trackURLs);});
                 SAP_TRACE("native_entity","handler_returned",trace,@{@"download_completion_confirmed":@NO});
             });
@@ -343,6 +359,12 @@ void SAPInstallNativeOffline(void) {
                 if(SAPDiagnosticsEnabled())SAPJournalNoteEntityRequest(urlText(url),nil);
                 SAPJournalNoteAction(@"native_entity_add_called",@{@"entity_uri":urlText(url)?:@"",
                     @"track_count":NSNull.null,@"result_observed":@NO});
+                NSString *entityUri2 = urlText(url);
+                if ([entityUri2 containsString:@"spotify:track:"]) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:entityUri2];
+                    });
+                }
                 SAPTraceWithOperation(trace,^{originalMakeEntityOnly(receiver,entityOnly,url);});
                 SAP_TRACE("native_entity","handler_returned",trace,@{@"download_completion_confirmed":@NO});
             });
