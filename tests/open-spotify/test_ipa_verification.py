@@ -15,7 +15,7 @@ spec.loader.exec_module(module)
 class IpaVerificationTests(unittest.TestCase):
     def fixture(self, path, missing=None, extension_id='com.spotify.client.TaurusOpenSpotify'):
         base = 'Payload/Spotify.app/'
-        host = {'CFBundleIdentifier': 'com.spotify.client', 'CFBundleShortVersionString': '9.1.90', 'CFBundleVersion': '123'}
+        host = {'CFBundleIdentifier': 'com.spotify.client', 'CFBundleShortVersionString': '9.1.94', 'CFBundleVersion': '123'}
         extension = dict(host, CFBundleIdentifier=extension_id, CFBundleExecutable='TaurusOpenSpotify', NSExtension={
             'NSExtensionPointIdentifier': 'com.apple.Safari.web-extension',
             'NSExtensionPrincipalClass': 'TaurusSafariWebExtensionHandler'})

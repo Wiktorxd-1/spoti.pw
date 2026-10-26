@@ -17,7 +17,7 @@
                                 backup and signing, the welcome tour
     tweak/Sources/Diagnostics/  screen dumps, the tree server and the main thread hang sampler of FLEX builds
     extension/LiveActivity/     the Live Activity widget, a WidgetKit extension of its own
-    extension/Downloads/        the Pixie download engine: a companion dylib and guarded patches to Spotify 9.1.90
+    extension/Downloads/        the Pixie download engine: a companion dylib and guarded patches to Spotify 9.1.94
                                 that enable its offline-download implementation (see its README)
     extension/AppGroups/        a dylib loaded by Spotify and its home screen widget that moves Spotify's App Groups
                                 into a group the re-signed IPA has; without it the widget stays a placeholder

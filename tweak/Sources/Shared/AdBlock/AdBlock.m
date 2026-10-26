@@ -40,9 +40,8 @@ static NSString *const upsellFlags[] = {
 };
 
 // More of what Hide ads sets, by value: the ad features off, their guards and Skip buttons pinned on, and the
-// ad cards' timings pushed past use. Each key, type and value was checked against 9.1.88's and 9.1.90's flag
-// tables. canvas_skeleton_enabled and podcast_like_check_enabled are 9.1.90's. Enums are left alone: the table
-// does not name their values.
+// ad cards' timings pushed past use. These keys are present in 9.1.94's flag table, including
+// canvas_skeleton_enabled and podcast_like_check_enabled. Enums are left alone: the table does not name their values.
 static NSDictionary<NSString *, NSNumber *> *adValues(void) {
     static NSDictionary *values;
     static dispatch_once_t once;

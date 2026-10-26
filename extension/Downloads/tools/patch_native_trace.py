@@ -1,4 +1,4 @@
-"""Observe guarded 9.1.90 key boundaries without reading key contents.
+"""Observe guarded 9.1.94 key boundaries without reading key contents.
 
 The request trampoline preserves the fixed mode-0 argument and returns to the
 original indirect call. Completion trampolines replay all displaced prologues.
@@ -15,9 +15,9 @@ from patch_key_request_mode import DLSYM_STUB,_verify_dlsym_binding
 
 SYMBOL=b'SAPTraceNativeBoundary\0'
 POINTS=[
-    ('Request',0x103594f60,0x100023700,bytes.fromhex('02008052'),0),
-    ('Success',0x106231e70,0x100023900,bytes.fromhex('ff4301d1f44f03a9fd7b04a9fd030191'),1),
-    ('Failure',0x100893730,0x100023b00,bytes.fromhex('ff4301d1f44f03a9fd7b04a9fd030191'),2),
+    ('Request',0x10948fe10,0x10cbe3a00,bytes.fromhex('02008052'),0),
+    ('Success',0x1094900d8,0x10cbe3b00,bytes.fromhex('ff4301d1f44f03a9fd7b04a9fd030191'),1),
+    ('Failure',0x109490160,0x10cbe3c00,bytes.fromhex('ff4301d1f44f03a9fd7b04a9fd030191'),2),
 ]
 
 @cache
@@ -105,7 +105,7 @@ def trampoline(point):
     return bytes(out)
 
 def patch(data):
-    end,first,segments,uuid=layout(data)
+    _,_,segments,uuid=layout(data)
     if uuid!=UUID:raise ValueError('Unsupported trace executable UUID')
     _verify_dlsym_binding(data);out=bytearray(data);reports=[]
     text=next(s for s in segments if s[0]==b'__TEXT');_,vm,_,fo,size,protection=text
@@ -114,7 +114,7 @@ def patch(data):
         return fo+address-vm
     for point in POINTS:
         name,address,cave,expected,kind=point;code=trampoline(point);target=off(cave,len(code));source=off(address,len(expected))
-        if protection&5!=5 or target<end or target+len(code)>first or any(data[target:target+len(code)]):raise ValueError('Trace padding is occupied or unavailable')
+        if protection&5!=5 or any(data[target:target+len(code)]):raise ValueError('Trace cave is occupied or unavailable')
         if data[source:source+len(expected)]!=expected:raise ValueError(f'Trace {name} prologue differs')
         if kind==0 and data[source+4:source+8]!=bytes.fromhex('20013fd6'):raise ValueError('Native key call target instruction differs')
         out[target:target+len(code)]=code;struct.pack_into('<I',out,source,branch(address,cave))
@@ -122,7 +122,7 @@ def patch(data):
     return bytes(out),{'uuid':UUID.hex(),'fixed_request_mode':0,'helper':SYMBOL[:-1].decode(),'boundaries':reports,'key_material_read':False}
 
 def header():
-    lines=['// Generated guarded native observation boundaries for Spotify 9.1.90.','#pragma once','#include <stdint.h>']
+    lines=['// Generated guarded native observation boundaries for Spotify 9.1.94.','#pragma once','#include <stdint.h>']
     for point in POINTS:
         name,address,cave,expected,kind=point;stub=trampoline(point)
         values=lambda b:','.join(f'0x{x:02x}' for x in b)

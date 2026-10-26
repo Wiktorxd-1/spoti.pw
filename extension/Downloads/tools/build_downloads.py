@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Taurus Downloads: patch Spotify 9.1.90 and build the companion library.
+"""Taurus Downloads: patch Spotify 9.1.94 and build the companion library.
 
     build_downloads.py <decrypted Spotify.ipa> --out-ipa <patched.ipa> --out-dylib <SpotifyAudioProbe.dylib>
 
 Three guarded edits to the executable (see the patch_*.py files), each checked against the exact bytes of the
-9.1.90 binary before anything is written, plus the companion library the tweak talks to. cyan injects the
+9.1.94 binary before anything is written, plus the companion library the tweak talks to. cyan injects the
 library afterwards, together with the tweak, so nothing is redirected here: Taurus's audio pipeline keeps the
 AudioToolbox imports it rebinds itself.
 
@@ -26,7 +26,7 @@ from patch_key_request_mode import patch as patch_key_mode, key_header
 from patch_native_trace import patch as patch_native_trace, header as native_trace_header
 
 ROOT = Path(__file__).resolve().parents[1]
-UUID = bytes.fromhex("fbce22c17e1b3e0d9be866ff9291943e")
+UUID = bytes.fromhex("1dfddfa139c03735b9a5fdfa475f4700")
 UNSUPPORTED = 3
 SOURCE_FILES = [
     "ProbeStubs.c", "ProbeStubs.m", "Diagnostics.m", "Localization.m", "OfflineFlags.m", "WireProto.m",
@@ -70,8 +70,8 @@ def main():
         except ValueError as error:
             print(f"downloads: {error}", file=sys.stderr)
             return UNSUPPORTED
-    if version != "9.1.90" or uuid != UUID:
-        print(f"downloads: Spotify {version} (UUID {uuid.hex() if uuid else '?'}) is not the 9.1.90 build the "
+    if version != "9.1.94" or uuid != UUID:
+        print(f"downloads: Spotify {version} (UUID {uuid.hex() if uuid else '?'}) is not the 9.1.94 build the "
               "download patches were verified against; building without Downloads.", file=sys.stderr)
         return UNSUPPORTED
 

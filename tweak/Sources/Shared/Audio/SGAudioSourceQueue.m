@@ -8,7 +8,7 @@
 
 static uintptr_t sg_sourceImage;
 static bool sg_sourceLayout;
-static bool sg_sourceSpotify90;
+static bool sg_sourceSpotify94;
 static atomic_bool sg_sourceProbeLogged;
 static NSString *probeWords(const uint64_t *words, NSUInteger count) {
     NSMutableString *result = [NSMutableString string];
@@ -28,12 +28,12 @@ static bool readWord(uintptr_t address, uint64_t *value) {
     return readMetadata(address, value, sizeof *value);
 }
 void SGAudioSourceQueueInitialize(void) {
-    // 9.1.90 is identified only for diagnostics; its private queue ABI is not verified.
+    // 9.1.94 is identified only for diagnostics; its private queue ABI is not verified.
     static const unsigned char uuid9178[16] = {0xc7,0x12,0x37,0x0b,0x44,0xcd,0x35,0xc8,0xa0,0x58,0x4f,0xbe,0xd1,0xad,0x07,0x58};
-    static const unsigned char uuid9190[16] = {0xfb,0xce,0x22,0xc1,0x7e,0x1b,0x3e,0x0d,0x9b,0xe8,0x66,0xff,0x92,0x91,0x94,0x3e};
+    static const unsigned char uuid9194[16] = {0x1d,0xfd,0xdf,0xa1,0x39,0xc0,0x37,0x35,0xb9,0xa5,0xfd,0xfa,0x47,0x5f,0x47,0x00};
     sg_sourceImage = 0;
     sg_sourceLayout = false;
-    sg_sourceSpotify90 = false;
+    sg_sourceSpotify94 = false;
     atomic_store(&sg_sourceProbeLogged, false);
     const struct mach_header_64 *header = (const void *)_dyld_get_image_header(0);
     if (!header || header->magic != MH_MAGIC_64) return;
@@ -41,10 +41,10 @@ void SGAudioSourceQueueInitialize(void) {
     for (uint32_t i = 0; i < header->ncmds; i++, command = (const void *)((const char *)command + command->cmdsize)) {
         if (command->cmd == LC_UUID && command->cmdsize == sizeof(struct uuid_command)) {
             const unsigned char *uuid = ((const struct uuid_command *)command)->uuid;
-            if (memcmp(uuid, uuid9178, sizeof uuid9178) && memcmp(uuid, uuid9190, sizeof uuid9190)) continue;
+            if (memcmp(uuid, uuid9178, sizeof uuid9178) && memcmp(uuid, uuid9194, sizeof uuid9194)) continue;
             sg_sourceImage = (uintptr_t)header;
             sg_sourceLayout = !memcmp(uuid, uuid9178, sizeof uuid9178);
-            sg_sourceSpotify90 = !memcmp(uuid, uuid9190, sizeof uuid9190);
+            sg_sourceSpotify94 = !memcmp(uuid, uuid9194, sizeof uuid9194);
             return;
         }
     }
@@ -60,7 +60,7 @@ void SGAudioSourceQueueProbe(AURenderCallbackStruct callback) {
         readMetadata(context + 0x6c, &channels, sizeof channels) &&
         readWord(context + 0x78, &sink) && readWord(context + 0x80, &scratch) &&
         readWord(context + 0x88, &limit) && readMetadata(context + 0x9c, &active, sizeof active);
-    SGLog(@"Sing ABI probe 9.1.90 callback=%p context=%p readable=%d channels=%u sink=%p scratch=%p limit=%p active=%u",
+    SGLog(@"Sing ABI probe 9.1.94 callback=%p context=%p readable=%d channels=%u sink=%p scratch=%p limit=%p active=%u",
           (void *)(uintptr_t)callback.inputProc, callback.inputProcRefCon, contextReadable, channels,
           (void *)(uintptr_t)sink, (void *)(uintptr_t)scratch, (void *)(uintptr_t)limit, active);
     if (!contextReadable) return;
@@ -94,7 +94,7 @@ void SGAudioSourceQueueProbe(AURenderCallbackStruct callback) {
           (unsigned long long)remaining);
 }
 bool SGAudioSourceQueueProbeRequired(AURenderCallbackStruct callback) {
-    return sg_sourceSpotify90 && (uintptr_t)callback.inputProc == sg_sourceImage + 0x6d0b080;
+    return sg_sourceSpotify94 && (uintptr_t)callback.inputProc == sg_sourceImage + 0x9ad15c0;
 }
 bool SGAudioSourceQueueSupported(AURenderCallbackStruct callback) {
     uint64_t instruction;

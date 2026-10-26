@@ -109,11 +109,11 @@ int main(void) {
     assert(SGAudioSourceQueueFrames(callback, 7340) == 3 * 1024);
     nodes[0][4] = (uintptr_t)nodes;
     assert(!SGAudioSourceQueueFrames(callback, 1024)); // cycle at the requested boundary
-    sg_sourceSpotify90 = true;
-    callback.inputProc = (AURenderCallback)(sg_sourceImage + 0x6d0b080);
+    sg_sourceSpotify94 = true;
+    callback.inputProc = (AURenderCallback)(sg_sourceImage + 0x9ad15c0);
     callback.inputProcRefCon = context;
     assert(SGAudioSourceQueueProbeRequired(callback));
-    AURenderCallbackStruct otherCallback = {(AURenderCallback)(sg_sourceImage + 0x6d0b084), context};
+    AURenderCallbackStruct otherCallback = {(AURenderCallback)(sg_sourceImage + 0x9ad15c4), context};
     assert(!SGAudioSourceQueueProbeRequired(otherCallback));
     uint32_t channels = 2, active = 0;
     memcpy((char *)context + 0x6c, &channels, sizeof channels);

@@ -9,7 +9,7 @@
 #import <os/lock.h>
 #include <stdatomic.h>
 
-static const uint8_t uuidBytes[]={0xfb,0xce,0x22,0xc1,0x7e,0x1b,0x3e,0x0d,0x9b,0xe8,0x66,0xff,0x92,0x91,0x94,0x3e};
+static const uint8_t uuidBytes[]={0x1d,0xfd,0xdf,0xa1,0x39,0xc0,0x37,0x35,0xb9,0xa5,0xfd,0xfa,0x47,0x5f,0x47,0x00};
 static os_unfair_lock mapLock=OS_UNFAIR_LOCK_INIT;
 static struct {uintptr_t success,failure,wrapper,owner;SAPTraceID operation;uint64_t generation;uint8_t fileID[20];} requests[256];
 static unsigned nextSlot;
@@ -82,7 +82,7 @@ static void observe(unsigned kind,const uint64_t *frame,uintptr_t image) {
         Dl_info target={0};BOOL targetLocated=dladdr((void *)(uintptr_t)frame[9],&target)!=0;
         static const uint8_t providerHead[]={0xff,0x03,0x06,0xd1,0xfc,0x6f,0x12,0xa9,0xfa,0x67,0x13,0xa9,0xf8,0x5f,0x14,0xa9};
         uint8_t head[sizeof(providerHead)];
-        BOOL providerVerified=image&&targetLocated&&(uintptr_t)target.dli_fbase==image&&frame[9]-image==0x83de7b0&&readBytes(frame[9],head,sizeof(head))&&!memcmp(head,providerHead,sizeof(head));
+        BOOL providerVerified=image&&targetLocated&&(uintptr_t)target.dli_fbase==image&&frame[9]-image==0x92f6e40&&readBytes(frame[9],head,sizeof(head))&&!memcmp(head,providerHead,sizeof(head));
         NSString *trackURI=fileRead?trackForFile(fileID):nil;BOOL linked=[trackURI hasPrefix:@"spotify:track:"];
         SAPTraceID op=SAPTraceBegin(@"native_offline_key_request",@"verified_spotify_call_site",@{@"argument_before_call":@((uint32_t)frame[2]),
             @"target_is_verified_provider":@(providerVerified),@"target_image":target.dli_fname?@(target.dli_fname):@"unresolved",

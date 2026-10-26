@@ -9,7 +9,7 @@ in for Spotify's task/delegate objects. It checks:
 - A cached response synthesized reentrantly during completion is rewritten and delivered immediately.
 - Premium spoofing and offline configuration transforms retain both features in either order.
 - Unknown attributes and unrecognized payloads pass through.
-- A missing engine on Spotify 9.1.90 is distinguished from an unsupported Spotify version.
+- A missing engine on Spotify 9.1.94 is distinguished from an unsupported Spotify version.
 - An incompatible bridge is rejected and a compatible companion registered after the first lookup is found.
 
 This verifies local hook behavior. An installed-device check is still needed for Spotify's offline

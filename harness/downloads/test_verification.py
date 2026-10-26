@@ -27,7 +27,7 @@ class VerificationTests(unittest.TestCase):
         path = Path(directory) / "fixture.ipa"
         with zipfile.ZipFile(path, "w") as archive:
             archive.writestr("Payload/Spotify.app/Info.plist", plistlib.dumps({
-                "CFBundleShortVersionString": "9.1.90", "CFBundleExecutable": "Spotify"}))
+                "CFBundleShortVersionString": "9.1.94", "CFBundleExecutable": "Spotify"}))
             archive.writestr("Payload/Spotify.app/Spotify", executable(load))
             if companion:
                 archive.writestr("Payload/Spotify.app/Frameworks/SpotifyAudioProbe.dylib",
