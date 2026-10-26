@@ -2,7 +2,7 @@
 //
 // The download button is a UIButton drawn by Lottie -- no image view to copy -- whose accessibility
 // identifier names its state (`DownloadButton.Granular.<None|Waiting|Downloading|Downloaded|Error>`, all five
-// strings in the 9.1.78 binary), and whose action target is Encore's GranularDownloadButton, keeping
+// strings in the 9.1.94 binary), and whose action target is Encore's GranularDownloadButton, keeping
 // `currentState` (a one byte enum: none, waiting, downloading, downloadingEndless, downloaded, error) and
 // `progress` (an optional 8 byte number: the value, then a byte that is 1 when there is none) as stored
 // properties the runtime lists by name. The mock has the same names and the same layout.
@@ -105,7 +105,7 @@ static void setShuffle(BOOL on) {
     sgh_shuffleGlyph.image = shuffleImage(on);
 }
 
-// The add-to button (Components.UI.AddToButton, 9.1.78 binary): a UIButton drawn by Lottie whose action target
+// The add-to button (Components.UI.AddToButton, 9.1.94 binary): a UIButton drawn by Lottie whose action target
 // is Encore's private AddToButton, keeping `currentStatus` (one byte: notAdded, added). Spotify's own
 // -performAction saves or removes; the mock's flips the byte, as the saved state would come back.
 @interface _TtC28EncoreConsumerMobile_BaseKitP33_23B9F07423DE1078C0EAAD54E8754BE611AddToButton : NSObject {

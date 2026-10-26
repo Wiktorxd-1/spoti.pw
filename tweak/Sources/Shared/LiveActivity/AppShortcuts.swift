@@ -1,7 +1,7 @@
 // Spotify's App Shortcuts: what Siri answers to, what the Shortcuts app shows under Spotify before any
-// shortcut is made, and what the Action button lists under Shortcut > Spotify. An app has one provider, and
-// Spotify 9.1.78 has none of its own. Tweak only: the system reads it from the App Intents metadata
-// scripts/build-extension.sh makes for Spotify, and a widget extension may not carry one.
+// shortcut is made, and what the Action button lists under Shortcut > Spotify. Spotify 9.1.94 has its own
+// provider; merge-appintents.py keeps it and adds these shortcuts to the app's static metadata. Tweak only:
+// the system reads that metadata from Spotify, and a widget extension may not carry it.
 // Every phrase names the app; the system's own media commands already own "next song" and "pause".
 import AppIntents
 import Foundation

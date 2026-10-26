@@ -24,7 +24,7 @@ static NSString *const kCompactDetent = @"spotifyglass.addTab.compact";
 @end
 
 // What the dispatcher makes of a URI, logged, so a link left out or refused says why. Unknown (the
-// dispatcher is not set up yet, or not where 9.1.78 keeps it) lets the link through, as before.
+// dispatcher is not set up yet, or not where this build keeps it) lets the link through, as before.
 static SGLinkRoute routeOf(NSURL *url, NSString *what) {
     NSString *via = nil;
     SGLinkRoute route = SGSpotifyURIRoute(url, &via);

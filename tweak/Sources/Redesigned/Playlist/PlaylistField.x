@@ -72,11 +72,9 @@ static SGRArtworkField *fieldIn(UIView *page) {
     // Registered whatever the switch says: the flag rows elsewhere lock to these while it is on.
     SGRedesignForceFlags(@"playlist", @{
         // The page the trees were recorded with (trees/clean/playlist/02.txt).
-        @"ios-feature-freetierplaylist.use_collection_view": @YES,
         @"ios-feature-freetierplaylist.context_menu_in_navigation_bar_enabled": @NO,
         // A row is a cover, a title and an artist. The video badge is none of them.
         @"ios-feature-freetierplaylist.hide_video_badge_for_tracks": @YES,
-        @"ios-feature-freetierplaylist.pin_curation_actions": @NO,
     });
     if (!SGRedesignedUI()) return;
     %init;

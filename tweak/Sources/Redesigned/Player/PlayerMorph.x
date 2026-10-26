@@ -1,7 +1,7 @@
 // Player redesign: the player grows out of the now playing bar's card and the cover flies out of the
 // card's artwork, the way the Music app opens its player, instead of Spotify's slide up and fade.
 //
-// Spotify 9.1.78 runs the open and the close through SPTBarOverlayPresentationTransition: it hides the
+// The legacy Spotify 9.1.78 path runs the open and the close through SPTBarOverlayPresentationTransition: it hides the
 // real bar and tab bar, moves stand-ins, and sets -setProgress: (0 the bar, 1 the player, clamped) on
 // every frame of its own display link, from a spring when tapped and from the finger when dragged
 // (setProgress: at 0x109815464). There it sets the player's frame to the container's bounds moved down by
@@ -408,5 +408,5 @@ static void followTransition(id transition, id<UIViewControllerContextTransition
 %ctor {
     if (!SGRedesignedUI()) return;
     %init;
-    SGRequireClasses(@[@"SPTBarOverlayPresentationTransition"]);
+    SGRequireClasses(@[@"_TtC19MainUI_TabBarUIImpl24CompactOverlayTransition"]);
 }

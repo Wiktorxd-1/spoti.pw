@@ -30,7 +30,7 @@ static NSString *const upsellFlags[] = {
     @"ios-jam-freeuserskipupsellpage-impl.free_user_skip_upsell_sheet_enabled",
     @"ios-jam-freehostedjamsupsell-impl.free_hosted_jams_upsell_enabled",
     @"ios-reinventfree-contextualupsellpremiumpromo-impl.is_promo_cta_enabled",
-    @"ios-reinventfree-contextualupsellpremiumpromo-impl.show_time_cap_upsell_with_premium_badge",
+    @"ios-reinventfree-contextualupsellpremiumpromo-impl.is_promo_checkout_link_enabled",
     @"ios-reinventfree-controllerui-impl.enable_video_time_cap_upsell",
     @"ios-reinventfree-controllerui-impl.enable_video_time_cap_upsell_on_search",
     @"ios-reinventfree-timecappivot-impl.music_video_upsell_enabled",

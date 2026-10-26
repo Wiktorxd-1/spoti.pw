@@ -5,12 +5,12 @@
 // to the cards below, and a scrub holds that too while it lasts. The redesign's copy is
 // Redesigned/Player/PlayerScroll.x's.
 //
-// Only the slider the redesign and Shared/Haptics/ControlHaptics.x hook. Spotify 9.1.78 also carries a
+// Only the slider the redesign and Shared/Haptics/ControlHaptics.x hook. Spotify 9.1.94 also carries a
 // NowPlaying_ECMKit.SliderNowPlaying (a UISlider too) and Encore's SeekBarView (a drag recognizer); which
 // of them "New progress slider" brings is not proven, so they are left as Spotify has them.
 #import "Core/SGCore.h"
 
-// The player's vertical list (the string is in 9.1.78's binary), so a sideways list inside it is not the one held.
+// The player's vertical list (the string is in 9.1.94's binary), so a sideways list inside it is not the one held.
 static NSString *const kListIdentifier = @"scrolling_npv_collection_view_accessibility_identifier";
 
 // The list whose pan a scrub turned off, so only that one is turned back on: a pan off for some other

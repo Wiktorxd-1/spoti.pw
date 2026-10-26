@@ -15,15 +15,15 @@ through bounded single-producer/single-consumer queues. Model loading and infere
 that callback. The mix crossfades from `original - vocals` to `original`, then from `original` to `vocals`,
 clamped to [-1, 1], with a 30 ms level ramp and a 120 ms return to aligned original audio.
 
-`SGAudioSourceQueue.m` reads queue metadata only for the pinned Spotify 9.1.78 arm64 Mach-O UUID
+`SGAudioSourceQueue.m` retains a guarded legacy reader for the pinned Spotify 9.1.78 arm64 Mach-O UUID
 and verified callback/reader signatures. It neither reads private PCM nor calls private functions.
-For that verified source, the render consumer obtains samples through the existing AudioUnit source,
+For that legacy source, the render consumer obtains samples through the existing AudioUnit source,
 pulling at most two render quanta when verified spare audio is available and leaving a 120 ms native
 reserve. Pending commands, stopping end markers and unstable metadata supply no extra budget. A
 known next track permits one end marker only when the pinned reader's flags prove it can continue
 into the following PCM.
 
-For an unverified source such as Spotify 9.1.94, Sing does not use guessed queue offsets: it pulls
+For the target Spotify 9.1.94, whose private queue layout remains unverified, Sing does not use guessed queue offsets: it pulls
 through the existing AudioUnit source and bounds read-ahead at the first chunk that the mixer marks
 silent. The original AudioUnit remains the sole consumer in both paths. A natural transition retains
 the worker and buffered samples; a bounded clock-marker queue moves the audible clock at a verified
@@ -219,8 +219,8 @@ fixture and device verification.
 
 ## Model provenance
 
-The full-screen view, lyrics host, header, footer, controls and hosting controller names were
-verified in the user-supplied Spotify **9.1.78** IPA. No Spotify binary or lyrics are committed.
+The current full-screen view, lyrics host, header, footer, controls and hosting controller names are
+present in the user-supplied Spotify **9.1.94** IPA. No Spotify binary or lyrics are committed.
 
 The production bundle's pinned manifest and provenance are documented in
 [Vitrine's model card](https://huggingface.co/My-Name-Is-Jeff/vitrine-sing).

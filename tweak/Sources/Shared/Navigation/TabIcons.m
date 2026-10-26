@@ -11,7 +11,7 @@ static UIImage *symbolImage(NSString *name) {
     return [UIImage systemImageNamed:name withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:19 weight:UIImageSymbolWeightSemibold]];
 }
 
-// SPTEncoreIcon exposes one class method per glyph ("podcasts", "heart"), 538 of them in 9.1.78.
+// SPTEncoreIcon exposes one class method per glyph ("podcasts", "heart").
 static UIView *encoreView(NSString *name, UIColor *color) {
     Class icon = NSClassFromString(@"SPTEncoreIcon");
     Class view = NSClassFromString(@"SPTEncoreIconView");
