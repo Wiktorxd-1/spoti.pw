@@ -5,7 +5,7 @@ on:
     inputs:
       ipa_url:
         description: "Direct link to a decrypted Spotify IPA"
-        default: "https://cdn.wiktorxd-1.dev/f/wiktor/d/f5SHAytOWckTxIaM.ipa"
+        default: "https://cdn.wiktorxd-1.dev/f/wiktor/d/g0TdOmGDEhzuWRNC.ipa"
         required: false
         type: string
       upload_method:
@@ -75,24 +75,22 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ipa/spotify.ipa
-          key: base-ipa-${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/f5SHAytOWckTxIaM.ipa' }}
+          key: base-ipa-${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/g0TdOmGDEhzuWRNC.ipa' }}
 
       - name: Cache Flag Table
         uses: actions/cache@v4
         with:
           path: tweak/Sources/Shared/Flags/SGFlagList.m
-          key: flag-table-9.1.84
+          key: flag-table-${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/g0TdOmGDEhzuWRNC.ipa' }}
 
       - name: Download IPA
         if: steps.cache-ipa.outputs.cache-hit != 'true'
         run: |
           mkdir -p ipa
-          curl -fsSL "${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/f5SHAytOWckTxIaM.ipa' }}" -o ipa/spotify.ipa
+          curl -fsSL "${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/g0TdOmGDEhzuWRNC.ipa' }}" -o ipa/spotify.ipa
           case "$(file --mime-type -b ipa/spotify.ipa)" in application/zip|application/x-ios-app) ;; *) echo "::error::Not an IPA"; exit 1 ;; esac
 
       - name: Build modded release IPA
-        env:
-          SPOTIFY_APP_VERSION: 9.1.84.${{ github.run_number }}
         run: make release
 
       - name: Create or update GitHub Release with modded IPA
@@ -100,17 +98,45 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           IPA_FILE=$(ls out/Taurus*.ipa out/*.ipa 2>/dev/null | head -n 1)
-          if ! gh release view v9.1.84 >/dev/null 2>&1; then
-            gh release create v9.1.84 "$IPA_FILE" --title "Taurus 9.1.84" --notes "Spotify with Taurus Liquid Glass UI and synced lyrics"
+          SPOTIFY_VERSION=$(python3 -c "
+          import zipfile, plistlib, sys
+          try:
+            with zipfile.ZipFile('$IPA_FILE', 'r') as z:
+              for name in z.namelist():
+                if name.endswith('Spotify.app/Info.plist'):
+                  plist = plistlib.loads(z.read(name))
+                  print(plist.get('CFBundleShortVersionString', '9.1.90'))
+                  sys.exit(0)
+          except Exception:
+            pass
+          print('9.1.90')
+          ")
+          TAG="v${SPOTIFY_VERSION}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" "$IPA_FILE" --title "Taurus ${SPOTIFY_VERSION}" --notes "Spotify with Taurus Liquid Glass UI and synced lyrics"
           else
-            gh release upload v9.1.84 "$IPA_FILE" --clobber
+            gh release upload "$TAG" "$IPA_FILE" --clobber
           fi
 
       - name: Generate apps.json for SideStore
         run: |
           IPA_FILE=$(ls out/Taurus*.ipa out/*.ipa 2>/dev/null | head -n 1)
           IPA_SIZE=$(stat -f%z "$IPA_FILE" 2>/dev/null || stat -c%s "$IPA_FILE")
-          VERSION="9.1.84.${{ github.run_number }}"
+          SPOTIFY_VERSION=$(python3 -c "
+          import zipfile, plistlib, sys
+          try:
+            with zipfile.ZipFile('$IPA_FILE', 'r') as z:
+              for name in z.namelist():
+                if name.endswith('Spotify.app/Info.plist'):
+                  plist = plistlib.loads(z.read(name))
+                  print(plist.get('CFBundleShortVersionString', '9.1.90'))
+                  sys.exit(0)
+          except Exception:
+            pass
+          print('9.1.90')
+          ")
+          VERSION="${SPOTIFY_VERSION}.${{ github.run_number }}"
+          TAG="v${SPOTIFY_VERSION}"
           TODAY=$(date -u +"%Y-%m-%d")
           
           python3 -c "
@@ -118,7 +144,7 @@ jobs:
           repo = os.environ.get('GITHUB_REPOSITORY', 'Wiktorxd-1/spoti.pw')
           ipa_files = glob.glob('out/Taurus*.ipa') + glob.glob('out/*.ipa')
           ipa_name = os.path.basename(ipa_files[0]) if ipa_files else 'Taurus.ipa'
-          download_url = f'https://github.com/{repo}/releases/download/v9.1.84/{ipa_name}'
+          download_url = f'https://github.com/{repo}/releases/download/${TAG}/{ipa_name}'
           data = {
             'name': 'Taurus',
             'identifier': 'pw.spoti.source',
