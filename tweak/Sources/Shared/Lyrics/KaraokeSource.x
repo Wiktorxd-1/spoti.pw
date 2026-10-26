@@ -160,6 +160,14 @@ static NSString *legacyLyricsCacheDirectory(void) {
     return path;
 }
 
+
+
+static NSMutableArray<NSString *> *sg_downloadQueue;
+static BOOL sg_downloadQueueRunning;
+static NSTimeInterval sg_rateLimitBackoff;
+
+static void processDownloadQueue(void);
+
 NSUInteger SGKaraokeDownloadedLyricsCount(void) {
     NSString *dir = lyricsCacheDirectory();
     NSArray *files = [NSFileManager.defaultManager contentsOfDirectoryAtPath:dir error:nil];
@@ -253,11 +261,6 @@ static NSArray<SGKaraokeLine *> *loadLinesFromDisk(NSString *trackID) {
     return lines.count ? lines : nil;
 }
 
-static NSMutableArray<NSString *> *sg_downloadQueue;
-static BOOL sg_downloadQueueRunning;
-static NSTimeInterval sg_rateLimitBackoff;
-
-static void processDownloadQueue(void);
 
 void SGDownloadLyricsForTrack(NSString *trackID) {
     if (!trackID.length) return;
