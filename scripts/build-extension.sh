@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds the Live Activity widget extension without an Xcode project, and the App Intents metadata
-# the host app needs for the widget's taps.
+# the host app needs for the widget's taps and Taurus's App Shortcuts.
 #
 #   scripts/build-extension.sh <host Info.plist> <out dir>
 #

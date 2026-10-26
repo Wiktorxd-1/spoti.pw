@@ -92,8 +92,5 @@ static id ivarNamed(id object, const char *name) {
 %ctor {
     if (!SGRedesignedUI()) return;
     %init;
-    SGRequireClasses(@[
-        @"SPTBarOverlayPresentationTransition",
-        @"_TtC19MainUI_TabBarUIImpl24CompactOverlayTransition",
-    ]);
+    SGRequireClasses(@[@"_TtC19MainUI_TabBarUIImpl24CompactOverlayTransition"]);
 }

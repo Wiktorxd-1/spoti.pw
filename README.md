@@ -54,7 +54,7 @@ Add the release source to [SideStore or Feather](https://raw.githubusercontent.c
 
 ## Build it
 
-Bring a decrypted **Spotify 9.1.78 or 9.1.94** IPA; you get an unsigned
+Bring a decrypted **Spotify 9.1.94** IPA; you get an unsigned
 `Taurus-<mod version>.ipa` to sign with SideStore, Feather or any certificate signer. Each
 [release](https://github.com/samj-exe/taurus/releases) also carries the tweak's `.deb`.
 

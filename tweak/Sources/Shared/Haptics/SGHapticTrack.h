@@ -4,7 +4,7 @@
 // Spotify's ISRC comes from its own metadata, asked as the app asks it: a BatchedEntityRequest to spclient's
 // extended-metadata with one entity and the TRACK_V4 extension, answered by a BatchedExtensionResponse whose
 // entry holds the track's spotify.metadata.Track in a google.protobuf.Any. The field numbers are the ones
-// in the descriptors Spotify 9.1.78's binary carries (extended_metadata.proto, entity_extension_data.proto,
+// in the descriptors Spotify 9.1.94's binary carries (extended_metadata.proto, entity_extension_data.proto,
 // extension_kind.proto, metadata.proto). Apple's song is the one of its catalog's answers that is the same
 // recording: the same ISRC, the same length within kHapticLengthSlack, and a haptic track.
 #import <Foundation/Foundation.h>
