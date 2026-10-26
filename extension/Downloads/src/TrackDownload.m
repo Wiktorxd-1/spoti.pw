@@ -160,6 +160,30 @@ static BOOL signature(Class cls, SEL sel, unsigned args, char returnType, Method
     char type[32]; method_getReturnType(*out, type, sizeof(type));
     return type[0] == returnType;
 }
+static void notifyOfflineTracksFromData(NSData *data) {
+    if (![data isKindOfClass:NSData.class] || data.length < 20) return;
+    const char *bytes = (const char *)data.bytes;
+    NSUInteger length = data.length;
+    const char *prefix = "spotify:track:";
+    size_t prefixLen = strlen(prefix);
+    for (NSUInteger i = 0; i + prefixLen <= length; i++) {
+        if (memcmp(bytes + i, prefix, prefixLen) == 0) {
+            NSUInteger start = i;
+            NSUInteger end = start + prefixLen;
+            while (end < length && (isalnum(bytes[end]) || bytes[end] == '_')) end++;
+            if (end - start >= 30 && end - start <= 40) {
+                NSString *uri = [[NSString alloc] initWithBytes:bytes + start length:end - start encoding:NSUTF8StringEncoding];
+                if (uri.length) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:uri];
+                    });
+                }
+            }
+            i = end;
+        }
+    }
+}
+
 static void putHook(Class cls, SEL sel, Method method, id block, NSMutableArray *names) {
     IMP previous=method_getImplementation(method);
     IMP replacement = imp_implementationWithBlock(block);
@@ -615,6 +639,23 @@ void SAPInstallTrackDownloader(void) {
 #ifdef SAP_RUNTIME_TESTING
                     rememberNativeCall(self, serviceName, methodName);
 #endif
+                    BOOL offline=[serviceName isKindOfClass:NSString.class] && [serviceName isEqual:service];
+                    if (offline) {
+                        notifyOfflineTracksFromData(payload);
+                        if ([commandName hasPrefix:@"callSingle:"]) {
+                            void (^origCb)(NSData *) = callback;
+                            callback = ^(NSData *data) {
+                                notifyOfflineTracksFromData(data);
+                                if (origCb) origCb(data);
+                            };
+                        } else {
+                            BOOL (^origCb)(NSData *) = callback;
+                            callback = ^BOOL(NSData *data) {
+                                notifyOfflineTracksFromData(data);
+                                return origCb ? origCb(data) : YES;
+                            };
+                        }
+                    }
                     if(!SAPDiagnosticsEnabled())return ((id (*)(id,SEL,id,id,id,id))original)(self,command,serviceName,methodName,payload,callback);
                     SAPTraceHookCalled(object_getClass(self),command);
                     SAPTraceRPC *trace=traceHookDepth==0?SAPTraceRPCBegin(serviceName,methodName,payload,

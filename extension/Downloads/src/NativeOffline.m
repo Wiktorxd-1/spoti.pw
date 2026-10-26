@@ -309,6 +309,14 @@ void SAPInstallNativeOffline(void) {
                 SAPTraceHookCalled(object_getClass(receiver),stateSelector);
                 unsigned long long result=originalStateForTrack(receiver,stateSelector,url);
                 if(SAPDiagnosticsEnabled())SAPJournalNoteRowState(urlText(url),(NSUInteger)result);
+                if (result >= 2 && result <= 5) {
+                    NSString *u = urlText(url);
+                    if ([u containsString:@"spotify:track:"]) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:u];
+                        });
+                    }
+                }
                 return result;
             });
             if(!class_addMethod(cls,stateSelector,replacement,method_getTypeEncoding(stateMethod)))

@@ -72,6 +72,7 @@ static void rememberHeaders(NSURLSession *session, NSURLRequest *request) {
     }
     dispatch_async(dispatch_get_main_queue(), ^{
         sg_spclientHeaders = headers;
+        [[NSUserDefaults standardUserDefaults] setObject:headers forKey:@"spotifyglass.cachedSpclientHeaders"];
         NSArray *waiting = sg_headersWaiting;
         sg_headersWaiting = nil;
         for (void (^waiter)(NSDictionary<NSString *, NSString *> *) in waiting) waiter(headers);
@@ -232,8 +233,14 @@ static SGKaraokeLine *lineFromDict(NSDictionary *d) {
     return l;
 }
 
+static BOOL isLyricsCachedOnDisk(NSString *trackID) {
+    if (!trackID.length) return NO;
+    NSString *filePath = [[lyricsCacheDirectory() stringByAppendingPathComponent:trackID] stringByAppendingPathExtension:@"json"];
+    return [NSFileManager.defaultManager fileExistsAtPath:filePath];
+}
+
 static void saveLinesToDisk(NSString *trackID, NSArray<SGKaraokeLine *> *lines) {
-    if (!trackID.length || !lines.count) return;
+    if (!trackID.length) return;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
         NSMutableArray *arr = [NSMutableArray arrayWithCapacity:lines.count];
         for (SGKaraokeLine *l in lines) [arr addObject:dictFromLine(l)];
@@ -242,6 +249,8 @@ static void saveLinesToDisk(NSString *trackID, NSArray<SGKaraokeLine *> *lines) 
         if (data && filePath) [data writeToFile:filePath atomically:YES];
     });
 }
+
+static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completion)(BOOL found));
 
 static NSArray<SGKaraokeLine *> *loadLinesFromDisk(NSString *trackID) {
     if (!trackID.length) return nil;
@@ -297,18 +306,21 @@ static void processDownloadQueue(void) {
     }
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        NSArray<SGKaraokeLine *> *lines = loadLinesFromDisk(trackID);
+        if (isLyricsCachedOnDisk(trackID)) {
+            NSArray<SGKaraokeLine *> *lines = loadLinesFromDisk(trackID);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (lines.count) sg_lyrics[trackID] = lines;
+                sg_downloadQueueRunning = NO;
+                processDownloadQueue();
+            });
+            return;
+        }
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (lines) {
-                sg_lyrics[trackID] = lines;
-                sg_downloadQueueRunning = NO;
-                processDownloadQueue();
-                return;
-            }
-            SGKaraokeRequestLyrics(trackID);
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                sg_downloadQueueRunning = NO;
-                processDownloadQueue();
+            requestFromSpotifyEx(trackID, YES, ^(BOOL found) {
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    sg_downloadQueueRunning = NO;
+                    processDownloadQueue();
+                });
             });
         });
     });
@@ -451,9 +463,12 @@ BOOL SGEeveeLyricsOn(void) {
 
 // Main queue only. NO, asking nothing, before any request of Spotify's has shown the headers, and with
 // EeveeSpotify injected, whose lyrics answer the request: a second asker beside it froze Spotify after launch.
-static BOOL requestFromSpotify(NSString *trackID) {
+static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completion)(BOOL found)) {
     NSDictionary<NSString *, NSString *> *headers = sg_spclientHeaders;
-    if (!headers || SGLyricsStandAsideForEevee()) return NO;
+    if (!headers || (!force && SGLyricsStandAsideForEevee())) {
+        if (completion) completion(NO);
+        return NO;
+    }
     [sg_requested addObject:trackID];
     [sg_asking addObject:trackID];
     [sg_looking addObject:trackID];
@@ -477,25 +492,37 @@ static BOOL requestFromSpotify(NSString *trackID) {
         BOOL lost = SGLyricsReplyFailed(response, error) || status == 401 || status == 403 || status == 429;
         if (status == 429) sg_rateLimitBackoff = 12.0;
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (generation != sg_requestGeneration[trackID].unsignedIntegerValue) return;
+            if (generation != sg_requestGeneration[trackID].unsignedIntegerValue) {
+                if (completion) completion(NO);
+                return;
+            }
             [sg_looking removeObject:trackID];
             if (lost) {
-                askAgainLater(trackID);
+                if (!force) askAgainLater(trackID);
+                if (completion) completion(NO);
             } else {
                 [sg_asking removeObject:trackID];
                 [sg_losses removeObjectForKey:trackID];
                 // Asked after the chain found plain text only: Spotify's replace it only when they are timed.
                 NSArray<SGKaraokeLine *> *kept = sg_lyrics[trackID];
-                if (lines && !(kept && SGKaraokeLinesTiming(kept) <= SGKaraokeLinesTiming(lines))) {
+                if (lines.count && !(kept && SGKaraokeLinesTiming(kept) <= SGKaraokeLinesTiming(lines))) {
                     keep(trackID, lines);
                     SGLyricsSetCredit(trackID, @"Spotify");
+                    if (completion) completion(YES);
                     return;
+                } else if (force) {
+                    saveLinesToDisk(trackID, @[]);
                 }
+                if (completion) completion(NO);
             }
             announce(trackID);
         });
     }] resume];
     return YES;
+}
+
+static BOOL requestFromSpotify(NSString *trackID) {
+    return requestFromSpotifyEx(trackID, NO, nil);
 }
 
 void SGKaraokeAskSpotifyForTiming(NSString *trackID) {
@@ -784,6 +811,7 @@ static SGKaraokeTrackWatcher *sg_trackWatcher;
 
 %ctor {
     sg_seenTracks = [NSMutableDictionary dictionary];
+    sg_spclientHeaders = [[NSUserDefaults standardUserDefaults] objectForKey:@"spotifyglass.cachedSpclientHeaders"];
     sg_lyrics = [NSMutableDictionary dictionary];
     sg_requested = [NSMutableSet set];
     sg_asking = [NSMutableSet set];
