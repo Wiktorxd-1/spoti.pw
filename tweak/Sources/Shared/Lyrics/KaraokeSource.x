@@ -165,6 +165,7 @@ static NSString *legacyLyricsCacheDirectory(void) {
 static NSMutableArray<NSString *> *sg_downloadQueue;
 static BOOL sg_downloadQueueRunning;
 static NSTimeInterval sg_rateLimitBackoff;
+static NSMutableSet<NSString *> *sg_diskCheckedMissing;
 
 static void processDownloadQueue(void);
 
@@ -363,8 +364,6 @@ static void completed(NSURLSessionTask *task, NSError *error) {
     SGLog(@"karaoke: lyrics for %@, %lu bytes, %lu synced lines", track, (unsigned long)body.length, (unsigned long)lines.count);
     if (lines) SGKaraokeKeepLines(track, lines);
 }
-
-static NSMutableSet<NSString *> *sg_diskCheckedMissing;
 
 NSArray<SGKaraokeLine *> *SGKaraokeLinesForTrack(NSString *trackID) {
     if (!trackID) return nil;
