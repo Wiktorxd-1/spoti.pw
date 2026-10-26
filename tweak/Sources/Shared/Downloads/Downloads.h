@@ -6,7 +6,7 @@
 //                          quota and device checks, the download status and the diagnostics
 //
 // What makes Spotify's own download buttons work (the playlist and album buttons, the ⋯ menus, the Download
-// toggle in Your Library) is not here but in the companion and three guarded edits to Spotify 9.1.90's
+// toggle in Your Library) is not here but in the companion and three guarded edits to Spotify 9.1.94's
 // executable, made at build time by scripts/pipeline.sh. This layer only shows and drives them.
 // Threading: main thread only.
 #import <UIKit/UIKit.h>
@@ -17,7 +17,7 @@ extern NSNotificationName const SGDownloadsDidChangeNotification;
 // Diagnostics, mirrored here so the page's switch has a key; the companion is the one that stores it.
 #define SGKeyDownloadsDiagnostics @"spotifyglass.downloads.diagnostics"
 
-// YES when this build carries the companion library (Spotify 9.1.90 only).
+// YES when this build carries the companion library (Spotify 9.1.94 only).
 BOOL SGDownloadsAvailable(void);
 // What the page's card says and what the Mod Settings row shows beside its chevron.
 BOOL SGDownloadsActive(void);

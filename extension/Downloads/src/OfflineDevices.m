@@ -7,8 +7,8 @@
 #import "DiagnosticTrace.h"
 #import <dlfcn.h>
 
-// Route fragments and POST are verified in the supplied Spotify 9.1.90:
-// device path 0x105458100, /disable 0x101d0346c, caller 0x10224bd78.
+// Route fragments and POST are verified in the supplied Spotify 9.1.94:
+// device path 0x10949e320, /disable 0x10949e424, caller 0x1094952cc.
 // No local LicenseStatus response or device identifier is rewritten.
 static NSDictionary *lastPlan;
 static BOOL slotOperationActive;

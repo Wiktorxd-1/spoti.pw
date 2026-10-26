@@ -809,7 +809,7 @@ static NSDictionary<NSString *, SGCommand> *commands(void) {
                     id player = requirePlayer();
                     SEL relative = NSSelectorFromString(@"seekTo:relative:");
                     if (by && ![player respondsToSelector:relative]) fail(@"this player has no relative seek");
-                    // Spotify's `relative`, as measured on 9.1.90: 0 from the start, 1 from the end, 2 from where it plays.
+                    // Spotify's `relative`: 0 from the start, 1 from the end, 2 from where it plays.
                     if (by) ((id (*)(id, SEL, double, long long))objc_msgSend)(player, relative, by.doubleValue, 2);
                     else [player seekTo:seconds];
                     return by ? @{@"by" : @(by.doubleValue)} : @{@"seconds" : @(seconds)};

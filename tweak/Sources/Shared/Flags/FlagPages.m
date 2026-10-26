@@ -12,9 +12,10 @@ static UIViewController *martiniPage(void) {
             SGFlagRow(@"Glowing pill", @"ios-home-evopage-impl.interactive_entrypoint_pill_glow_enabled"),
         ]),
         SGSection(@"The chat", @[
-            SGFlagRow(@"Intent pills", @"ios-martini-floatingchat-impl.intent_pills_enabled"),
-            SGFlagRow(@"Thinking states", @"ios-martini-floatingchat-impl.thinking_states_enabled"),
-            SGFlagRow(@"Voice recording", @"ios-martini-floatingchat-impl.voice_recording_enabled"),
+            SGFlagRow(@"Vertical prompt suggestions", @"ios-martini-featureflags-impl.vertical_prompt_suggestions_enabled"),
+            SGFlagRow(@"Prompt button", @"ios-martini-featureflags-impl.prompt_cta_enabled"),
+            SGFlagRow(@"Voice chat characters", @"ios-martini-featureflags-impl.voice_chat_character_settings_enabled"),
+            SGFlagRow(@"Text to speech", @"ios-martini-dataloader-impl.tts_enabled"),
         ]),
         SGSection(@"In the player", @[
             SGFlagRow(@"Chat entry point", @"ios-martini-npvcardprovider-impl.floating_chat_entry_point_enabled"),

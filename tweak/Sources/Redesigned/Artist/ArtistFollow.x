@@ -42,28 +42,7 @@ static id currentProvider(void) {
     return provider;
 }
 
-%hook SPTCollectionPlatformImplementation
-- (id)initWithCosmosDataLoader:(id)loader isGatedEntityRelationsEnabled:(BOOL)gated {
-    id platform = %orig;
-    sg_platform = platform;
-    return platform;
-}
-- (id)stateProvider {
-    id provider = %orig;
-    keepProvider(provider);
-    return provider;
-}
-%end
-
 %hook _TtC23Collection_PlatformImpl22CollectionPlatformImpl
-- (id)stateProvider {
-    id provider = %orig;
-    keepProvider(provider);
-    return provider;
-}
-%end
-
-%hook _TtC23Collection_PlatformImpl27CollectionPlatformMigration
 - (id)stateProvider {
     id provider = %orig;
     keepProvider(provider);

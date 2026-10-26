@@ -14,12 +14,12 @@ spec.loader.exec_module(module)
 
 class PackagingTests(unittest.TestCase):
     def test_identity_matches_host_and_override(self):
-        host = {"CFBundleIdentifier": "com.spotify.client", "CFBundleShortVersionString": "9.1.90", "CFBundleVersion": "1234"}
+        host = {"CFBundleIdentifier": "com.spotify.client", "CFBundleShortVersionString": "9.1.94", "CFBundleVersion": "1234"}
         for override in ("", "dev.example.taurus"):
             info = module.make_plist(host, override)
             self.assertEqual(info["CFBundleIdentifier"], (override or host["CFBundleIdentifier"]) + ".TaurusOpenSpotify")
             self.assertEqual(info["CFBundleVersion"], "1234")
-            self.assertEqual(info["CFBundleShortVersionString"], "9.1.90")
+            self.assertEqual(info["CFBundleShortVersionString"], "9.1.94")
             self.assertEqual(info["NSExtension"]["NSExtensionPointIdentifier"], "com.apple.Safari.web-extension")
         with tempfile.TemporaryDirectory() as directory:
             source, output = Path(directory) / "host.plist", Path(directory) / "Info.plist"

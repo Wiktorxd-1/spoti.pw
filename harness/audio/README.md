@@ -12,7 +12,7 @@ formats, and disposal while rendering. The render thread must never wait for gra
 Sing coverage checks uninterrupted reduced samples across a natural song boundary and concurrent
 clock reads that must never pair one song's identity with the other song's position. Queue tests
 verify one traversable end marker, stopping flags, signature changes and the next marker's fence.
-On Spotify 9.1.90, the exact render callback is retained for an off-render, one-time Sing probe,
+On Spotify 9.1.94, the exact render callback is retained for an off-render, one-time Sing probe,
 which records callback and candidate queue metadata in the in-app diagnostics log. It does not
 enable read-ahead until that private layout is verified.
 

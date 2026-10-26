@@ -80,16 +80,16 @@ static CGFloat screenRadius(void) {
     CGFloat _cardRadius, _spotifyAlpha;
     CGColorRef _overlayColor;
     BOOL _coverHidden;
-    BOOL _follows;   // 9.1.90: Spotify animates the player's frame and alpha, which the morph then only reads
+    BOOL _follows;   // 9.1.94: Spotify animates the player's frame and alpha, which the morph then only reads
 }
 
-// Where the player's top edge rests when it has become the bar: 9.1.90's CompactOverlayTransition slides it down only
+// Where the player's top edge rests when it has become the bar: 9.1.94's CompactOverlayTransition slides it down only
 // that far (y 727 of 874), not off the screen.
 - (CGFloat)restY {
     return CGRectGetMinY(_card);
 }
 
-// 9.1.90's CompactOverlayTransition animates the player itself, so the morph follows where it is drawn.
+// 9.1.94's CompactOverlayTransition animates the player itself, so the morph follows where it is drawn.
 - (void)follow {
     _follows = YES;
     _bar.hidden = YES;
@@ -278,9 +278,9 @@ static SGRPlayerMorph *morphFor(SPTBarOverlayPresentationTransition *transition,
 }
 %end
 
-#pragma mark - 9.1.90
+#pragma mark - 9.1.94
 
-// 9.1.90 presents the player with MainUI_TabBarUIImpl.CompactOverlayTransition, a UIKit animator that moves the
+// 9.1.94 presents the player with MainUI_TabBarUIImpl.CompactOverlayTransition, a UIKit animator that moves the
 // player up from below the screen (animateTransition:, and startInteractiveTransition: for a drag) with its own
 // stand-ins (npbSnapshotView, tabBarSnapshotView; BarTransition.x). A display link reads how far up Spotify's animation
 // has the player and morphs to match, so Spotify's frame, alpha and completion stay its own. It is let go once the

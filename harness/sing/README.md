@@ -23,7 +23,7 @@ reserve. Pending commands, stopping end markers and unstable metadata supply no 
 known next track permits one end marker only when the pinned reader's flags prove it can continue
 into the following PCM.
 
-For an unverified source such as Spotify 9.1.90, Sing does not use guessed queue offsets: it pulls
+For an unverified source such as Spotify 9.1.94, Sing does not use guessed queue offsets: it pulls
 through the existing AudioUnit source and bounds read-ahead at the first chunk that the mixer marks
 silent. The original AudioUnit remains the sole consumer in both paths. A natural transition retains
 the worker and buffered samples; a bounded clock-marker queue moves the audible clock at a verified

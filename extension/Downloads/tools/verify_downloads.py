@@ -68,8 +68,8 @@ def verify(path):
             raise ValueError("IPA must contain exactly one host app")
         base = hosts[0][:-len("Info.plist")]
         host = plistlib.loads(archive.read(hosts[0]))
-        if host.get("CFBundleShortVersionString") != "9.1.90":
-            raise ValueError("Downloads requires the verified Spotify 9.1.90 build")
+        if host.get("CFBundleShortVersionString") != "9.1.94":
+            raise ValueError("Downloads requires the verified Spotify 9.1.94 build")
         binary = archive.read(base + host["CFBundleExecutable"])
         uuid = verify_native(binary)
         loads = [p for p in load_paths(binary) if PurePosixPath(p).name == COMPANION]

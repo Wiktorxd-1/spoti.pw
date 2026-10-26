@@ -1,16 +1,16 @@
-"""Guard native restriction updates in the exact supplied Spotify 9.1.90 binary.
+"""Guard native restriction updates in the exact supplied Spotify 9.1.94 binary.
 
-A small leaf trampoline in verified zero-filled __TEXT header padding clamps the
+A small leaf trampoline in a verified zero-filled __TEXT section gap clamps the
 six-argument setter's two nonnegative music limits before the original setter.
 No runtime code writes, extra imports, polling, key material or episode changes.
 """
 import struct
 
 PREFERRED = 0x100000000
-SETTER = 0x101d1debc
-CAVE = 0x100023f00
-ORIGINAL = bytes.fromhex('e6031eaa8f3ef495fe0306aafd7b11a9')
-UUID = bytes.fromhex('fbce22c17e1b3e0d9be866ff9291943e')
+SETTER = 0x1094a9f28
+CAVE = 0x10CBE3E00
+ORIGINAL = bytes.fromhex('e6031eaa64be3794fe0306aafd7b11a9')
+UUID = bytes.fromhex('1dfddfa139c03735b9a5fdfa475f4700')
 MINIMUM_TRACKS = 1_000_000
 # The setter accepts signed int32 seconds even though its stored field is int64.
 MINIMUM_MUSIC_DURATION_SECONDS = (1 << 31) - 1
@@ -78,7 +78,7 @@ def layout(data):
 
 
 def patch_at(data, setter, cave, expected):
-    commands_end, first_section, segments, _ = layout(data)
+    _, _, segments, _ = layout(data)
     text = next(s for s in segments if s[0] == b'__TEXT')
     _, vm, _, fileoff, filesize, protection = text
     def offset(address, size):
@@ -87,10 +87,10 @@ def patch_at(data, setter, cave, expected):
         return fileoff + address - vm
     stub = trampoline(cave, setter)
     start, target = offset(setter, len(expected)), offset(cave, len(stub))
-    if protection & 5 != 5 or not commands_end <= target or target + len(stub) > first_section:
-        raise ValueError('No executable header padding')
+    if protection & 5 != 5:
+        raise ValueError('Restriction cave is not executable')
     if any(data[target:target+len(stub)]):
-        raise ValueError('Header padding occupied')
+        raise ValueError('Restriction cave is occupied')
     if data[start:start+len(expected)] != expected:
         raise ValueError('Native setter bytes differ')
     result = bytearray(data)

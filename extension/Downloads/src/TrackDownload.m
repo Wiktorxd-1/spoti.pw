@@ -401,7 +401,7 @@ static void finish(NSString *newPhase, NSString *message) {
 #endif
     sendMessage(message); notify = nil; jobTransport = nil; jobCandidates = nil;
 }
-// The bridge's completion is void (^)(NSData *), confirmed at 0x10a03ea78;
+// The bridge's completion is void (^)(NSData *), confirmed at 0x10a8e3ac8;
 // a zero-length NSData is a valid protobuf default response, nil is not.
 static NSString *timeoutMessage(void);
 static BOOL currentCall(SAPOfflineCall *call,NSUInteger attempt) {

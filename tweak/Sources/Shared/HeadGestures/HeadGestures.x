@@ -8,9 +8,9 @@
 // Activity's control menu sends: seekTo:, pause: and resume:, skipToNextTrackWithOptions: and
 // skipToPreviousTrackWithOptions:, setShufflingContext:, and setRepeatingContext: with setRepeatingTrack:.
 // Like adds the playing track to the collection, which for a track is Liked Songs, through
-// -addURL:showUIConfirmation:completion: of Spotify's collection platform. Spotify 9.1.78 has four classes
-// with that selector and with -stateProvider (SPTCollectionPlatformImplementation, Collection_PlatformImpl's
-// CollectionPlatformImpl and CollectionPlatformMigration, AlignedCuration's ACUCollectionPlatform);
+// -addURL:showUIConfirmation:completion: of Spotify's collection platform. Spotify 9.1.94 has two classes
+// with that selector and with -stateProvider (Collection_PlatformImpl's CollectionPlatformImpl and
+// AlignedCuration's ACUCollectionPlatform);
 // whichever the app last reached for is kept, weakly, the way Redesigned/Artist/ArtistFollow.x keeps its
 // state provider. The lock screen's like (LockScreenBaseRemoteControlPolicy's
 // likeButtonPressedWithCompletion:identifier:) is not used: it toggles, and a second nod would take the
@@ -76,21 +76,7 @@ static void keepPlatform(id platform) {
     SGLog(@"head gestures: collection platform %@", name);
 }
 
-%hook SPTCollectionPlatformImplementation
-- (id)stateProvider {
-    keepPlatform(self);
-    return %orig;
-}
-%end
-
 %hook _TtC23Collection_PlatformImpl22CollectionPlatformImpl
-- (id)stateProvider {
-    keepPlatform(self);
-    return %orig;
-}
-%end
-
-%hook _TtC23Collection_PlatformImpl27CollectionPlatformMigration
 - (id)stateProvider {
     keepPlatform(self);
     return %orig;
@@ -524,7 +510,7 @@ double SGHeadGesturesLearnFrom(NSArray<NSData *> *motions, SGHeadAxis axis) {
 
 %ctor {
     %init;
-    SGRequireClasses(@[@"SPTCollectionPlatformImplementation", @"_TtC23Collection_PlatformImpl22CollectionPlatformImpl"]);
+    SGRequireClasses(@[@"_TtC23Collection_PlatformImpl22CollectionPlatformImpl"]);
     static SGHeadGesturesObserver *observer;
     observer = [SGHeadGesturesObserver new];
     SGAddPlayerStateObserver(observer);

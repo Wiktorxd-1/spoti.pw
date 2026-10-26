@@ -1,6 +1,6 @@
 """Install a guarded, runtime-selectable offline key-request argument.
 
-Only the verified Spotify 9.1.90 caller is redirected. A fixed build-time
+Only the verified Spotify 9.1.94 caller is redirected. A fixed build-time
 trampoline saves its live registers, reads a C atomic in SpotifyAudioProbe,
 then executes the original virtual call. No executable page is changed later.
 """
@@ -12,16 +12,16 @@ from pathlib import Path
 from patch_native_restrictions import UUID, branch, layout
 
 PREFERRED = 0x100000000
-CALL_SITE = 0x103594F60
-WINDOW = 0x103594F54
+CALL_SITE = 0x10948FE10
+WINDOW = 0x10948FE04
 ORIGINAL = bytes.fromhex('e4e30191e5c30091e00317aa2200805220013fd6a18301d1')
-PROVIDER = 0x1083DE7B0
-PROVIDER_HEAD = bytes.fromhex('ff0306d1fc6f12a9fa6713a9f85f14a9f65715a9f44f16a9fd7b17a9fdc30591f50305aaf40300aaf70308aa08404239')
-MAPPING = 0x1083DE894
-MAPPING_BYTES = bytes.fromhex('f60301aa5f080071480080520815881a5f0000711c159f1a')
-CAVE = 0x100023D00
-DLSYM_STUB = 0x109B65B68
-DLSYM_STUB_HEAD = bytes.fromhex('70840190106a42f900021fd6')
+PROVIDER = 0x1092F6E40
+PROVIDER_HEAD = bytes.fromhex('ff0306d1fc6f12a9fa6713a9f85f14a9f65715a9f44f16a9fd7b17a9fdc30591f50305aaf40300aafc0308aa08404239')
+MAPPING = 0x1092F6F24
+MAPPING_BYTES = bytes.fromhex('f60301aa5f080071480080520815881a5f00007113159f1a')
+CAVE = 0x10CBE3D00
+DLSYM_STUB = 0x10A3DB714
+DLSYM_STUB_HEAD = bytes.fromhex('f09001d0100640f900021fd6')
 SELECTOR_NAME = b'SAPCurrentKeyRequestMode\0'
 ASSEMBLY = Path(__file__).with_name('key_mode_trampoline.S')
 
@@ -114,7 +114,7 @@ def _verify_dlsym_binding(data):
 
 
 def patch(data, runtime_selectable=True):
-    commands_end, first_section, segments, uuid = layout(data)
+    _, _, segments, uuid = layout(data)
     if uuid != UUID:
         raise ValueError('Unsupported Spotify UUID')
     _verify_dlsym_binding(data)
@@ -132,8 +132,8 @@ def patch(data, runtime_selectable=True):
             'native_callbacks_and_persistence_unchanged':True}
     stub = trampoline()
     target = _offset(segments, CAVE, len(stub))
-    if target < commands_end or target + len(stub) > first_section or any(data[target:target + len(stub)]):
-        raise ValueError('Verified executable header padding unavailable')
+    if any(data[target:target + len(stub)]):
+        raise ValueError('Verified executable cave unavailable')
     out = bytearray(data)
     out[target:target + len(stub)] = stub
     struct.pack_into('<I', out, call, branch(CALL_SITE, CAVE))

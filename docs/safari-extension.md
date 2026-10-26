@@ -74,13 +74,12 @@ Spotify is installed alongside Taurus and both register `spotify:`, iOS chooses 
 handler; standard URIs cannot guarantee which copy opens. Browser protections may
 require a deliberate tap. Permissions must be granted for each relevant hostname.
 
-Verified locally on October 19, 2026: the complete Taurus 0.60.2 IPA built with
-Xcode 27.1 against a supplied decrypted Spotify 9.1.90 IPA. The standalone native
-extension passed signature verification, and the finished IPA passed archive CRC,
-bundle identity/version, resource consistency and injection checks. Routing,
-lifecycle and packaging tests passed, as did mocked Chrome UI smoke tests.
-Actual Safari activation and app routing still require on-device testing after
-signing. `scripts/check-safari-ipa.py <path.ipa>` verifies the packaged extension.
+Updated locally on October 26, 2026 against a supplied decrypted Spotify 9.1.94
+IPA. Routing, lifecycle and packaging tests passed, as did mocked Chrome UI smoke
+tests. A complete Xcode build, signature and finished-IPA verification still need
+to run on macOS, and actual Safari activation and app routing still require
+on-device testing after signing. `scripts/check-safari-ipa.py <path.ipa>` verifies
+the packaged extension.
 No source IPA, built IPA or signing credentials are included in this contribution.
 
 The browser smoke test is optional:

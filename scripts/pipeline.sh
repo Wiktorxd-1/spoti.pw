@@ -84,7 +84,7 @@ if [ "$WITH_DOWNLOADS" = 1 ]; then
     --out-ipa "$ROOT/out/.downloads-base.ipa" --out-dylib "$ROOT/out/SpotifyAudioProbe.dylib" >"$ROOT/out/.downloads.json" || DL_RC=$?
   case "$DL_RC" in
     0) IN="$ROOT/out/.downloads-base.ipa"; DOWNLOADS_DYLIB="$ROOT/out/SpotifyAudioProbe.dylib"; echo "    patched" ;;
-    3) echo "    skipped: Downloads needs Spotify 9.1.90" ;;
+    3) echo "    skipped: Downloads needs Spotify 9.1.94" ;;
     *) echo "downloads patch failed (exit $DL_RC); rerun with --no-downloads to build without it" >&2; exit "$DL_RC" ;;
   esac
 fi

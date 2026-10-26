@@ -4,7 +4,7 @@
 #import "../../tweak/Sources/Shared/Downloads/DownloadsBridge.h"
 
 int main(void) { @autoreleasepool {
-    __block NSString *version=@"9.1.90";
+    __block NSString *version=@"9.1.94";
     Class bundleClass=object_getClass(NSBundle.mainBundle);
     SEL selector=@selector(objectForInfoDictionaryKey:);
     Method method=class_getInstanceMethod(bundleClass,selector);
@@ -17,7 +17,7 @@ int main(void) { @autoreleasepool {
     NSCAssert([SGDownloadsUnavailableReason()containsString:@"missing or could not load"],@"missing engine explained");
     version=@"9.1.91";
     NSCAssert([SGDownloadsSummary()containsString:@"9.1.91"],@"unsupported version identified accurately");
-    NSCAssert([SGDownloadsUnavailableReason()containsString:@"exact Spotify 9.1.90 build"],@"exact verified build required");
+    NSCAssert([SGDownloadsUnavailableReason()containsString:@"exact Spotify 9.1.94 build"],@"exact verified build required");
     Class companion=objc_allocateClassPair(NSObject.class,"SAPTaurusBridge",0);
     __block NSInteger interfaceVersion=0;
     class_addMethod(object_getClass(companion),@selector(interfaceVersion),imp_implementationWithBlock(^NSInteger(id self){return interfaceVersion;}),"q@:");

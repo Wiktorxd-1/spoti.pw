@@ -18,7 +18,7 @@ static id sg_send(id target, NSString *selector);
 static __strong id sg_realContext;
 
 BOOL SGOpenSpotifyURI(NSURL *uri) {
-    // Spotify's navigate entry moved out of ObjC reach in 9.1.90: its reason argument is
+    // Spotify's navigate entry moved out of ObjC reach in 9.1.94: its reason argument is
     // a Swift enum that nil/zero segfaults. But the already-hooked link dispatcher
     // exposes uriSchemeDispatcher, whose handleURI:context: is the same front door every
     // in-app spotify: link takes - ObjC-callable, BOOL-answering, nil context tolerated.
