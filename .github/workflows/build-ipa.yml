@@ -99,27 +99,28 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          IPA_FILE=$(ls out/*.ipa | head -n 1)
-          cp "$IPA_FILE" out/spoti.pw.ipa
+          IPA_FILE=$(ls out/Taurus*.ipa out/*.ipa 2>/dev/null | head -n 1)
           if ! gh release view v9.1.84 >/dev/null 2>&1; then
-            gh release create v9.1.84 out/spoti.pw.ipa --title "spoti.pw 9.1.84" --notes "Spotify 9.1.84 with spoti.pw Liquid Glass UI and synced lyrics"
+            gh release create v9.1.84 "$IPA_FILE" --title "Taurus 9.1.84" --notes "Spotify with Taurus Liquid Glass UI and synced lyrics"
           else
-            gh release upload v9.1.84 out/spoti.pw.ipa --clobber
+            gh release upload v9.1.84 "$IPA_FILE" --clobber
           fi
 
       - name: Generate apps.json for SideStore
         run: |
-          IPA_FILE="out/spoti.pw.ipa"
+          IPA_FILE=$(ls out/Taurus*.ipa out/*.ipa 2>/dev/null | head -n 1)
           IPA_SIZE=$(stat -f%z "$IPA_FILE" 2>/dev/null || stat -c%s "$IPA_FILE")
           VERSION="9.1.84.${{ github.run_number }}"
           TODAY=$(date -u +"%Y-%m-%d")
           
           python3 -c "
-          import json, os
+          import json, os, glob
           repo = os.environ.get('GITHUB_REPOSITORY', 'Wiktorxd-1/spoti.pw')
-          download_url = f'https://github.com/{repo}/releases/download/v9.1.84/spoti.pw.ipa'
+          ipa_files = glob.glob('out/Taurus*.ipa') + glob.glob('out/*.ipa')
+          ipa_name = os.path.basename(ipa_files[0]) if ipa_files else 'Taurus.ipa'
+          download_url = f'https://github.com/{repo}/releases/download/v9.1.84/{ipa_name}'
           data = {
-            'name': 'spoti.pw',
+            'name': 'Taurus',
             'identifier': 'pw.spoti.source',
             'subtitle': 'Liquid Glass UI for Spotify',
             'description': 'Liquid Glass UI for the decrypted Spotify iOS app with real-time synced lyrics, Sing vocal control, and Live Activity support.',
@@ -134,7 +135,7 @@ jobs:
                 'subtitle': 'Liquid Glass UI & Lyrics',
                 'version': '${VERSION}',
                 'versionDate': '${TODAY}',
-                'versionDescription': 'Spotify ${VERSION} with spoti.pw Liquid Glass UI, real-time Live Activity lyrics, Quick Sing karaoke toggle, and scrubbing haptics.',
+                'versionDescription': 'Spotify ${VERSION} with Taurus Liquid Glass UI, real-time Live Activity lyrics, Quick Sing karaoke toggle, and scrubbing haptics.',
                 'downloadURL': download_url,
                 'localizedDescription': 'A complete Liquid Glass redesign for the Spotify iOS app. Includes Apple Music style real-time synced lyrics, Live Activity support in Dynamic Island & Lock Screen, vocal volume control (Sing), AMOLED dark mode, and seamless physical haptics.',
                 'iconURL': 'https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png',
@@ -145,7 +146,7 @@ jobs:
             'news': [
               {
                 'appID': 'com.spotify.client',
-                'title': 'spoti.pw ${VERSION}',
+                'title': 'Taurus ${VERSION}',
                 'identifier': f'spoti-pw-${VERSION}-release',
                 'caption': 'Spotify ${VERSION} Support & Live Activity Lyrics',
                 'date': '${TODAY}',
@@ -169,9 +170,9 @@ jobs:
       - uses: actions/upload-artifact@v5
         if: inputs.upload_method != 'filebin'
         with:
-          name: spoti.ipa
+          name: Taurus
           path: |
-            out/*.ipa
+            out/Taurus*.ipa
             apps.json
             sidestore.json
           if-no-files-found: error
@@ -181,7 +182,7 @@ jobs:
         run: |
           BIN="spotifyglass-${{ github.run_id }}"
           echo "### filebin.net download" >> "$GITHUB_STEP_SUMMARY"
-          for f in out/*.ipa; do
+          for f in out/Taurus*.ipa; do
             curl -fsS -X POST -H "Content-Type: application/octet-stream" --data-binary "@$f" "https://filebin.net/$BIN/$(basename "$f")" >/dev/null
             echo "- https://filebin.net/$BIN/$(basename "$f")" >> "$GITHUB_STEP_SUMMARY"
           done
