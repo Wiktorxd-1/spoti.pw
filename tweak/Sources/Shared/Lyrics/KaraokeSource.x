@@ -18,6 +18,7 @@
 #import <mach-o/dyld.h>
 #import <objc/runtime.h>
 #import <os/lock.h>
+#import <Network/Network.h>
 
 static const NSUInteger kKeptTracks = 40;
 static const NSUInteger kSeenTracks = 200;
@@ -170,8 +171,39 @@ static NSTimeInterval sg_rateLimitBackoff;
 static NSMutableSet<NSString *> *sg_diskCheckedMissing;
 static NSMutableSet<NSString *> *sg_cachedTrackIDsOnDisk;
 static os_unfair_lock sg_cacheDiskLock = OS_UNFAIR_LOCK_INIT;
-static const NSInteger kMaxConcurrentDownloads = 6;
 static NSInteger sg_activeDownloads = 0;
+
+typedef NS_ENUM(NSInteger, SGDownloadQueueState) {
+    SGDownloadQueueStateNormal,
+    SGDownloadQueueStateProbe,
+    SGDownloadQueueStateCautious,
+};
+
+static SGDownloadQueueState sg_queueState = SGDownloadQueueStateNormal;
+static NSTimeInterval sg_cautiousStartTime = 0;
+static NSTimeInterval sg_lastRequestTime = 0;
+static nw_path_monitor_t sg_netMonitor;
+static BOOL sg_deviceIsOffline = NO;
+static NSMutableSet<NSString *> *sg_onlineUpdateChecked;
+
+NSNotificationName const SGKaraokeLyricsDidUpdateOnlineNotification = @"spotifyglass.lyricsUpdatedOnline";
+
+static void startNetworkMonitor(void) {
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        sg_netMonitor = nw_path_monitor_create();
+        nw_path_monitor_set_queue(sg_netMonitor, dispatch_get_main_queue());
+        nw_path_monitor_set_update_handler(sg_netMonitor, ^(nw_path_t path) {
+            sg_deviceIsOffline = (nw_path_get_status(path) != nw_path_status_satisfied);
+        });
+        nw_path_monitor_start(sg_netMonitor);
+    });
+}
+
+BOOL SGIsDeviceOffline(void) {
+    startNetworkMonitor();
+    return sg_deviceIsOffline;
+}
 
 static NSString *cleanTrackIdentifier(NSString *trackID) {
     if (!trackID.length) return nil;
@@ -231,6 +263,8 @@ void SGKaraokeResetLyricsCache(void (^completion)(void)) {
         [sg_asking removeAllObjects];
         [sg_looking removeAllObjects];
         [sg_diskCheckedMissing removeAllObjects];
+        [sg_onlineUpdateChecked removeAllObjects];
+        sg_queueState = SGDownloadQueueStateNormal;
         announce(nil);
     });
 
@@ -325,6 +359,22 @@ static BOOL isLyricsCachedOnDisk(NSString *trackID) {
     return NO;
 }
 
+BOOL SGIsLyricsCachedOnDisk(NSString *trackID) {
+    return isLyricsCachedOnDisk(trackID);
+}
+
+static BOOL linesDiffer(NSArray<SGKaraokeLine *> *a, NSArray<SGKaraokeLine *> *b) {
+    if (!a || !b) return a != b;
+    if (a.count != b.count) return YES;
+    if (SGKaraokeLinesTiming(a) != SGKaraokeLinesTiming(b)) return YES;
+    for (NSUInteger i = 0; i < a.count; i++) {
+        SGKaraokeLine *la = a[i], *lb = b[i];
+        if (ABS(la.start - lb.start) > 50 || ABS(la.end - lb.end) > 50) return YES;
+        if (la.words.count != lb.words.count) return YES;
+    }
+    return NO;
+}
+
 static void saveLinesToDisk(NSString *trackID, NSArray<SGKaraokeLine *> *lines, NSString *credit) {
     NSString *clean = cleanTrackIdentifier(trackID);
     if (!clean.length) return;
@@ -410,21 +460,57 @@ static void processDownloadQueue(void) {
         });
         return;
     }
-    while (sg_activeDownloads < kMaxConcurrentDownloads && sg_downloadQueue.count > 0) {
-        NSString *trackID = sg_downloadQueue.firstObject;
-        [sg_downloadQueue removeObjectAtIndex:0];
-        if (isLyricsCachedOnDisk(trackID)) {
-            announce(trackID);
-            continue;
+
+    if (sg_queueState == SGDownloadQueueStateCautious) {
+        if (CACurrentMediaTime() - sg_cautiousStartTime >= 20.0) {
+            sg_queueState = SGDownloadQueueStateNormal;
         }
-        sg_activeDownloads++;
+    }
+
+    NSInteger maxConcurrent = 6;
+    NSTimeInterval minDelay = 0.050;
+    if (sg_queueState == SGDownloadQueueStateProbe) {
+        maxConcurrent = 1;
+        minDelay = 0.200;
+    } else if (sg_queueState == SGDownloadQueueStateCautious) {
+        maxConcurrent = 3;
+        minDelay = 0.200;
+    }
+
+    if (sg_activeDownloads >= maxConcurrent || !sg_downloadQueue.count) return;
+
+    NSTimeInterval now = CACurrentMediaTime();
+    NSTimeInterval elapsed = now - sg_lastRequestTime;
+    if (elapsed < minDelay) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((minDelay - elapsed) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            processDownloadQueue();
+        });
+        return;
+    }
+
+    NSString *trackID = sg_downloadQueue.firstObject;
+    [sg_downloadQueue removeObjectAtIndex:0];
+    if (isLyricsCachedOnDisk(trackID)) {
         announce(trackID);
-        requestFromSpotifyEx(trackID, YES, ^(BOOL found) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                sg_activeDownloads--;
-                announce(trackID);
-                processDownloadQueue();
-            });
+        processDownloadQueue();
+        return;
+    }
+
+    sg_activeDownloads++;
+    sg_lastRequestTime = CACurrentMediaTime();
+    announce(trackID);
+
+    requestFromSpotifyEx(trackID, YES, ^(BOOL found) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            sg_activeDownloads--;
+            announce(trackID);
+            processDownloadQueue();
+        });
+    });
+
+    if (sg_activeDownloads < maxConcurrent && sg_downloadQueue.count > 0) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(minDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            processDownloadQueue();
         });
     }
 }
@@ -434,6 +520,8 @@ static void processDownloadQueue(void) {
 static void keep(NSString *track, NSArray<SGKaraokeLine *> *lines) {
     NSString *clean = cleanTrackIdentifier(track);
     if (clean.length) track = clean;
+    NSArray<SGKaraokeLine *> *existing = sg_lyrics[track];
+    BOOL updated = existing && lines.count && linesDiffer(existing, lines);
     if (sg_lyrics.count >= kKeptTracks && !sg_lyrics[track]) {
         NSMutableSet<NSString *> *spared = [sg_asking mutableCopy];
         SPTPlayerState *state = playerState();
@@ -453,6 +541,11 @@ static void keep(NSString *track, NSArray<SGKaraokeLine *> *lines) {
         translate(track);
     }
     announce(track);
+    if (updated) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [NSNotificationCenter.defaultCenter postNotificationName:SGKaraokeLyricsDidUpdateOnlineNotification object:track];
+        });
+    }
 }
 
 void SGKaraokeKeepLines(NSString *track, NSArray<SGKaraokeLine *> *lines) {
@@ -495,17 +588,43 @@ static void completed(NSURLSessionTask *task, NSError *error) {
     if (lines) SGKaraokeKeepLines(track, lines);
 }
 
+static void checkOnlineForUpdatedLyrics(NSString *trackID) {
+    if (!trackID.length || SGIsDeviceOffline()) return;
+    if (sg_ownSources || SGLyricsProviderForTrack(trackID)) {
+        SGLyricsFetch(trackID, ^(SGLyricsResult *result) {
+            if (result.karaokeLines.count) {
+                if (result.provider.length) SGLyricsSetCredit(trackID, result.provider);
+                keep(trackID, result.karaokeLines);
+            }
+        });
+    } else {
+        requestFromSpotifyEx(trackID, YES, nil);
+    }
+}
+
 NSArray<SGKaraokeLine *> *SGKaraokeLinesForTrack(NSString *trackID) {
     if (!trackID) return nil;
     NSString *clean = cleanTrackIdentifier(trackID);
     if (clean.length) trackID = clean;
     NSArray<SGKaraokeLine *> *lines = sg_lyrics[trackID];
-    if (lines) return lines;
+    if (lines) {
+        if (!SGIsDeviceOffline() && ![sg_onlineUpdateChecked containsObject:trackID]) {
+            if (!sg_onlineUpdateChecked) sg_onlineUpdateChecked = [NSMutableSet set];
+            [sg_onlineUpdateChecked addObject:trackID];
+            dispatch_async(dispatch_get_main_queue(), ^{ checkOnlineForUpdatedLyrics(trackID); });
+        }
+        return lines;
+    }
     if (!sg_diskCheckedMissing) sg_diskCheckedMissing = [NSMutableSet set];
     if ([sg_diskCheckedMissing containsObject:trackID]) return nil;
     lines = loadLinesFromDisk(trackID);
     if (lines) {
         sg_lyrics[trackID] = lines;
+        if (!SGIsDeviceOffline() && ![sg_onlineUpdateChecked containsObject:trackID]) {
+            if (!sg_onlineUpdateChecked) sg_onlineUpdateChecked = [NSMutableSet set];
+            [sg_onlineUpdateChecked addObject:trackID];
+            dispatch_async(dispatch_get_main_queue(), ^{ checkOnlineForUpdatedLyrics(trackID); });
+        }
         return lines;
     }
     [sg_diskCheckedMissing addObject:trackID];
@@ -622,7 +741,15 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
         // A refused authorization is lost too: the captured one may have expired, and Spotify's next
         // spclient request brings a fresh one.
         BOOL lost = SGLyricsReplyFailed(response, error) || status == 401 || status == 403 || status == 429;
-        if (status == 429) sg_rateLimitBackoff = 12.0;
+        if (status == 429) {
+            sg_rateLimitBackoff = 12.0;
+            sg_queueState = SGDownloadQueueStateProbe;
+        } else if (status == 200 && !lost) {
+            if (sg_queueState == SGDownloadQueueStateProbe) {
+                sg_queueState = SGDownloadQueueStateCautious;
+                sg_cautiousStartTime = CACurrentMediaTime();
+            }
+        }
         dispatch_async(dispatch_get_main_queue(), ^{
             if (generation != sg_requestGeneration[trackID].unsignedIntegerValue) {
                 if (completion) completion(NO);
@@ -635,9 +762,8 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
             } else {
                 [sg_asking removeObject:trackID];
                 [sg_losses removeObjectForKey:trackID];
-                // Asked after the chain found plain text only: Spotify's replace it only when they are timed.
                 NSArray<SGKaraokeLine *> *kept = sg_lyrics[trackID];
-                if (lines.count && !(kept && SGKaraokeLinesTiming(kept) <= SGKaraokeLinesTiming(lines))) {
+                if (lines.count && (!kept || linesDiffer(kept, lines) || SGKaraokeLinesTiming(kept) <= SGKaraokeLinesTiming(lines))) {
                     SGLyricsSetCredit(trackID, provider);
                     keep(trackID, lines);
                     if (completion) completion(YES);

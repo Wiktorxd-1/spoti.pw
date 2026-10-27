@@ -81,6 +81,9 @@ NSArray<SGKaraokeLine *> *SGKaraokeLinesForTrack(NSString *trackID);   // nil un
 void SGKaraokeKeepLines(NSString *trackID, NSArray<SGKaraokeLine *> *lines);
 // Posted on the main queue when a track's lines are kept, with the track's id as the object.
 extern NSNotificationName const SGKaraokeLinesDidChangeNotification;
+extern NSNotificationName const SGKaraokeLyricsDidUpdateOnlineNotification;
+BOOL SGIsDeviceOffline(void);
+BOOL SGIsLyricsCachedOnDisk(NSString *trackID);
 void SGKaraokeRequestLyrics(NSString *trackID);
 void SGDownloadLyricsForTrack(NSString *trackID);
 NSUInteger SGKaraokeDownloadedLyricsCount(void);

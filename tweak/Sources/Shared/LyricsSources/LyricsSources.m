@@ -660,15 +660,37 @@ NSString *SGLyricsTranslationLanguage(void) {
 
 NSString *SGLyricsCreditFor(NSString *trackID) {
     setUp();
-    @synchronized (sg_credits) { return trackID ? sg_credits[trackID] : nil; }
+    if (!trackID.length) return @"Spotify";
+    NSString *clean = [trackID stringByRemovingPercentEncoding] ?: trackID;
+    if ([clean hasPrefix:@"spotify:track:"]) clean = [clean substringFromIndex:14];
+    @synchronized (sg_credits) {
+        NSString *c = sg_credits[trackID] ?: sg_credits[clean];
+        if (c.length) return c;
+    }
+    NSString *base = [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"spoti.pw/Lyrics"];
+    NSString *filePath = [[base stringByAppendingPathComponent:clean] stringByAppendingPathExtension:@"json"];
+    NSData *data = [NSData dataWithContentsOfFile:filePath];
+    if (data.length) {
+        NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+        NSString *credit = dict[@"credit"] ?: dict[@"source"] ?: dict[@"provider"];
+        if (credit.length) {
+            @synchronized (sg_credits) { sg_credits[clean] = credit; }
+            return credit;
+        }
+    }
+    return @"Spotify";
 }
 
 void SGLyricsSetCredit(NSString *trackID, NSString *name) {
     setUp();
     if (!trackID.length) return;
+    NSString *clean = [trackID stringByRemovingPercentEncoding] ?: trackID;
+    if ([clean hasPrefix:@"spotify:track:"]) clean = [clean substringFromIndex:14];
+    NSString *val = name.length ? name : @"Spotify";
     @synchronized (sg_credits) {
-        if (sg_credits.count >= kKeptTracks) [sg_credits removeAllObjects];
-        sg_credits[trackID] = name ?: @"Spotify";
+        if (sg_credits.count >= 2000) [sg_credits removeAllObjects];
+        sg_credits[trackID] = val;
+        sg_credits[clean] = val;
     }
 }
 

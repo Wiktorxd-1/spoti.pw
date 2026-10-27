@@ -288,12 +288,114 @@ BOOL SGRPlayerLyricsOpen(void) {
     return sg_open;
 }
 
+@interface SGRGlassNotificationPill : UIView
+@end
+
+@implementation SGRGlassNotificationPill {
+    UIVisualEffectView *_glass;
+    UIImageView *_icon;
+    UILabel *_label;
+}
+
+- (instancetype)initWithText:(NSString *)text {
+    if (!(self = [super initWithFrame:CGRectZero])) return nil;
+    _glass = [[UIVisualEffectView alloc] initWithEffect:SGGlassEffect()];
+    _glass.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+    _glass.layer.cornerCurve = kCACornerCurveContinuous;
+    _glass.clipsToBounds = YES;
+    [self addSubview:_glass];
+
+    _icon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"sparkles" withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:13 weight:UIImageSymbolWeightSemibold]]];
+    _icon.tintColor = UIColor.whiteColor;
+    [_glass.contentView addSubview:_icon];
+
+    _label = [UILabel new];
+    _label.text = text;
+    _label.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    _label.textColor = UIColor.whiteColor;
+    [_glass.contentView addSubview:_label];
+
+    return self;
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    _glass.frame = self.bounds;
+    _glass.layer.cornerRadius = self.bounds.size.height / 2.0;
+    _icon.frame = CGRectMake(14, (self.bounds.size.height - 16) / 2.0, 16, 16);
+    _label.frame = CGRectMake(36, 0, self.bounds.size.width - 50, self.bounds.size.height);
+}
+
+- (CGSize)sizeThatFits:(CGSize)size {
+    CGSize labelSize = [_label sizeThatFits:CGSizeMake(300, 36)];
+    return CGSizeMake(labelSize.width + 50, 36);
+}
+@end
+
+static void showUpdatedLyricsPill(UIView *host, NSString *text) {
+    if (!host) return;
+    SGRGlassNotificationPill *pill = [[SGRGlassNotificationPill alloc] initWithText:text];
+    CGSize size = [pill sizeThatFits:CGSizeZero];
+    CGFloat x = (host.bounds.size.width - size.width) / 2.0;
+    CGFloat y = host.safeAreaInsets.top > 0 ? host.safeAreaInsets.top + 12 : 24;
+    pill.frame = CGRectMake(x, y - 20, size.width, size.height);
+    pill.alpha = 0.0;
+    pill.transform = CGAffineTransformMakeScale(0.85, 0.85);
+    [host addSubview:pill];
+
+    [UIView animateWithDuration:0.45 delay:0 usingSpringWithDamping:0.75 initialSpringVelocity:0.4 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+        pill.alpha = 1.0;
+        pill.frame = CGRectMake(x, y, size.width, size.height);
+        pill.transform = CGAffineTransformIdentity;
+    } completion:^(BOOL finished) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [UIView animateWithDuration:0.35 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
+                pill.alpha = 0.0;
+                pill.transform = CGAffineTransformMakeTranslation(0, -15);
+            } completion:^(BOOL fin) {
+                [pill removeFromSuperview];
+            }];
+        });
+    }];
+}
+
 static BOOL shouldShowNoLyrics(void) {
     if (SGRPlayerLyricsAvailable()) return NO;
     NSString *track = SGKaraokePlayingTrack();
+    if (SGIsDeviceOffline() && (!track || !SGIsLyricsCachedOnDisk(track))) {
+        return YES;
+    }
     if (track && SGKaraokeLooking(track)) return NO;
     if (!sg_graceOver) return NO;
     return YES;
+}
+
+static void updateNoLyricsVisibility(SGRPlayerLyricsOverlay *overlay, BOOL animated) {
+    BOOL shouldShow = shouldShowNoLyrics();
+    if (!animated) {
+        overlay.noLyrics.hidden = !shouldShow;
+        overlay.noLyrics.alpha = shouldShow ? 1.0 : 0.0;
+        return;
+    }
+    if (shouldShow && overlay.noLyrics.hidden) {
+        overlay.noLyrics.hidden = NO;
+        overlay.noLyrics.alpha = 0.0;
+        overlay.noLyrics.transform = CGAffineTransformMakeScale(0.94, 0.94);
+        [UIView animateWithDuration:0.4 delay:0 usingSpringWithDamping:0.85 initialSpringVelocity:0.2 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+            overlay.noLyrics.alpha = 1.0;
+            overlay.noLyrics.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    } else if (!shouldShow && !overlay.noLyrics.hidden) {
+        [UIView animateWithDuration:0.25 delay:0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+            overlay.noLyrics.alpha = 0.0;
+            overlay.noLyrics.transform = CGAffineTransformMakeScale(0.94, 0.94);
+        } completion:^(BOOL finished) {
+            if (finished) {
+                overlay.noLyrics.hidden = YES;
+                overlay.noLyrics.transform = CGAffineTransformIdentity;
+            }
+        }];
+    }
 }
 
 // Puts the overlay's own views where the measurements say, without animating. The thumbnail is laid out
@@ -315,7 +417,7 @@ static void place(SGRPlayerLyricsOverlay *overlay, UIView *host, SGRLyricsLayout
     overlay.noLyrics.frame = overlay.stage.bounds;
     BOOL hasLyrics = SGRPlayerLyricsAvailable();
     overlay.lyrics.hidden = !hasLyrics;
-    overlay.noLyrics.hidden = !shouldShowNoLyrics();
+    updateNoLyricsVisibility(overlay, YES);
     overlay.lyrics.extrasEnabled = SGEnabled(SGRKeyPlayerTranslateButton);
     syncSingControl(overlay);
 }
@@ -654,7 +756,7 @@ static void setOpen(BOOL open, BOOL animated) {
         overlay.stage.transform = entering;
         BOOL hasLyrics = SGRPlayerLyricsAvailable();
         overlay.noLyrics.frame = overlay.stage.bounds;
-        overlay.noLyrics.hidden = !shouldShowNoLyrics();
+        updateNoLyricsVisibility(overlay, NO);
         overlay.lyrics.hidden = !hasLyrics;
         // Not under VoiceOver, which keeps the controls up, nor under a sheet.
         overlay.lyrics.browsingBegan = ^{
@@ -748,7 +850,7 @@ static void replace(void) {
     overlay.noLyrics.frame = overlay.stage.bounds;
     BOOL hasLyrics = SGRPlayerLyricsAvailable();
     overlay.lyrics.hidden = !hasLyrics;
-    overlay.noLyrics.hidden = !shouldShowNoLyrics();
+    updateNoLyricsVisibility(overlay, YES);
     SGRPlayerCoverList().alpha = 0;
 }
 
@@ -927,6 +1029,10 @@ static SGRPlayerLyricsWatcher *sg_watcher;
         if (!sg_open) return;
         SGRPlayerLyricsOverlay *overlay = objc_getAssociatedObject(sg_host, &kOverlayKey);
         overlay.cover.image = SGRNowPlayingArtwork(NULL, NULL);
+    }];
+    [NSNotificationCenter.defaultCenter addObserverForName:SGKaraokeLyricsDidUpdateOnlineNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+        if (!sg_open || !sg_host) return;
+        showUpdatedLyricsPill(sg_host, @"New lyrics found, refreshing..");
     }];
     SGRequireClasses(@[
         @"_TtC19NowPlaying_ViewImpl24NowPlayingViewController",
