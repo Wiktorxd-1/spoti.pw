@@ -23,6 +23,26 @@ static void changed(void) {
     [NSNotificationCenter.defaultCenter postNotificationName:SGDownloadsDidChangeNotification object:nil];
 }
 
+static void resetLyricsCachePrompt(void) {
+    NSUInteger count = SGKaraokeDownloadedLyricsCount();
+    NSString *msg = [NSString stringWithFormat:@"Delete all %lu saved lyrics from storage and rescan downloaded playlists to download all lyrics again?", (unsigned long)count];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Reset offline lyrics?"
+                                                                   message:msg
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Delete & Rescan" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+        SGKaraokeResetLyricsCache(^{
+            Class<SGDownloadsCompanion> companion = SGDownloadsCompanion();
+            if ([companion respondsToSelector:@selector(syncOfflineTracks)]) {
+                [companion syncOfflineTracks];
+            }
+            changed();
+        });
+        changed();
+    }]];
+    [SGTopController() presentViewController:alert animated:YES completion:nil];
+}
+
 // One check or slot command at a time: the rows show "Working…" and ignore taps until it answers.
 static BOOL busy;
 static void setBusy(BOOL on) {
@@ -346,12 +366,12 @@ UIViewController *SGDownloadsSettingsPage(void) {
         SGModRow *why = SGWarningRow(@"Downloads are unavailable in this build", @"Tap to see why", ^{
             say(@"Downloads", SGDownloadsUnavailableReason());
         });
-        SGModRow *offlineLyrics = symbolRow(SGStatRow(@"Offline lyrics cache", ^NSString * {
+        SGModRow *offlineLyrics = symbolRow(SGStatActionRow(@"Offline lyrics cache", @"Tap to delete cache and rescan", ^NSString * {
             NSUInteger cached = SGKaraokeDownloadedLyricsCount();
             NSUInteger queued = SGKaraokeQueuedLyricsCount();
             if (queued > 0) return [NSString stringWithFormat:@"%lu saved (%lu queued)", (unsigned long)cached, (unsigned long)queued];
             return [NSString stringWithFormat:@"%lu saved", (unsigned long)cached];
-        }), @"music.note.list", nil);
+        }, ^{ resetLyricsCachePrompt(); }), @"music.note.list", nil);
         offlineLyrics.refreshOn = SGKaraokeLinesDidChangeNotification;
         return [[SGDownloadsPage alloc] initWithTitle:@"Downloads" intro:nil sections:@[
             SGSection(nil, @[why, offlineLyrics]),
@@ -401,12 +421,12 @@ UIViewController *SGDownloadsSettingsPage(void) {
     SGModRow *send = symbolRow(SGActionRow(@"Send log", @"One package: report, events and download history", ^{ [SGDownloadsCompanion() sendLog]; }),
                                @"square.and.arrow.up", nil);
 
-    SGModRow *offlineLyrics = symbolRow(SGStatRow(@"Offline lyrics cache", ^NSString * {
+    SGModRow *offlineLyrics = symbolRow(SGStatActionRow(@"Offline lyrics cache", @"Tap to delete cache and rescan", ^NSString * {
         NSUInteger cached = SGKaraokeDownloadedLyricsCount();
         NSUInteger queued = SGKaraokeQueuedLyricsCount();
         if (queued > 0) return [NSString stringWithFormat:@"%lu saved (%lu queued)", (unsigned long)cached, (unsigned long)queued];
         return [NSString stringWithFormat:@"%lu saved", (unsigned long)cached];
-    }), @"music.note.list", nil);
+    }, ^{ resetLyricsCachePrompt(); }), @"music.note.list", nil);
     offlineLyrics.refreshOn = SGKaraokeLinesDidChangeNotification;
 
     SGModRow *scanOffline = symbolRow(SGActionRow(@"Scan downloaded playlists", @"Find and queue lyrics for previously downloaded songs", ^{

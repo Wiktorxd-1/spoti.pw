@@ -166,6 +166,7 @@ static void notifyOfflineTracksFromData(NSData *data) {
     NSUInteger length = data.length;
     const char *prefix = "spotify:track:";
     size_t prefixLen = strlen(prefix);
+    NSMutableSet *batch = [NSMutableSet set];
     for (NSUInteger i = 0; i + prefixLen <= length; i++) {
         if (memcmp(bytes + i, prefix, prefixLen) == 0) {
             NSUInteger start = i;
@@ -173,14 +174,17 @@ static void notifyOfflineTracksFromData(NSData *data) {
             while (end < length && (isalnum(bytes[end]) || bytes[end] == '_')) end++;
             if (end - start >= 30 && end - start <= 40) {
                 NSString *uri = [[NSString alloc] initWithBytes:bytes + start length:end - start encoding:NSUTF8StringEncoding];
-                if (uri.length) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:uri];
-                    });
-                }
+                if (uri.length) [batch addObject:uri];
             }
             i = end;
         }
+    }
+    if (batch.count) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            for (NSString *uri in batch) {
+                [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:uri];
+            }
+        });
     }
 }
 
@@ -1006,20 +1010,23 @@ void SAPRemoveDownloadForURI(NSString *uriString) {
 void SAPQueryOfflineItems(void) {
     NSArray *candidates = transportCandidates();
     if (!candidates.count) return;
-    id endpoint = candidates.firstObject;
-    SEL command = NSSelectorFromString(@"callSingle:method:payload:onResponse:");
-    Method method;
-    if (!signature(object_getClass(endpoint), command, 6, '@', &method)) return;
-    @try {
-        ((id (*)(id, SEL, id, id, id, id))objc_msgSend)(endpoint, command, service, @"GetItems", [NSData data], ^(NSData *response) {
-            notifyOfflineTracksFromData(response);
-        });
-    } @catch (NSException *e) {}
-    @try {
-        ((id (*)(id, SEL, id, id, id, id))objc_msgSend)(endpoint, command, service, @"GetContexts", [NSData data], ^(NSData *response) {
-            notifyOfflineTracksFromData(response);
-        });
-    } @catch (NSException *e) {}
+    for (id endpoint in candidates) {
+        SEL command = NSSelectorFromString(@"callSingle:method:payload:onResponse:");
+        Method method;
+        if (!signature(object_getClass(endpoint), command, 6, '@', &method)) continue;
+        @try {
+            ((id (*)(id, SEL, id, id, id, id))objc_msgSend)(endpoint, command, service, @"GetItems", [NSData data], ^(NSData *response) {
+                notifyOfflineTracksFromData(response);
+            });
+        } @catch (NSException *e) {}
+        @try {
+            NSMutableData *query = [SAPProtoBytes(1, SAPProtoInteger(1, 1)) mutableCopy];
+            ((id (*)(id, SEL, id, id, id, id))objc_msgSend)(endpoint, command, service, @"GetContexts", query, ^(NSData *response) {
+                notifyOfflineTracksFromData(response);
+            });
+        } @catch (NSException *e) {}
+        break;
+    }
 }
 #ifdef SAP_RUNTIME_TESTING
 id SAP14PlayerForTesting(void) { return player; }

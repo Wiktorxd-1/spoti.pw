@@ -17,6 +17,7 @@
 #import "Headers/SPTPlayer.h"
 #import <mach-o/dyld.h>
 #import <objc/runtime.h>
+#import <os/lock.h>
 
 static const NSUInteger kKeptTracks = 40;
 static const NSUInteger kSeenTracks = 200;
@@ -215,6 +216,40 @@ NSUInteger SGKaraokeDownloadedLyricsCount(void) {
 
 NSUInteger SGKaraokeQueuedLyricsCount(void) {
     return sg_downloadQueue ? sg_downloadQueue.count : 0;
+}
+
+void SGKaraokeResetLyricsCache(void (^completion)(void)) {
+    os_unfair_lock_lock(&sg_cacheDiskLock);
+    [sg_cachedTrackIDsOnDisk removeAllObjects];
+    os_unfair_lock_unlock(&sg_cacheDiskLock);
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [sg_downloadQueue removeAllObjects];
+        [sg_processedDownloads removeAllObjects];
+        [sg_lyrics removeAllObjects];
+        [sg_requested removeAllObjects];
+        [sg_asking removeAllObjects];
+        [sg_looking removeAllObjects];
+        [sg_diskCheckedMissing removeAllObjects];
+        announce(nil);
+    });
+
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSFileManager *fm = NSFileManager.defaultManager;
+        for (NSString *dir in @[lyricsCacheDirectory(), legacyLyricsCacheDirectory()]) {
+            NSArray<NSString *> *files = [fm contentsOfDirectoryAtPath:dir error:nil];
+            for (NSString *file in files) {
+                if ([file.pathExtension isEqualToString:@"json"]) {
+                    [fm removeItemAtPath:[dir stringByAppendingPathComponent:file] error:nil];
+                }
+            }
+        }
+        refreshDiskLyricsCache();
+        dispatch_async(dispatch_get_main_queue(), ^{
+            announce(nil);
+            if (completion) completion();
+        });
+    });
 }
 
 static NSDictionary *dictFromWord(SGKaraokeWord *w) {

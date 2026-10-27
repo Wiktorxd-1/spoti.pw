@@ -85,6 +85,7 @@ void SGKaraokeRequestLyrics(NSString *trackID);
 void SGDownloadLyricsForTrack(NSString *trackID);
 NSUInteger SGKaraokeDownloadedLyricsCount(void);
 NSUInteger SGKaraokeQueuedLyricsCount(void);
+void SGKaraokeResetLyricsCache(void (^completion)(void));
 // Replaces this track's source choice and refreshes its lyrics immediately; nil restores Automatic.
 void SGKaraokeSetProviderForTrack(NSString *trackID, NSString *providerKey);
 // YES while this track's own timed lyrics are still being looked up (KaraokeSource.x).
