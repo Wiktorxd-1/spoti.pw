@@ -552,8 +552,10 @@ static void startWalk(NSString *trackID, SGLyricsQuery *query) {
 // that it is not going to: a track opened for something other than what is playing is never named.
 static void whenNamed(NSString *trackID, NSTimeInterval waited) {
     SGLyricsQuery *query = queryFor(trackID);
-    if (named(query) || waited >= kNameWait) {
-        if (!named(query)) SGLog(@"lyrics: the player never named %@ in %.1fs", trackID, waited);
+    NSString *playing = SGKaraokePlayingTrack();
+    BOOL isPlayingTrack = playing && [trackID isEqualToString:playing];
+    if (named(query) || !isPlayingTrack || waited >= kNameWait) {
+        if (!named(query) && isPlayingTrack) SGLog(@"lyrics: the player never named %@ in %.1fs", trackID, waited);
         startWalk(trackID, query);
         return;
     }

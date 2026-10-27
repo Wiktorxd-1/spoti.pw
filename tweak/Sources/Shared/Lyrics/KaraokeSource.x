@@ -168,6 +168,7 @@ static NSString *legacyLyricsCacheDirectory(void) {
 static NSMutableArray<NSString *> *sg_downloadQueue;
 static NSMutableSet<NSString *> *sg_processedDownloads;
 static NSTimeInterval sg_rateLimitUntil = 0;
+static NSTimeInterval sg_spotifyRateLimitUntil = 0;
 static BOOL sg_rateLimitTimerScheduled = NO;
 static BOOL sg_queueTimerScheduled = NO;
 static NSMutableSet<NSString *> *sg_diskCheckedMissing;
@@ -276,6 +277,7 @@ void SGKaraokeResetLyricsCache(void (^completion)(void)) {
         [sg_diskCheckedMissing removeAllObjects];
         [sg_onlineUpdateChecked removeAllObjects];
         sg_rateLimitUntil = 0;
+        sg_spotifyRateLimitUntil = 0;
         sg_rateLimitTimerScheduled = NO;
         sg_queueTimerScheduled = NO;
         sg_activeDownloads = 0;
@@ -507,11 +509,11 @@ static void processDownloadQueue(void) {
         return;
     }
 
-    NSInteger maxConcurrent = 2;
-    NSTimeInterval minDelay = 0.250;
+    NSInteger maxConcurrent = 3;
+    NSTimeInterval minDelay = 0.150;
     if (sg_queueState == SGDownloadQueueStateProbe) {
         maxConcurrent = 1;
-        minDelay = 0.500;
+        minDelay = 0.400;
     }
 
     if (sg_activeDownloads >= maxConcurrent || !sg_downloadQueue.count) return;
@@ -806,8 +808,11 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
 
         dispatch_async(dispatch_get_main_queue(), ^{
             if (status == 429) {
-                sg_rateLimitUntil = CACurrentMediaTime() + retryDelay;
-                sg_queueState = SGDownloadQueueStateProbe;
+                sg_spotifyRateLimitUntil = CACurrentMediaTime() + retryDelay;
+                if (!SGLyricsEnabled()) {
+                    sg_rateLimitUntil = CACurrentMediaTime() + retryDelay;
+                    sg_queueState = SGDownloadQueueStateProbe;
+                }
             }
 
             if (generation != sg_requestGeneration[trackID].unsignedIntegerValue) {
@@ -853,17 +858,55 @@ static BOOL requestFromSpotify(NSString *trackID) {
 }
 
 static void fetchLyricsForOfflineQueue(NSString *trackID, void (^completion)(BOOL retryNeeded, BOOL found)) {
-    requestFromSpotifyEx(trackID, NO, ^(BOOL spotifyFound, NSInteger statusCode) {
-        if (spotifyFound) {
-            if (completion) completion(NO, YES);
-            return;
-        }
-        if (statusCode == 429) {
+    if (SGLyricsEnabled()) {
+        SGLyricsFetch(trackID, ^(SGLyricsResult *result) {
+            if (result.karaokeLines.count) {
+                NSString *credit = result.provider.length ? result.provider : @"Taurus";
+                SGLyricsSetCredit(trackID, credit);
+                keep(trackID, result.karaokeLines);
+                saveLinesToDisk(trackID, result.karaokeLines, credit);
+                if (completion) completion(NO, YES);
+                return;
+            }
+            if (CACurrentMediaTime() < sg_spotifyRateLimitUntil) {
+                saveLinesToDisk(trackID, @[], nil);
+                if (completion) completion(NO, NO);
+                return;
+            }
+            requestFromSpotifyEx(trackID, NO, ^(BOOL spotifyFound, NSInteger statusCode) {
+                if (spotifyFound) {
+                    if (completion) completion(NO, YES);
+                    return;
+                }
+                if (statusCode == 429) {
+                    sg_spotifyRateLimitUntil = CACurrentMediaTime() + 20.0;
+                    saveLinesToDisk(trackID, @[], nil);
+                    if (completion) completion(NO, NO);
+                    return;
+                }
+                saveLinesToDisk(trackID, @[], nil);
+                if (completion) completion(NO, NO);
+            });
+        });
+    } else {
+        if (CACurrentMediaTime() < sg_spotifyRateLimitUntil) {
             if (completion) completion(YES, NO);
             return;
         }
-        if (completion) completion(NO, NO);
-    });
+        requestFromSpotifyEx(trackID, NO, ^(BOOL spotifyFound, NSInteger statusCode) {
+            if (spotifyFound) {
+                if (completion) completion(NO, YES);
+                return;
+            }
+            if (statusCode == 429) {
+                sg_spotifyRateLimitUntil = CACurrentMediaTime() + 20.0;
+                if (completion) completion(YES, NO);
+                return;
+            }
+            saveLinesToDisk(trackID, @[], nil);
+            if (completion) completion(NO, NO);
+        });
+    }
 }
 
 void SGKaraokeAskSpotifyForTiming(NSString *trackID) {
