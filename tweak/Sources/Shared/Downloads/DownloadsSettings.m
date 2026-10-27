@@ -25,11 +25,10 @@ static void changed(void) {
 
 static void resetLyricsCachePrompt(void) {
     NSUInteger count = SGKaraokeDownloadedLyricsCount();
-    NSString *msg = [NSString stringWithFormat:@"Delete all %lu saved lyrics from storage and rescan downloaded playlists to download all lyrics again?", (unsigned long)count];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Reset offline lyrics?"
+    NSString *msg = [NSString stringWithFormat:@"%lu saved lyrics in offline storage.", (unsigned long)count];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Offline lyrics cache"
                                                                    message:msg
                                                             preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"Delete & Rescan" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
         SGKaraokeResetLyricsCache(^{
             Class<SGDownloadsCompanion> companion = SGDownloadsCompanion();
@@ -40,6 +39,11 @@ static void resetLyricsCachePrompt(void) {
         });
         changed();
     }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Delete" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+        SGKaraokeResetLyricsCache(nil);
+        changed();
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     [SGTopController() presentViewController:alert animated:YES completion:nil];
 }
 

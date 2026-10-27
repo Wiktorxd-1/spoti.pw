@@ -222,9 +222,13 @@ static void refreshDiskLyricsCache(void) {
         NSArray<NSString *> *files = [fm contentsOfDirectoryAtPath:dir error:nil];
         for (NSString *file in files) {
             if (![file.pathExtension isEqualToString:@"json"]) continue;
-            NSString *name = [file stringByDeletingPathExtension];
-            name = cleanTrackIdentifier(name);
-            if (name.length) [set addObject:name];
+            NSString *filePath = [dir stringByAppendingPathComponent:file];
+            NSDictionary *attrs = [fm attributesOfItemAtPath:filePath error:nil];
+            if ([attrs fileSize] > 25) {
+                NSString *name = [file stringByDeletingPathExtension];
+                name = cleanTrackIdentifier(name);
+                if (name.length) [set addObject:name];
+            }
         }
     }
     os_unfair_lock_lock(&sg_cacheDiskLock);
@@ -271,12 +275,8 @@ void SGKaraokeResetLyricsCache(void (^completion)(void)) {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSFileManager *fm = NSFileManager.defaultManager;
         for (NSString *dir in @[lyricsCacheDirectory(), legacyLyricsCacheDirectory()]) {
-            NSArray<NSString *> *files = [fm contentsOfDirectoryAtPath:dir error:nil];
-            for (NSString *file in files) {
-                if ([file.pathExtension isEqualToString:@"json"]) {
-                    [fm removeItemAtPath:[dir stringByAppendingPathComponent:file] error:nil];
-                }
-            }
+            [fm removeItemAtPath:dir error:nil];
+            [fm createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
         }
         refreshDiskLyricsCache();
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -394,6 +394,7 @@ static void saveLinesToDisk(NSString *trackID, NSArray<SGKaraokeLine *> *lines, 
 }
 
 static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completion)(BOOL found));
+static void fetchLyricsForOfflineQueue(NSString *trackID, void (^completion)(BOOL retryNeeded, BOOL found));
 
 static NSArray<SGKaraokeLine *> *loadLinesFromDisk(NSString *trackID) {
     NSString *clean = cleanTrackIdentifier(trackID);
@@ -500,9 +501,14 @@ static void processDownloadQueue(void) {
     sg_lastRequestTime = CACurrentMediaTime();
     announce(trackID);
 
-    requestFromSpotifyEx(trackID, YES, ^(BOOL found) {
+    fetchLyricsForOfflineQueue(trackID, ^(BOOL retryNeeded, BOOL found) {
         dispatch_async(dispatch_get_main_queue(), ^{
             sg_activeDownloads--;
+            if (retryNeeded) {
+                if (![sg_downloadQueue containsObject:trackID]) {
+                    [sg_downloadQueue insertObject:trackID atIndex:0];
+                }
+            }
             announce(trackID);
             processDownloadQueue();
         });
@@ -768,8 +774,6 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
                     keep(trackID, lines);
                     if (completion) completion(YES);
                     return;
-                } else if (force) {
-                    saveLinesToDisk(trackID, @[], nil);
                 }
                 if (completion) completion(NO);
             }
@@ -781,6 +785,29 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
 
 static BOOL requestFromSpotify(NSString *trackID) {
     return requestFromSpotifyEx(trackID, NO, nil);
+}
+
+static void fetchLyricsForOfflineQueue(NSString *trackID, void (^completion)(BOOL retryNeeded, BOOL found)) {
+    requestFromSpotifyEx(trackID, NO, ^(BOOL spotifyFound) {
+        if (spotifyFound) {
+            if (completion) completion(NO, YES);
+            return;
+        }
+        if (sg_rateLimitBackoff > 0) {
+            if (completion) completion(YES, NO);
+            return;
+        }
+        SGLyricsFetch(trackID, ^(SGLyricsResult *result) {
+            if (result.karaokeLines.count) {
+                if (result.provider.length) SGLyricsSetCredit(trackID, result.provider);
+                keep(trackID, result.karaokeLines);
+                if (completion) completion(NO, YES);
+            } else {
+                saveLinesToDisk(trackID, @[], nil);
+                if (completion) completion(NO, NO);
+            }
+        });
+    });
 }
 
 void SGKaraokeAskSpotifyForTiming(NSString *trackID) {
