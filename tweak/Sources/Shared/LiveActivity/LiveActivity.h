@@ -11,7 +11,6 @@ typedef NS_ENUM(NSInteger, SGLiveActivityView) {
     SGLiveActivityLyrics = 0,
     SGLiveActivityQueue,
     SGLiveActivityPanel,   // the control menu
-    SGLiveActivityBoth,
 };
 
 // The card's look (the page's Card section). The keys are read through SGPrefs, so the page's rows and the

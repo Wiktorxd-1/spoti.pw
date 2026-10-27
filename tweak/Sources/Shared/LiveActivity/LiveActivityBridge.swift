@@ -50,11 +50,7 @@ public final class SGLiveActivityBridge: NSObject {
             let activities = Activity<SGLyricsAttributes>.activities
             switch change {
             case .update(let id, let content):
-                if let target = activities.first(where: { $0.id == id }) {
-                    await target.update(content)
-                } else if let fallback = activities.first(where: { $0.activityState == .active || $0.activityState == .stale }) {
-                    await fallback.update(content)
-                }
+                await activities.first { $0.id == id }?.update(content)
             case .end(let ids):
                 for activity in activities where ids.contains(activity.id) {
                     await activity.end(nil, dismissalPolicy: .immediate)

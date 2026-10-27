@@ -6,7 +6,7 @@
 #import "SGLiveActivityPreview.h"
 
 static NSArray<NSString *> *viewNames(void) {
-    return @[@"Lyrics", @"Queue", @"Control menu", @"Both"];
+    return @[@"Lyrics", @"Queue", @"Control menu"];
 }
 
 static NSArray<NSString *> *colorNames(void) {
@@ -29,7 +29,6 @@ static NSArray<NSString *> *alignNames(void) {
 static NSArray<SGModSection *> *sections(SGLiveActivityPreview *preview) {
     __weak SGLiveActivityPreview *weakPreview = preview;
     SGModRow *on = SGOptionRow(@"Live Activity", nil, SGKeyLiveActivity);
-    on.defaultOn = YES;
     on.changed = ^(BOOL value) { SGSetLiveActivityEnabled(value); };
     SGModRow *view = SGChoiceRow(@"Shows", nil, SGKeyLiveActivityView, viewNames(), SGLiveActivityLyrics);
     view.chosen = ^(NSInteger index) { [weakPreview reload]; };
@@ -97,7 +96,7 @@ UIViewController *SGLiveActivitySettingsPage(void) {
 }
 
 NSString *SGLiveActivitySummary(void) {
-    if (!SGFlag(SGKeyLiveActivity, YES)) return @"Off";
+    if (!SGFlag(SGKeyLiveActivity, NO)) return @"Off";
     NSInteger index = SGInt(SGKeyLiveActivityView, SGLiveActivityLyrics);
     NSArray<NSString *> *names = viewNames();
     return index >= 0 && index < (NSInteger)names.count ? names[index] : names.firstObject;
