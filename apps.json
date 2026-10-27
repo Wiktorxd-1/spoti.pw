@@ -12,23 +12,23 @@
       "bundleIdentifier": "com.spotify.client",
       "developerName": "Spotify & spoti.pw",
       "subtitle": "Liquid Glass UI & Lyrics",
-      "version": "9.1.90.66",
-      "versionDate": "2026-10-26",
-      "versionDescription": "Spotify 9.1.90.66 with Taurus Liquid Glass UI, real-time Live Activity lyrics, Quick Sing karaoke toggle, and scrubbing haptics.",
+      "version": "9.1.90.68",
+      "versionDate": "2026-10-27",
+      "versionDescription": "Spotify 9.1.90.68 with Taurus Liquid Glass UI, real-time Live Activity lyrics, Quick Sing karaoke toggle, and scrubbing haptics.",
       "downloadURL": "https://github.com/Wiktorxd-1/spoti.pw/releases/download/v9.1.90/Taurus-0.60.5.ipa",
       "localizedDescription": "A complete Liquid Glass redesign for the Spotify iOS app. Includes Apple Music style real-time synced lyrics, Live Activity support in Dynamic Island & Lock Screen, vocal volume control (Sing), AMOLED dark mode, and seamless physical haptics.",
       "iconURL": "https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png",
       "tintColor": "1ED760",
-      "size": 131353551
+      "size": 131355407
     }
   ],
   "news": [
     {
       "appID": "com.spotify.client",
-      "title": "Taurus 9.1.90.66",
-      "identifier": "spoti-pw-9.1.90.66-release",
-      "caption": "Spotify 9.1.90.66 Support & Live Activity Lyrics",
-      "date": "2026-10-26",
+      "title": "Taurus 9.1.90.68",
+      "identifier": "spoti-pw-9.1.90.68-release",
+      "caption": "Spotify 9.1.90.68 Support & Live Activity Lyrics",
+      "date": "2026-10-27",
       "tintColor": "1ED760",
       "notify": true,
       "url": "https://github.com/Wiktorxd-1/spoti.pw"
