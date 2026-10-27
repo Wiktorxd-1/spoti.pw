@@ -640,15 +640,10 @@ void SAPInstallTrackDownloader(void) {
                 IMP original = method_getImplementation(method);
                 putHook(cls, command, method, ^id(id self, id serviceName, id methodName, id payload, id callback) {
                     rememberTransport(self, NO, NO);
-                    static dispatch_once_t onceQuery;
-                    dispatch_once(&onceQuery, ^{
-                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                            SAPQueryOfflineItems();
-                        });
-                    });
 #ifdef SAP_RUNTIME_TESTING
                     rememberNativeCall(self, serviceName, methodName);
 #endif
+                    BOOL offline=[serviceName isKindOfClass:NSString.class] && [serviceName isEqual:service];
                     if(!SAPDiagnosticsEnabled())return ((id (*)(id,SEL,id,id,id,id))original)(self,command,serviceName,methodName,payload,callback);
                     SAPTraceHookCalled(object_getClass(self),command);
                     SAPTraceRPC *trace=traceHookDepth==0?SAPTraceRPCBegin(serviceName,methodName,payload,
