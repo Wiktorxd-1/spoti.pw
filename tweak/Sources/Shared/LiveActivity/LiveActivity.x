@@ -3,6 +3,7 @@
 #import "Core/SGCore.h"
 #import "Headers/SPTPlayer.h"
 #import "Shared/Lyrics/Lyrics.h"
+#import "Shared/Downloads/Downloads.h"
 #import "LiveActivity.h"
 
 API_AVAILABLE(ios(17.0))
@@ -93,10 +94,24 @@ static NSString *lyricsLine(NSString *trackID, NSString **next) {
     NSInteger position = SGKaraokePositionMs() - SGKaraokeDelayMs();
     NSInteger index = SGKaraokeLeadLine(lines, position);
     *next = index + 1 < (NSInteger)lines.count ? SGKaraokeLineText(lines[index + 1]) : @"";
-    if (index < 0) return @"♪";
+    if (index < 0) {
+        id<SPTPlayer> player = SGKaraokePlayer();
+        SPTPlayerTrack *t = player.state.track;
+        if (t.trackTitle.length) {
+            *next = t.artistName ?: @"";
+            return t.trackTitle;
+        }
+        return @"♪";
+    }
     SGKaraokeLine *current = lines[index];
     BOOL nextFarOff = index + 1 == (NSInteger)lines.count || lines[index + 1].start - position > kBreakMs;
-    return position > current.end + kBreakMs && nextFarOff ? @"♪" : SGKaraokeLineText(current);
+    if (position > current.end + kBreakMs && nextFarOff) {
+        id<SPTPlayer> player = SGKaraokePlayer();
+        SPTPlayerTrack *t = player.state.track;
+        if (t.trackTitle.length) return t.trackTitle;
+        return @"♪";
+    }
+    return SGKaraokeLineText(current);
 }
 
 static void clearSleepTimer(void) {
@@ -124,7 +139,31 @@ static void tick(void) API_AVAILABLE(ios(17.0)) {
     id<SPTPlayer> player = SGKaraokePlayer();
     SPTPlayerState *state = player.state;
     SPTPlayerTrack *track = state.track;
-    if (!track.trackTitle.length) return;
+    BOOL downloading = SGDownloadsActive() || SGKaraokeQueuedLyricsCount() > 0;
+    if (!track.trackTitle.length) {
+        if (downloading) {
+            NSUInteger cached = SGKaraokeDownloadedLyricsCount();
+            NSUInteger queued = SGKaraokeQueuedLyricsCount();
+            NSString *title = @"Downloading Liked Songs";
+            NSString *artist = queued > 0
+                ? [NSString stringWithFormat:@"%lu saved (%lu queued)", (unsigned long)cached, (unsigned long)queued]
+                : [NSString stringWithFormat:@"%lu saved", (unsigned long)cached];
+            NSString *line = title;
+            NSString *next = artist;
+            NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithObjects:@"0", @"0", line, next,
+                @"0", title, artist, @"0", @"0", @"0", @"0", nil];
+            send([parts componentsJoinedByString:@"\n"], ^{
+                [SGLiveActivityBridge showWithView:0 paused:NO line:line nextLine:next titles:@[] artists:@[] uris:@[]
+                                                tab:0 title:title artist:artist shuffle:NO repeatMode:0
+                                           timerEnd:nil timerEndOfTrack:NO];
+            });
+            return;
+        }
+        if (SGLiveActivityBridge.isShowing) {
+            [SGLiveActivityBridge end];
+        }
+        return;
+    }
     NSString *trackID = SGKaraokePlayingTrack();
     checkSleepTimer(player, state, trackID);
 
@@ -249,6 +288,9 @@ void SGSetLiveActivityEnabled(BOOL on) {
             [center addObserverForName:SGKaraokeLinesDidChangeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
                 if (sg_timer) tick();
             }];
+            [center addObserverForName:SGDownloadsDidChangeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+                if (sg_timer) tick();
+            }];
         });
         startTimer(kTick);
         SGLog(@"live activity: on");
@@ -259,7 +301,7 @@ void SGSetLiveActivityEnabled(BOOL on) {
     if (@available(iOS 17.0, *)) {
         SGMigrateKey(SGKeyLiveActivityWas, SGKeyLiveActivity);
         SGMigrateKey(SGKeyLiveActivityViewWas, SGKeyLiveActivityView);
-        BOOL on = SGFlag(SGKeyLiveActivity, NO);
+        BOOL on = SGFlag(SGKeyLiveActivity, YES);
         dispatch_async(dispatch_get_main_queue(), ^{
             if (on) SGSetLiveActivityEnabled(YES);
             else [SGLiveActivityBridge end];

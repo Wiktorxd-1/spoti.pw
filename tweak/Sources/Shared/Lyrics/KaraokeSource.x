@@ -417,6 +417,25 @@ static BOOL linesDiffer(NSArray<SGKaraokeLine *> *a, NSArray<SGKaraokeLine *> *b
     return NO;
 }
 
+static BOOL lyricsSignificantlyDiffer(NSArray<SGKaraokeLine *> *existing, NSArray<SGKaraokeLine *> *updated) {
+    if (!existing.count || !updated.count) return NO;
+    SGKaraokeTiming oldTiming = SGKaraokeLinesTiming(existing);
+    SGKaraokeTiming newTiming = SGKaraokeLinesTiming(updated);
+    if (oldTiming == SGKaraokeTimingNone && newTiming > SGKaraokeTimingNone) return YES;
+    if (abs((int)existing.count - (int)updated.count) >= 3) return YES;
+    NSUInteger textDifferences = 0;
+    NSUInteger compareCount = MIN(existing.count, updated.count);
+    for (NSUInteger i = 0; i < compareCount; i++) {
+        NSString *t1 = [SGKaraokeLineText(existing[i]) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        NSString *t2 = [SGKaraokeLineText(updated[i]) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (![t1 isEqualToString:t2]) {
+            textDifferences++;
+        }
+    }
+    if (textDifferences >= 3 && textDifferences > (compareCount * 0.15)) return YES;
+    return NO;
+}
+
 static void saveLinesToDisk(NSString *trackID, NSArray<SGKaraokeLine *> *lines, NSString *credit) {
     NSString *clean = cleanTrackIdentifier(trackID);
     if (!clean.length) return;
@@ -579,7 +598,7 @@ static void keep(NSString *track, NSArray<SGKaraokeLine *> *lines) {
     NSString *clean = cleanTrackIdentifier(track);
     if (clean.length) track = clean;
     NSArray<SGKaraokeLine *> *existing = sg_lyrics[track];
-    BOOL updated = existing && lines.count && linesDiffer(existing, lines);
+    BOOL updated = existing && lines.count && lyricsSignificantlyDiffer(existing, lines);
     if (sg_lyrics.count >= kKeptTracks && !sg_lyrics[track]) {
         NSMutableSet<NSString *> *spared = [sg_asking mutableCopy];
         SPTPlayerState *state = playerState();

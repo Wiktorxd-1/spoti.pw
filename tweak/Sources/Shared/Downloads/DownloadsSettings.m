@@ -378,7 +378,8 @@ UIViewController *SGDownloadsSettingsPage(void) {
         }, ^{ resetLyricsCachePrompt(); }), @"music.note.list", nil);
         offlineLyrics.refreshOn = SGKaraokeLinesDidChangeNotification;
         return [[SGDownloadsPage alloc] initWithTitle:@"Downloads" intro:nil sections:@[
-            SGSection(nil, @[why, offlineLyrics]),
+            SGSection(nil, @[why]),
+            SGSection(@"[EXPERIMENTAL] Lyrics", @[offlineLyrics]),
             SGSection(@"About", @[symbolRow(SGLinkRow(@"Pixie Download Manager", @"Glongq/Vitrine-Pixie, where the downloads come from", kPixieURL), @"link", nil)]),
         ] footer:nil];
     }
@@ -441,7 +442,8 @@ UIViewController *SGDownloadsSettingsPage(void) {
         SGNotedSection(@"Current track", @[download, status, album, check, cancel], @"Tracks are saved in Spotify for offline listening."),
         SGNotedSection(@"Download compatibility", @[mode, quotas, slots, enable],
                        @"5 licenses = up to 5 devices with offline music.\n\nOnly change settings in this menu if downloads are not working."),
-        SGSection(@"Status", @[log, offlineLyrics, scanOffline]),
+        SGSection(@"Status", @[log]),
+        SGSection(@"[EXPERIMENTAL] Lyrics", @[offlineLyrics, scanOffline]),
         SGNotedSection(@"Diagnostics", @[diagnostics, send], @"Enable Diagnostics for detailed passive events."),
         SGNotedSection(@"About", @[symbolRow(SGLinkRow(@"Pixie Download Manager", @"Glongq/Vitrine-Pixie, the engine behind this page", kPixieURL), @"link", nil)],
                        @"Spotify's own download buttons on playlists, albums and menus work too. Music stays in Spotify's offline storage."),
