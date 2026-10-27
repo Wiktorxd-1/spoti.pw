@@ -140,6 +140,8 @@ NSInteger SGLyricsNumber(id value);
 void SGLyricsNoteRateLimit(NSTimeInterval wait);
 NSTimeInterval SGLyricsCurrentRateLimitUntil(void);
 NSTimeInterval SGLyricsCurrentRetryAfter(void);
+void SGLyricsRememberTrackInfo(NSString *trackID, NSString *title, NSString *artist, NSString *album, NSInteger seconds);
+void SGLyricsResolveTrackName(NSString *trackID, void (^done)(NSString *title, NSString *artist, NSString *album, NSInteger seconds));
 
 // SGTTML.m. Apple Music's TTML as timed lines, the voices already turned into alignments and each
 // line's translation and pronunciation added where the head has them; nil when the document holds no

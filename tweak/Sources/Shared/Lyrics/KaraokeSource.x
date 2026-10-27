@@ -167,6 +167,9 @@ static NSString *legacyLyricsCacheDirectory(void) {
 
 static NSMutableArray<NSString *> *sg_downloadQueue;
 static NSMutableSet<NSString *> *sg_processedDownloads;
+static NSMutableDictionary<NSString *, NSNumber *> *sg_backgroundRetryAttempts;
+static NSMutableArray<NSString *> *sg_backgroundRetryQueue;
+static BOOL sg_backgroundRetryScheduled = NO;
 static NSTimeInterval sg_rateLimitUntil = 0;
 static NSTimeInterval sg_spotifyRateLimitUntil = 0;
 static BOOL sg_rateLimitTimerScheduled = NO;
@@ -270,6 +273,9 @@ void SGKaraokeResetLyricsCache(void (^completion)(void)) {
     dispatch_async(dispatch_get_main_queue(), ^{
         [sg_downloadQueue removeAllObjects];
         [sg_processedDownloads removeAllObjects];
+        [sg_backgroundRetryAttempts removeAllObjects];
+        [sg_backgroundRetryQueue removeAllObjects];
+        sg_backgroundRetryScheduled = NO;
         [sg_lyrics removeAllObjects];
         [sg_requested removeAllObjects];
         [sg_asking removeAllObjects];
@@ -510,10 +516,10 @@ static void processDownloadQueue(void) {
     }
 
     NSInteger maxConcurrent = 3;
-    NSTimeInterval minDelay = 0.150;
+    NSTimeInterval minDelay = 0.050;
     if (sg_queueState == SGDownloadQueueStateProbe) {
         maxConcurrent = 1;
-        minDelay = 0.400;
+        minDelay = 0.250;
     }
 
     if (sg_activeDownloads >= maxConcurrent || !sg_downloadQueue.count) return;
@@ -853,6 +859,59 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
     return YES;
 }
 
+static void scheduleBackgroundRetryIfNeeded(void);
+
+static void handleNoLyricsFound(NSString *trackID, void (^completion)(BOOL retryNeeded, BOOL found)) {
+    NSString *clean = cleanTrackIdentifier(trackID);
+    if (!clean.length) {
+        if (completion) completion(NO, NO);
+        return;
+    }
+    if (!sg_backgroundRetryAttempts) sg_backgroundRetryAttempts = [NSMutableDictionary dictionary];
+    NSUInteger attempts = [sg_backgroundRetryAttempts[clean] unsignedIntegerValue];
+    if (attempts < 2) {
+        sg_backgroundRetryAttempts[clean] = @(attempts + 1);
+        if (!sg_backgroundRetryQueue) sg_backgroundRetryQueue = [NSMutableArray array];
+        if (![sg_backgroundRetryQueue containsObject:clean]) {
+            [sg_backgroundRetryQueue addObject:clean];
+        }
+        if (completion) completion(NO, NO);
+        scheduleBackgroundRetryIfNeeded();
+        return;
+    }
+    saveLinesToDisk(clean, @[], nil);
+    if (completion) completion(NO, NO);
+}
+
+static void scheduleBackgroundRetryIfNeeded(void) {
+    if (sg_backgroundRetryScheduled || !sg_backgroundRetryQueue.count) return;
+    sg_backgroundRetryScheduled = YES;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(4.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        sg_backgroundRetryScheduled = NO;
+        if (!sg_backgroundRetryQueue.count) return;
+        NSString *retryID = sg_backgroundRetryQueue.firstObject;
+        [sg_backgroundRetryQueue removeObjectAtIndex:0];
+        if (isLyricsCachedOnDisk(retryID)) {
+            scheduleBackgroundRetryIfNeeded();
+            return;
+        }
+        SGLyricsForgetTrack(retryID);
+        fetchLyricsForOfflineQueue(retryID, ^(BOOL retryNeeded, BOOL found) {
+            if (found) {
+                announce(retryID);
+            } else if (retryNeeded) {
+                [sg_backgroundRetryQueue addObject:retryID];
+            } else {
+                NSUInteger attempts = [sg_backgroundRetryAttempts[retryID] unsignedIntegerValue];
+                if (attempts >= 2) {
+                    saveLinesToDisk(retryID, @[], nil);
+                }
+            }
+            scheduleBackgroundRetryIfNeeded();
+        });
+    });
+}
+
 static BOOL requestFromSpotify(NSString *trackID) {
     return requestFromSpotifyEx(trackID, NO, nil);
 }
@@ -896,8 +955,7 @@ static void fetchLyricsForOfflineQueue(NSString *trackID, void (^completion)(BOO
                     if (completion) completion(YES, NO);
                     return;
                 }
-                saveLinesToDisk(trackID, @[], nil);
-                if (completion) completion(NO, NO);
+                handleNoLyricsFound(trackID, completion);
             });
         });
     } else {
@@ -922,8 +980,7 @@ static void fetchLyricsForOfflineQueue(NSString *trackID, void (^completion)(BOO
                 if (completion) completion(YES, NO);
                 return;
             }
-            saveLinesToDisk(trackID, @[], nil);
-            if (completion) completion(NO, NO);
+            handleNoLyricsFound(trackID, completion);
         });
     }
 }

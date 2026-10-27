@@ -290,14 +290,98 @@ BOOL SGLyricsEnabled(void) {
 
 // The player knows every track it has played by name, which is what every source but Musixmatch
 // searches by. The track is looked up by id rather than compared with the one playing now: a lyrics
+static NSMutableDictionary<NSString *, NSDictionary *> *sg_trackInfoCache;
+
+void SGLyricsRememberTrackInfo(NSString *trackID, NSString *title, NSString *artist, NSString *album, NSInteger seconds) {
+    if (!trackID.length || !title.length) return;
+    NSString *clean = [trackID stringByRemovingPercentEncoding] ?: trackID;
+    if ([clean hasPrefix:@"spotify:track:"]) clean = [clean substringFromIndex:14];
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ sg_trackInfoCache = [NSMutableDictionary dictionary]; });
+    @synchronized (sg_trackInfoCache) {
+        if (sg_trackInfoCache.count >= 2000) [sg_trackInfoCache removeAllObjects];
+        NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+        dict[@"title"] = title;
+        if (artist.length) dict[@"artist"] = artist;
+        if (album.length) dict[@"album"] = album;
+        if (seconds > 0) dict[@"seconds"] = @(seconds);
+        sg_trackInfoCache[clean] = dict;
+        sg_trackInfoCache[trackID] = dict;
+    }
+}
+
+void SGLyricsResolveTrackName(NSString *trackID, void (^done)(NSString *title, NSString *artist, NSString *album, NSInteger seconds)) {
+    if (!trackID.length) {
+        done(nil, nil, nil, 0);
+        return;
+    }
+    NSString *clean = [trackID stringByRemovingPercentEncoding] ?: trackID;
+    if ([clean hasPrefix:@"spotify:track:"]) clean = [clean substringFromIndex:14];
+
+    NSDictionary *cached = nil;
+    @synchronized (sg_trackInfoCache) {
+        cached = sg_trackInfoCache[clean] ?: sg_trackInfoCache[trackID];
+    }
+    if (cached[@"title"]) {
+        done(cached[@"title"], cached[@"artist"], cached[@"album"], [cached[@"seconds"] integerValue]);
+        return;
+    }
+
+    SPTPlayerTrack *playerTrack = SGKaraokeTrackFor(clean) ?: SGKaraokeTrackFor(trackID);
+    if (playerTrack.trackTitle.length) {
+        NSString *title = playerTrack.trackTitle;
+        NSString *artist = playerTrack.artistName;
+        NSString *album = [playerTrack.metadata[@"album_title"] isKindOfClass:NSString.class] ? playerTrack.metadata[@"album_title"] : nil;
+        NSInteger secs = [playerTrack.metadata[@"duration"] respondsToSelector:@selector(integerValue)] ? [playerTrack.metadata[@"duration"] integerValue] / 1000 : 0;
+        SGLyricsRememberTrackInfo(clean, title, artist, album, secs);
+        done(title, artist, album, secs);
+        return;
+    }
+
+    SGSpclientHeaders(^(NSDictionary<NSString *, NSString *> *headers) {
+        NSString *auth = headers[@"authorization"];
+        if (!auth.length || !clean.length) {
+            done(nil, nil, nil, 0);
+            return;
+        }
+        NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://api.spotify.com/v1/tracks/%@", clean]];
+        NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReturnCacheDataElseLoad timeoutInterval:3.0];
+        [req setValue:auth forHTTPHeaderField:@"Authorization"];
+        [req setValue:@"application/json" forHTTPHeaderField:@"Accept"];
+        [[NSURLSession.sharedSession dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            if ([data isKindOfClass:NSData.class] && data.length) {
+                NSDictionary *root = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+                if ([root isKindOfClass:NSDictionary.class]) {
+                    NSString *name = root[@"name"];
+                    NSArray *artists = root[@"artists"];
+                    NSString *artistName = [artists isKindOfClass:NSArray.class] && artists.count ? artists[0][@"name"] : nil;
+                    NSString *albumName = [root[@"album"] isKindOfClass:NSDictionary.class] ? root[@"album"][@"name"] : nil;
+                    NSInteger duration = [root[@"duration_ms"] integerValue] / 1000;
+                    if (name.length) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            SGLyricsRememberTrackInfo(clean, name, artistName, albumName, duration);
+                            done(name, artistName, albumName, duration);
+                        });
+                        return;
+                    }
+                }
+            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                done(nil, nil, nil, 0);
+            });
+        }] resume];
+    });
+}
+
 // request often lands a beat before the player moves on to its track, and comparing then left the
 // query nameless. A track the player has not reported starts with nothing, and the first source
 // that matches by id fills the rest in.
 static SGLyricsQuery *queryFor(NSString *trackID) {
     SGLyricsQuery *query = [SGLyricsQuery new];
     query.trackID = trackID;
-    // A local file is named by its own key: its tags, and the names the user gave it over them.
-    NSDictionary *local = SGLocalFileInfo(trackID);
+    NSString *clean = [trackID stringByRemovingPercentEncoding] ?: trackID;
+    if ([clean hasPrefix:@"spotify:track:"]) clean = [clean substringFromIndex:14];
+    NSDictionary *local = SGLocalFileInfo(trackID) ?: SGLocalFileInfo(clean);
     if (local) {
         query.title = local[@"title"];
         query.artist = local[@"artist"];
@@ -305,7 +389,17 @@ static SGLyricsQuery *queryFor(NSString *trackID) {
         query.seconds = [local[@"seconds"] integerValue];
         return query;
     }
-    SPTPlayerTrack *track = SGKaraokeTrackFor(trackID);
+    @synchronized (sg_trackInfoCache) {
+        NSDictionary *cached = sg_trackInfoCache[clean] ?: sg_trackInfoCache[trackID];
+        if (cached[@"title"]) {
+            query.title = cached[@"title"];
+            query.artist = cached[@"artist"];
+            query.album = cached[@"album"];
+            query.seconds = [cached[@"seconds"] integerValue];
+            return query;
+        }
+    }
+    SPTPlayerTrack *track = SGKaraokeTrackFor(clean) ?: SGKaraokeTrackFor(trackID);
     if (!track) return query;
     query.title = track.trackTitle;
     query.artist = track.artistName;
@@ -322,6 +416,9 @@ static void learnFrom(SGLyricsQuery *query, SGLyricsResult *result) {
     if (!query.artist.length && result.artist.length) query.artist = result.artist;
     if (!query.album.length && result.album.length) query.album = result.album;
     if (query.seconds <= 0 && result.seconds > 0) query.seconds = result.seconds;
+    if (query.trackID.length && query.title.length) {
+        SGLyricsRememberTrackInfo(query.trackID, query.title, query.artist, query.album, query.seconds);
+    }
 }
 
 #pragma mark - the walk
@@ -357,12 +454,18 @@ NSString *SGLyricsProviderForTrack(NSString *trackID) {
 
 void SGLyricsForgetTrack(NSString *trackID) {
     if (!trackID.length) return;
+    NSString *clean = [trackID stringByRemovingPercentEncoding] ?: trackID;
+    if ([clean hasPrefix:@"spotify:track:"]) clean = [clean substringFromIndex:14];
     dispatch_async(dispatch_get_main_queue(), ^{
         setUp();
         sg_generation[trackID] = @(sg_generation[trackID].unsignedIntegerValue + 1);
+        sg_generation[clean] = @(sg_generation[clean].unsignedIntegerValue + 1);
         [sg_kept removeObjectForKey:trackID];
+        [sg_kept removeObjectForKey:clean];
         [sg_missing removeObject:trackID];
+        [sg_missing removeObject:clean];
         [sg_waiting removeObjectForKey:trackID];
+        [sg_waiting removeObjectForKey:clean];
     });
 }
 
@@ -528,13 +631,11 @@ static void step(SGLyricsWalk *walk) {
     if (walk.generation != sg_generation[walk.query.trackID].unsignedIntegerValue) return;
     SGLyricsQuery *query = walk.query;
     SGLyricsResult *merged = walk.merged;
-    if (merged.wordTimed && merged.synced && merged.texts.count && merged.karaokeLines.count) {
+    if (merged.synced && merged.texts.count && merged.karaokeLines.count) {
         finish(walk);
         return;
     }
     if (walk.index >= walk.order.count) {
-        // A source that matches by id named the track partway down: the ones passed over ask now,
-        // in the order they came in. Once, since they cannot be passed over again with a name.
         if (walk.passedOver.count && named(query)) {
             SGLog(@"lyrics: %@ named partway as \"%@\" by \"%@\", asking %@ after all", query.trackID,
                   query.title, query.artist, [walk.passedOver componentsJoinedByString:@", "]);
@@ -565,6 +666,11 @@ static void step(SGLyricsWalk *walk) {
         }
         learnFrom(query, fresh);
         noteCredit(fresh);
+        if (walk.passedOver.count && named(query)) {
+            walk.order = [walk.passedOver arrayByAddingObjectsFromArray:[walk.order subarrayWithRange:NSMakeRange(walk.index, walk.order.count - walk.index)]];
+            walk.index = 0;
+            walk.passedOver = [NSMutableArray array];
+        }
         if (fresh.instrumental) {
             SGLog(@"lyrics: %@ is instrumental, by %@", query.trackID, provider.key);
             merged.instrumental = YES;
@@ -587,7 +693,6 @@ static void step(SGLyricsWalk *walk) {
             merged.texts = fresh.texts;
             merged.synced = fresh.synced;
             if (!merged.provider) merged.provider = fresh.provider ?: provider.name;
-            // Spotify's page names the source of its own text, which can be another than the lines'.
             merged.pageProvider = fresh.provider ?: provider.name;
         }
         step(walk);
@@ -616,13 +721,24 @@ static void whenNamed(NSString *trackID, NSTimeInterval waited) {
     SGLyricsQuery *query = queryFor(trackID);
     NSString *playing = SGKaraokePlayingTrack();
     BOOL isPlayingTrack = playing && [trackID isEqualToString:playing];
-    if (named(query) || !isPlayingTrack || waited >= kNameWait) {
-        if (!named(query) && isPlayingTrack) SGLog(@"lyrics: the player never named %@ in %.1fs", trackID, waited);
+    if (named(query)) {
         startWalk(trackID, query);
         return;
     }
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kNamePoll * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        whenNamed(trackID, waited + kNamePoll);
+    if (isPlayingTrack && waited < kNameWait) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kNamePoll * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            whenNamed(trackID, waited + kNamePoll);
+        });
+        return;
+    }
+    SGLyricsResolveTrackName(trackID, ^(NSString *title, NSString *artist, NSString *album, NSInteger seconds) {
+        if (title.length) {
+            query.title = title;
+            if (artist.length) query.artist = artist;
+            if (album.length) query.album = album;
+            if (seconds > 0) query.seconds = seconds;
+        }
+        startWalk(trackID, query);
     });
 }
 
