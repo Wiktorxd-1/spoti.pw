@@ -649,6 +649,7 @@ void SAPInstallTrackDownloader(void) {
 #ifdef SAP_RUNTIME_TESTING
                     rememberNativeCall(self, serviceName, methodName);
 #endif
+                    BOOL offline=[serviceName isKindOfClass:NSString.class] && [serviceName isEqual:service];
                     if(!SAPDiagnosticsEnabled())return ((id (*)(id,SEL,id,id,id,id))original)(self,command,serviceName,methodName,payload,callback);
                     SAPTraceHookCalled(object_getClass(self),command);
                     SAPTraceRPC *trace=traceHookDepth==0?SAPTraceRPCBegin(serviceName,methodName,payload,
