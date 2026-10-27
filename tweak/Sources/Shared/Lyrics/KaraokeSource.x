@@ -868,9 +868,19 @@ static void fetchLyricsForOfflineQueue(NSString *trackID, void (^completion)(BOO
                 if (completion) completion(NO, YES);
                 return;
             }
+            if (result.rateLimited) {
+                NSTimeInterval wait = result.retryAfter > 0 ? result.retryAfter : 15.0;
+                sg_rateLimitUntil = CACurrentMediaTime() + wait;
+                sg_queueState = SGDownloadQueueStateProbe;
+                if (completion) completion(YES, NO);
+                return;
+            }
             if (CACurrentMediaTime() < sg_spotifyRateLimitUntil) {
-                saveLinesToDisk(trackID, @[], nil);
-                if (completion) completion(NO, NO);
+                NSTimeInterval wait = sg_spotifyRateLimitUntil - CACurrentMediaTime();
+                if (wait <= 0) wait = 15.0;
+                sg_rateLimitUntil = CACurrentMediaTime() + wait;
+                sg_queueState = SGDownloadQueueStateProbe;
+                if (completion) completion(YES, NO);
                 return;
             }
             requestFromSpotifyEx(trackID, NO, ^(BOOL spotifyFound, NSInteger statusCode) {
@@ -879,9 +889,11 @@ static void fetchLyricsForOfflineQueue(NSString *trackID, void (^completion)(BOO
                     return;
                 }
                 if (statusCode == 429) {
-                    sg_spotifyRateLimitUntil = CACurrentMediaTime() + 20.0;
-                    saveLinesToDisk(trackID, @[], nil);
-                    if (completion) completion(NO, NO);
+                    NSTimeInterval wait = 15.0;
+                    sg_spotifyRateLimitUntil = CACurrentMediaTime() + wait;
+                    sg_rateLimitUntil = CACurrentMediaTime() + wait;
+                    sg_queueState = SGDownloadQueueStateProbe;
+                    if (completion) completion(YES, NO);
                     return;
                 }
                 saveLinesToDisk(trackID, @[], nil);
@@ -890,6 +902,10 @@ static void fetchLyricsForOfflineQueue(NSString *trackID, void (^completion)(BOO
         });
     } else {
         if (CACurrentMediaTime() < sg_spotifyRateLimitUntil) {
+            NSTimeInterval wait = sg_spotifyRateLimitUntil - CACurrentMediaTime();
+            if (wait <= 0) wait = 15.0;
+            sg_rateLimitUntil = CACurrentMediaTime() + wait;
+            sg_queueState = SGDownloadQueueStateProbe;
             if (completion) completion(YES, NO);
             return;
         }
@@ -899,7 +915,10 @@ static void fetchLyricsForOfflineQueue(NSString *trackID, void (^completion)(BOO
                 return;
             }
             if (statusCode == 429) {
-                sg_spotifyRateLimitUntil = CACurrentMediaTime() + 20.0;
+                NSTimeInterval wait = 15.0;
+                sg_spotifyRateLimitUntil = CACurrentMediaTime() + wait;
+                sg_rateLimitUntil = CACurrentMediaTime() + wait;
+                sg_queueState = SGDownloadQueueStateProbe;
                 if (completion) completion(YES, NO);
                 return;
             }

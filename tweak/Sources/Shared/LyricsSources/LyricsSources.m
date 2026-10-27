@@ -44,6 +44,26 @@ static NSString *const kTrackProvidersKey = @"spotifyglass.lyrics.trackProviders
 // Every request any source has lost to the network or to a server too busy to answer, counted so a
 // walk can tell "no source has lyrics" from "a source could not say". Only the first is kept.
 static _Atomic NSUInteger sg_failures;
+static NSTimeInterval sg_rateLimitUntilTime = 0;
+static NSTimeInterval sg_rateLimitRetryAfter = 0;
+
+void SGLyricsNoteRateLimit(NSTimeInterval wait) {
+    if (wait <= 0) wait = 15.0;
+    if (wait > 120.0) wait = 120.0;
+    NSTimeInterval until = CACurrentMediaTime() + wait;
+    if (until > sg_rateLimitUntilTime) {
+        sg_rateLimitUntilTime = until;
+        sg_rateLimitRetryAfter = wait;
+    }
+}
+
+NSTimeInterval SGLyricsCurrentRateLimitUntil(void) {
+    return sg_rateLimitUntilTime;
+}
+
+NSTimeInterval SGLyricsCurrentRetryAfter(void) {
+    return sg_rateLimitRetryAfter > 0 ? sg_rateLimitRetryAfter : 15.0;
+}
 
 BOOL SGLyricsReplyFailed(NSURLResponse *response, NSError *error) {
     NSInteger status = [response isKindOfClass:NSHTTPURLResponse.class] ? ((NSHTTPURLResponse *)response).statusCode : 0;
@@ -51,6 +71,15 @@ BOOL SGLyricsReplyFailed(NSURLResponse *response, NSError *error) {
 }
 
 void SGLyricsNoteReply(NSURLResponse *response, NSError *error) {
+    if ([response isKindOfClass:NSHTTPURLResponse.class]) {
+        NSInteger status = ((NSHTTPURLResponse *)response).statusCode;
+        if (status == 429) {
+            NSString *retryHeader = ((NSHTTPURLResponse *)response).allHeaderFields[@"Retry-After"]
+                ?: ((NSHTTPURLResponse *)response).allHeaderFields[@"retry-after"];
+            NSTimeInterval wait = [retryHeader doubleValue] > 0 ? [retryHeader doubleValue] : 15.0;
+            SGLyricsNoteRateLimit(wait);
+        }
+    }
     if (SGLyricsReplyFailed(response, error)) atomic_fetch_add(&sg_failures, 1);
 }
 
@@ -83,15 +112,19 @@ static void sendForReplyWithRetry(NSURLRequest *request, NSUInteger retries, voi
     [[NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         NSHTTPURLResponse *reply = [response isKindOfClass:NSHTTPURLResponse.class] ? (NSHTTPURLResponse *)response : nil;
         SGLyricsNoteReply(response, error);
-        if (reply.statusCode == 429 && retries > 0) {
-            NSString *retryHeader = reply.allHeaderFields[@"Retry-After"];
-            NSTimeInterval wait = [retryHeader doubleValue] > 0 ? [retryHeader doubleValue] : 5.0;
-            if (wait > 60) wait = 60;
-            SGLog(@"lyrics: rate limit on %@, waiting %.1fs to retry (%lu left)", url.host, wait, (unsigned long)retries);
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(wait * NSEC_PER_SEC)), dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
-                sendForReplyWithRetry(request, retries - 1, done);
-            });
-            return;
+        if (reply.statusCode == 429) {
+            NSString *retryHeader = reply.allHeaderFields[@"Retry-After"] ?: reply.allHeaderFields[@"retry-after"];
+            NSTimeInterval wait = [retryHeader doubleValue] > 0 ? [retryHeader doubleValue] : 15.0;
+            if (wait < 5.0) wait = 15.0;
+            if (wait > 120.0) wait = 120.0;
+            SGLyricsNoteRateLimit(wait);
+            if (retries > 0) {
+                SGLog(@"lyrics: rate limit on %@, waiting %.1fs to retry (%lu left)", url.host, wait, (unsigned long)retries);
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(wait * NSEC_PER_SEC)), dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+                    sendForReplyWithRetry(request, retries - 1, done);
+                });
+                return;
+            }
         }
         if (error || reply.statusCode >= 400) SGLog(@"lyrics: %@ answered %ld, error %@", url.host, (long)reply.statusCode, error);
         dispatch_async(dispatch_get_main_queue(), ^{ done(data, reply); });
@@ -436,6 +469,7 @@ void SGLyricsOpenCreditLinks(NSArray<SGLyricsLink *> *links, UIView *from) {
 @property (nonatomic, strong) NSMutableArray<NSString *> *passedOver;
 // sg_failures when the walk started. Another walk's failure counts too, which at worst asks again.
 @property (nonatomic) NSUInteger failuresAtStart;
+@property (nonatomic) NSTimeInterval rateLimitRecordedAtStart;
 @end
 
 @implementation SGLyricsWalk
@@ -448,6 +482,20 @@ static void finish(SGLyricsWalk *walk) {
     SGLyricsQuery *query = walk.query;
     SGLyricsResult *merged = walk.merged;
     NSString *trackID = query.trackID;
+    if (SGLyricsCurrentRateLimitUntil() > walk.rateLimitRecordedAtStart) {
+        merged.rateLimited = YES;
+        merged.retryAfter = MAX(merged.retryAfter, SGLyricsCurrentRetryAfter());
+    }
+    if (merged.karaokeLines.count && !merged.texts.count) {
+        NSArray<NSNumber *> *starts = nil;
+        NSArray<NSString *> *texts = nil;
+        SGLyricsPageLines(merged.karaokeLines, &starts, &texts);
+        merged.starts = starts;
+        merged.texts = texts;
+        if (SGKaraokeLinesTiming(merged.karaokeLines) != SGKaraokeTimingNone) {
+            merged.synced = YES;
+        }
+    }
     SGLyricsResult *lyrics = merged.karaokeLines.count || merged.texts.count ? merged : nil;
     // A walk that ends with nothing is only an answer when every source got to search. One that passed a
     // source over for want of a name asked it nothing, and keeping that as "no lyrics" would stick to the
@@ -455,7 +503,7 @@ static void finish(SGLyricsWalk *walk) {
     // for the rest of the session. The same goes for a walk during which a request failed: a busy
     // server's 503 read as "no lyrics" hid a track's lyrics until Spotify was restarted.
     BOOL everyoneAsked = !walk.passedOver.count;
-    BOOL failed = atomic_load(&sg_failures) != walk.failuresAtStart;
+    BOOL failed = (atomic_load(&sg_failures) != walk.failuresAtStart) || merged.rateLimited;
     if (lyrics || (everyoneAsked && !failed) || merged.instrumental) {
         if (sg_kept.count >= kKeptTracks) [sg_kept removeAllObjects];
         sg_kept[trackID] = lyrics ?: NSNull.null;
@@ -467,21 +515,20 @@ static void finish(SGLyricsWalk *walk) {
           ? [NSString stringWithFormat:@"%lu %@ lines from %@, %lu page lines",
              (unsigned long)lyrics.karaokeLines.count, timingName(lyrics.karaokeLines),
              lyrics.provider, (unsigned long)lyrics.texts.count]
-          : everyoneAsked && failed ? @"nothing, a request failed on the way; not kept, so the next request asks again"
+          : everyoneAsked && failed ? (merged.rateLimited ? @"rate limit encountered; not kept" : @"nothing, a request failed on the way; not kept, so the next request asks again")
           : everyoneAsked ? @"nothing"
           : [NSString stringWithFormat:@"nothing, %@ never knowing its name; not kept, so the next request asks again",
              [walk.passedOver componentsJoinedByString:@", "]]);
     NSArray *waiting = sg_waiting[trackID];
     [sg_waiting removeObjectForKey:trackID];
-    for (void (^done)(SGLyricsResult *) in waiting) done(lyrics);
+    for (void (^done)(SGLyricsResult *) in waiting) done(lyrics ?: (merged.rateLimited ? merged : nil));
 }
 
 static void step(SGLyricsWalk *walk) {
     if (walk.generation != sg_generation[walk.query.trackID].unsignedIntegerValue) return;
     SGLyricsQuery *query = walk.query;
     SGLyricsResult *merged = walk.merged;
-    // A source higher in the order has answered with timed lyrics: that is the answer.
-    if (merged.synced && merged.texts.count && merged.karaokeLines.count) {
+    if (merged.wordTimed && merged.synced && merged.texts.count && merged.karaokeLines.count) {
         finish(walk);
         return;
     }
@@ -501,13 +548,21 @@ static void step(SGLyricsWalk *walk) {
         return;
     }
     SGLyricsProvider *provider = SGLyricsProviderFor(walk.order[walk.index++]);
-    if (provider.needsName && !named(query)) {
+    BOOL needsName = provider.needsName;
+    if ([provider.key isEqualToString:SGImportedLRCKey] && SGImportedLRCLinkedTo(query.trackID)) {
+        needsName = NO;
+    }
+    if (needsName && !named(query)) {
         [walk.passedOver addObject:provider.key];
         step(walk);
         return;
     }
     provider.ask(query, ^(SGLyricsResult *fresh) {
         if (walk.generation != sg_generation[query.trackID].unsignedIntegerValue) return;
+        if (fresh.rateLimited) {
+            merged.rateLimited = YES;
+            merged.retryAfter = MAX(merged.retryAfter, fresh.retryAfter > 0 ? fresh.retryAfter : 15.0);
+        }
         learnFrom(query, fresh);
         noteCredit(fresh);
         if (fresh.instrumental) {
@@ -518,8 +573,14 @@ static void step(SGLyricsWalk *walk) {
         }
         if (betterLines(merged, fresh)) {
             merged.karaokeLines = fresh.karaokeLines;
-            merged.wordTimed = fresh.wordTimed;
+            merged.wordTimed = fresh.wordTimed || (SGKaraokeLinesTiming(fresh.karaokeLines) == SGKaraokeTimingWords);
             merged.provider = fresh.provider ?: provider.name;
+            if (fresh.texts.count) {
+                merged.starts = fresh.starts;
+                merged.texts = fresh.texts;
+                merged.synced = fresh.synced;
+                merged.pageProvider = fresh.provider ?: provider.name;
+            }
         }
         if (betterTexts(merged, fresh)) {
             merged.starts = fresh.starts;
@@ -545,6 +606,7 @@ static void startWalk(NSString *trackID, SGLyricsQuery *query) {
     walk.merged = [SGLyricsResult new];
     walk.passedOver = [NSMutableArray array];
     walk.failuresAtStart = atomic_load(&sg_failures);
+    walk.rateLimitRecordedAtStart = sg_rateLimitUntilTime;
     step(walk);
 }
 
