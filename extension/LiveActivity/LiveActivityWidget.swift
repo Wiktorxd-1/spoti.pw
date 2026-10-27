@@ -55,7 +55,9 @@ struct SGLyricsLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.bottom) {
                     Group {
-                        if context.state.view == .panel {
+                        if context.state.view == .both && !context.state.line.isEmpty && context.state.line != "♪" {
+                            ContentView(state: context.state, upNext: 3)
+                        } else if context.state.view == .panel || context.state.view == .both {
                             Summary(state: context.state)
                         } else {
                             ContentView(state: context.state, upNext: 3)
@@ -95,6 +97,42 @@ private struct ContentView: View {
         case .lyrics: LyricsView(state: state)
         case .queue: QueueView(state: state, upNext: upNext)
         case .panel: PanelView(state: state)
+        case .both: BothView(state: state)
+        }
+    }
+}
+
+private struct BothView: View {
+    let state: State
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if !state.line.isEmpty && state.line != "♪" {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(state.line)
+                        .font(.headline.weight(.bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .direction(of: state.line)
+                    if !state.nextLine.isEmpty {
+                        Text(state.nextLine)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.45))
+                            .lineLimit(1)
+                            .direction(of: state.nextLine)
+                    }
+                }
+            } else {
+                HStack(spacing: 6) {
+                    Text(state.title)
+                        .font(.subheadline.weight(.semibold))
+                    Text(state.artist)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+                .lineLimit(1)
+            }
+            ControlsPage(state: state)
         }
     }
 }

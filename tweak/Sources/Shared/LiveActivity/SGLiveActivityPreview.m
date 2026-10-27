@@ -45,7 +45,8 @@ typedef NS_ENUM(NSInteger, Tab) { TabControls, TabQueue, TabTimer, TabCount };
 static NSInteger stepsIn(NSInteger view) {
     switch (view) {
         case SGLiveActivityLyrics: return kLineCount + 1;   // the lines, then a track with no lyrics
-        case SGLiveActivityPanel: return TabCount;
+        case SGLiveActivityPanel:
+        case SGLiveActivityBoth: return TabCount;
         default: return 1;
     }
 }
@@ -283,7 +284,7 @@ static UIView *panelView(Look look, NSInteger tab) {
 
 // FamilyView: the cover beside what the view shows, the bar under both; the control menu without the cover.
 static UIView *card(Look look, NSInteger step) {
-    BOOL panel = look.view == SGLiveActivityPanel;
+    BOOL panel = look.view == SGLiveActivityPanel || look.view == SGLiveActivityBoth;
     UIView *content = look.view == SGLiveActivityLyrics ? lyricsView(look, step) : panel ? panelView(look, step) : queueView();
     NSMutableArray<UIView *> *top = [NSMutableArray array];
     if (look.artwork && !panel) [top addObject:cover(52)];
@@ -419,7 +420,7 @@ static NSString *stepName(NSInteger view, NSInteger step) {
 
 - (void)reload {
     NSInteger view = SGInt(SGKeyLiveActivityView, SGLiveActivityLyrics);
-    if (view < SGLiveActivityLyrics || view > SGLiveActivityPanel) view = SGLiveActivityLyrics;
+    if (view < SGLiveActivityLyrics || view > SGLiveActivityBoth) view = SGLiveActivityLyrics;
     if (view != _view) {
         _view = view;
         _step = 0;

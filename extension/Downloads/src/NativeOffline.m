@@ -343,6 +343,13 @@ void SAPInstallNativeOffline(void) {
                     dispatch_async(dispatch_get_main_queue(), ^{
                         [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:entityUri];
                     });
+                } else {
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        SAPQueryOfflineItems();
+                    });
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        SAPQueryOfflineItems();
+                    });
                 }
                 SAPTraceWithOperation(trace,^{originalMakeEntity(receiver,entitySelector,url,trackURLs);});
                 SAP_TRACE("native_entity","handler_returned",trace,@{@"download_completion_confirmed":@NO});
@@ -363,6 +370,13 @@ void SAPInstallNativeOffline(void) {
                 if ([entityUri2 containsString:@"spotify:track:"]) {
                     dispatch_async(dispatch_get_main_queue(), ^{
                         [NSNotificationCenter.defaultCenter postNotificationName:@"SGDownloadTrackRequestedNotification" object:entityUri2];
+                    });
+                } else {
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        SAPQueryOfflineItems();
+                    });
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        SAPQueryOfflineItems();
                     });
                 }
                 SAPTraceWithOperation(trace,^{originalMakeEntityOnly(receiver,entityOnly,url);});

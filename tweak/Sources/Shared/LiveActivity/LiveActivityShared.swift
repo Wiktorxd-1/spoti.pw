@@ -6,7 +6,7 @@ import Foundation
 struct SGLyricsAttributes: ActivityAttributes {
     // Which of the three the activity shows, SGLiveActivityView's values.
     enum View: Int, Codable, Hashable {
-        case lyrics, queue, panel
+        case lyrics, queue, panel, both
     }
 
     // The control menu's tabs.
