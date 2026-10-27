@@ -384,7 +384,6 @@ UIViewController *SGDownloadsSettingsPage(void) {
     }
     Class<SGDownloadsCompanion> companion = SGDownloadsCompanion();
     SGSetEnabled(SGKeyDownloadsDiagnostics, [companion diagnosticsEnabled]);
-    if ([companion respondsToSelector:@selector(syncOfflineTracks)]) [companion syncOfflineTracks];
 
     SGModRow *download = symbolRow(SGActionRow(@"Download current track", @"The song playing right now", ^{
         [SGDownloadsCompanion() downloadTrack];
@@ -433,7 +432,7 @@ UIViewController *SGDownloadsSettingsPage(void) {
     }, ^{ resetLyricsCachePrompt(); }), @"music.note.list", nil);
     offlineLyrics.refreshOn = SGKaraokeLinesDidChangeNotification;
 
-    SGModRow *scanOffline = symbolRow(SGActionRow(@"Scan downloaded playlists", @"Find and queue lyrics for previously downloaded songs", ^{
+    SGModRow *scanOffline = symbolRow(SGActionRow(@"Scan and download lyrics", @"Find and queue lyrics for previously downloaded songs", ^{
         if ([companion respondsToSelector:@selector(syncOfflineTracks)]) [companion syncOfflineTracks];
         changed();
     }), @"arrow.triangle.2.circlepath", nil);

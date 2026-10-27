@@ -169,6 +169,7 @@ static NSMutableArray<NSString *> *sg_downloadQueue;
 static NSMutableSet<NSString *> *sg_processedDownloads;
 static NSTimeInterval sg_rateLimitUntil = 0;
 static BOOL sg_rateLimitTimerScheduled = NO;
+static BOOL sg_queueTimerScheduled = NO;
 static NSMutableSet<NSString *> *sg_diskCheckedMissing;
 static NSMutableSet<NSString *> *sg_cachedTrackIDsOnDisk;
 static os_unfair_lock sg_cacheDiskLock = OS_UNFAIR_LOCK_INIT;
@@ -276,6 +277,7 @@ void SGKaraokeResetLyricsCache(void (^completion)(void)) {
         [sg_onlineUpdateChecked removeAllObjects];
         sg_rateLimitUntil = 0;
         sg_rateLimitTimerScheduled = NO;
+        sg_queueTimerScheduled = NO;
         sg_activeDownloads = 0;
         sg_queueState = SGDownloadQueueStateNormal;
         announce(nil);
@@ -505,20 +507,24 @@ static void processDownloadQueue(void) {
         return;
     }
 
-    NSInteger maxConcurrent = 2;
-    NSTimeInterval minDelay = 0.350;
+    NSInteger maxConcurrent = 3;
+    NSTimeInterval minDelay = 0.120;
     if (sg_queueState == SGDownloadQueueStateProbe) {
         maxConcurrent = 1;
-        minDelay = 0.500;
+        minDelay = 0.350;
     }
 
     if (sg_activeDownloads >= maxConcurrent || !sg_downloadQueue.count) return;
 
     NSTimeInterval elapsed = now - sg_lastRequestTime;
     if (elapsed < minDelay) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((minDelay - elapsed) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            processDownloadQueue();
-        });
+        if (!sg_queueTimerScheduled) {
+            sg_queueTimerScheduled = YES;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((minDelay - elapsed) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                sg_queueTimerScheduled = NO;
+                processDownloadQueue();
+            });
+        }
         return;
     }
 
@@ -537,6 +543,7 @@ static void processDownloadQueue(void) {
     fetchLyricsForOfflineQueue(trackID, ^(BOOL retryNeeded, BOOL found) {
         dispatch_async(dispatch_get_main_queue(), ^{
             sg_activeDownloads--;
+            if (sg_activeDownloads < 0) sg_activeDownloads = 0;
             if (retryNeeded) {
                 if (![sg_downloadQueue containsObject:trackID]) {
                     [sg_downloadQueue insertObject:trackID atIndex:0];
@@ -548,9 +555,13 @@ static void processDownloadQueue(void) {
     });
 
     if (sg_activeDownloads < maxConcurrent && sg_downloadQueue.count > 0) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(minDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            processDownloadQueue();
-        });
+        if (!sg_queueTimerScheduled) {
+            sg_queueTimerScheduled = YES;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(minDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                sg_queueTimerScheduled = NO;
+                processDownloadQueue();
+            });
+        }
     }
 }
 
@@ -755,6 +766,7 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
     NSUInteger generation = sg_requestGeneration[trackID].unsignedIntegerValue;
     NSString *address = [NSString stringWithFormat:@"https://spclient.wg.spotify.com/color-lyrics/v2/track/%@?format=json&vocalRemoval=false&market=from_token", trackID];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:address]];
+    request.timeoutInterval = 6.0;
     [headers enumerateKeysAndObjectsUsingBlock:^(NSString *name, NSString *value, BOOL *stop) {
         [request setValue:value forHTTPHeaderField:name];
     }];
@@ -778,27 +790,30 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
               (long)status, (unsigned long)lines.count,
               SGKaraokeLinesTiming(lines) == SGKaraokeTimingNone ? @"untimed" : @"line timed", error);
         
+        NSTimeInterval retryDelay = 4.0;
         if (status == 429) {
-            NSTimeInterval retryAfter = 15.0;
             if ([response isKindOfClass:NSHTTPURLResponse.class]) {
-                NSString *header = ((NSHTTPURLResponse *)response).allHeaderFields[@"Retry-After"];
+                NSDictionary *fields = ((NSHTTPURLResponse *)response).allHeaderFields;
+                NSString *header = fields[@"Retry-After"] ?: fields[@"retry-after"] ?: fields[@"Retry-after"];
                 if (header.length) {
                     NSTimeInterval val = [header doubleValue];
-                    if (val > 0) retryAfter = val;
+                    if (val > 0 && val < 60) retryDelay = val;
                 }
-            }
-            NSTimeInterval now = CACurrentMediaTime();
-            sg_rateLimitUntil = MAX(sg_rateLimitUntil, now + retryAfter);
-            sg_queueState = SGDownloadQueueStateProbe;
-        } else if (status == 200 || status == 404) {
-            if (sg_queueState == SGDownloadQueueStateProbe) {
-                sg_queueState = SGDownloadQueueStateNormal;
             }
         }
 
         BOOL lost = (status != 404 && status != 429) && (SGLyricsReplyFailed(response, error) || status == 401 || status == 403);
 
         dispatch_async(dispatch_get_main_queue(), ^{
+            if (status == 429) {
+                sg_rateLimitUntil = CACurrentMediaTime() + retryDelay;
+                sg_queueState = SGDownloadQueueStateProbe;
+            } else if (status == 200 || status == 404) {
+                if (sg_queueState == SGDownloadQueueStateProbe) {
+                    sg_queueState = SGDownloadQueueStateNormal;
+                }
+            }
+
             if (generation != sg_requestGeneration[trackID].unsignedIntegerValue) {
                 if (completion) completion(NO, status);
                 return;
