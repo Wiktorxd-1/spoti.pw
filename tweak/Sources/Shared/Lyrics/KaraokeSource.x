@@ -507,11 +507,11 @@ static void processDownloadQueue(void) {
         return;
     }
 
-    NSInteger maxConcurrent = 3;
-    NSTimeInterval minDelay = 0.120;
+    NSInteger maxConcurrent = 2;
+    NSTimeInterval minDelay = 0.250;
     if (sg_queueState == SGDownloadQueueStateProbe) {
         maxConcurrent = 1;
-        minDelay = 0.350;
+        minDelay = 0.500;
     }
 
     if (sg_activeDownloads >= maxConcurrent || !sg_downloadQueue.count) return;
@@ -790,14 +790,14 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
               (long)status, (unsigned long)lines.count,
               SGKaraokeLinesTiming(lines) == SGKaraokeTimingNone ? @"untimed" : @"line timed", error);
         
-        NSTimeInterval retryDelay = 4.0;
+        NSTimeInterval retryDelay = 20.0;
         if (status == 429) {
             if ([response isKindOfClass:NSHTTPURLResponse.class]) {
                 NSDictionary *fields = ((NSHTTPURLResponse *)response).allHeaderFields;
                 NSString *header = fields[@"Retry-After"] ?: fields[@"retry-after"] ?: fields[@"Retry-after"];
                 if (header.length) {
                     NSTimeInterval val = [header doubleValue];
-                    if (val > 0 && val < 60) retryDelay = val;
+                    if (val > 0 && val < 120) retryDelay = val;
                 }
             }
         }
@@ -808,10 +808,6 @@ static BOOL requestFromSpotifyEx(NSString *trackID, BOOL force, void (^completio
             if (status == 429) {
                 sg_rateLimitUntil = CACurrentMediaTime() + retryDelay;
                 sg_queueState = SGDownloadQueueStateProbe;
-            } else if (status == 200 || status == 404) {
-                if (sg_queueState == SGDownloadQueueStateProbe) {
-                    sg_queueState = SGDownloadQueueStateNormal;
-                }
             }
 
             if (generation != sg_requestGeneration[trackID].unsignedIntegerValue) {

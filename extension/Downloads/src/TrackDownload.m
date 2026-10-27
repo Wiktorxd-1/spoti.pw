@@ -649,23 +649,6 @@ void SAPInstallTrackDownloader(void) {
 #ifdef SAP_RUNTIME_TESTING
                     rememberNativeCall(self, serviceName, methodName);
 #endif
-                    BOOL offline=[serviceName isKindOfClass:NSString.class] && [serviceName isEqual:service];
-                    if (offline) {
-                        notifyOfflineTracksFromData(payload);
-                        if ([commandName hasPrefix:@"callSingle:"]) {
-                            void (^origCb)(NSData *) = callback;
-                            callback = ^(NSData *data) {
-                                notifyOfflineTracksFromData(data);
-                                if (origCb) origCb(data);
-                            };
-                        } else {
-                            BOOL (^origCb)(NSData *) = callback;
-                            callback = ^BOOL(NSData *data) {
-                                notifyOfflineTracksFromData(data);
-                                return origCb ? origCb(data) : YES;
-                            };
-                        }
-                    }
                     if(!SAPDiagnosticsEnabled())return ((id (*)(id,SEL,id,id,id,id))original)(self,command,serviceName,methodName,payload,callback);
                     SAPTraceHookCalled(object_getClass(self),command);
                     SAPTraceRPC *trace=traceHookDepth==0?SAPTraceRPCBegin(serviceName,methodName,payload,
