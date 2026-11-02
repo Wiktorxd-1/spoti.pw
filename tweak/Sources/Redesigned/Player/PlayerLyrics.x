@@ -32,6 +32,7 @@
 #import "Settings/SGPageStyle.h"
 #import "Shared/Sing/SGSingController.h"
 #import "Shared/Lyrics/Lyrics.h"
+#import "Shared/LyricsSources/LyricsSources.h"
 #import "Shared/LocalFiles/LocalFiles.h"
 #import "Player.h"
 
@@ -49,7 +50,7 @@ static const NSTimeInterval kLyricsIn = 0.3, kLyricsInDelay = 0.12, kLyricsOut =
 // A track that changes while the lines are up has this long to bring its own before they are put away. A
 // look for them still running then is waited out, since a local file's sources are asked one after another,
 // up to 6 s each, with a Musixmatch token fetched first the first time.
-static const NSTimeInterval kLyricsGrace = 6;
+static const NSTimeInterval kLyricsGrace = 1.2;
 // Below this the player has not laid out yet and nothing can be measured from it.
 static const CGFloat kLivingHeight = 200;
 // The lines on their own: the controls under them fade after this long without a touch.
@@ -366,9 +367,12 @@ static BOOL shouldShowNoLyrics(void) {
     if (SGIsDeviceOffline() && (!track || !SGIsLyricsCachedOnDisk(track))) {
         return YES;
     }
+    if (track && !SGLyricsMayHave(track) && !SGKaraokeLooking(track)) {
+        return YES;
+    }
     if (track && SGKaraokeLooking(track)) return NO;
-    if (!sg_graceOver) return NO;
-    return YES;
+    if (sg_graceOver) return YES;
+    return !track || !SGKaraokeLooking(track);
 }
 
 static void updateNoLyricsVisibility(SGRPlayerLyricsOverlay *overlay, BOOL animated) {
@@ -949,6 +953,11 @@ static void replace(void) {
 // Lines kept for the track playing, or the look for them over with none. The glyph is told only when they
 // are here, since SGRPlayerLyricsChanged sets the animated artwork's blur each time.
 - (void)linesKept:(NSNotification *)note {
+    NSString *track = [note.object isKindOfClass:NSString.class] ? note.object : SGKaraokePlayingTrack();
+    if (!SGRPlayerLyricsAvailable() && (!track || !SGKaraokeLooking(track))) {
+        _graceOver = YES;
+        sg_graceOver = YES;
+    }
     SGRPlayerLyricsChanged();
     replace();
 }
@@ -971,8 +980,9 @@ static void replace(void) {
     NSString *track = SGURIString(state.track.URI);
     if (!track || [track isEqualToString:_track]) return;
     _track = track;
-    _graceOver = NO;
-    sg_graceOver = NO;
+    BOOL knownMissing = !SGLyricsMayHave(track) && !SGKaraokeLooking(track);
+    _graceOver = knownMissing;
+    sg_graceOver = knownMissing;
     if (sg_host) {
         SGRPlayerLyricsOverlay *overlay = objc_getAssociatedObject(sg_host, &kOverlayKey);
         overlay.noLyrics.hidden = YES;

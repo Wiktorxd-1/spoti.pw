@@ -2,6 +2,7 @@
 #import "Settings/SGModPage.h"
 #import "Settings/SGPageStyle.h"
 #import "Pages.h"
+#import "AnimatedBoot/AnimatedBoot.h"
 #import "Shared/AlphaIndex/AlphaIndex.h"
 #import "Shared/ArtistBlock/ArtistBlock.h"
 #import "Shared/Concerts/Concerts.h"
@@ -106,6 +107,8 @@ UIViewController *SGAppearanceSettingsPage(void) {
         }
         [rows addObjectsFromArray:SGAppFontRows()];
     }
+    SGModRow *bootRow = SGSwitchRow(@"Animated Boot Screen", @"Plays a fluid animation when opening Spotify.", SGKeyAnimatedSplash, YES, nil);
+    [rows addObject:SGWithSymbol(bootRow, @"bolt.fill")];
     [rows addObject:sidebarBadgeTextRow()];
     SGModSection *section = SGNotedSection(nil, rows, @"Some changes apply after you restart Spotify.");
     return [[SGModPage alloc] initWithTitle:@"Appearance" intro:nil sections:@[section] footer:nil];

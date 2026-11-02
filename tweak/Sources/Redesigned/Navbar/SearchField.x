@@ -1,5 +1,6 @@
 #import "Core/SGCore.h"
 #import "Diagnostics/Diagnostics.h"
+#import "Shared/Navigation/Links.h"
 
 @interface UIView (SGEncoreIcon)
 - (void)setForegroundColor:(UIColor *)color;
@@ -70,6 +71,55 @@ static void traceFieldArriving(UIView *button) {
     sampleField(button, 0);
 }
 
+
+static char kScopeKey;
+
+@interface SGRSearchScopeBar : UISegmentedControl
+@end
+
+@implementation SGRSearchScopeBar
+- (instancetype)init {
+    if (self = [super initWithItems:@[@"Spotify", @"Your Library"]]) {
+        self.selectedSegmentIndex = 0;
+        self.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+        [self setTitleTextAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:13 weight:UIFontWeightMedium],
+                                       NSForegroundColorAttributeName: [UIColor colorWithWhite:1.0 alpha:0.75]}
+                            forState:UIControlStateNormal];
+        [self setTitleTextAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold],
+                                       NSForegroundColorAttributeName: UIColor.whiteColor}
+                            forState:UIControlStateSelected];
+        [self addTarget:self action:@selector(scopeChanged:) forControlEvents:UIControlEventValueChanged];
+    }
+    return self;
+}
+
+- (void)scopeChanged:(UISegmentedControl *)sender {
+    if (sender.selectedSegmentIndex == 1) {
+        SGOpenSpotifyURI([NSURL URLWithString:@"spotify:collection"]);
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            sender.selectedSegmentIndex = 0;
+        });
+    }
+}
+@end
+
+static void attachScopeBar(UIView *button) {
+    if (!button.superview || !isSearchField(button)) return;
+    UIView *container = button.superview;
+    SGRSearchScopeBar *scope = objc_getAssociatedObject(button, &kScopeKey);
+    if (!scope) {
+        scope = [SGRSearchScopeBar new];
+        objc_setAssociatedObject(button, &kScopeKey, scope, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    if (scope.superview != container) {
+        [container addSubview:scope];
+    }
+    CGRect bFrame = button.frame;
+    CGFloat scopeH = 32.0;
+    CGFloat margin = 8.0;
+    scope.frame = CGRectMake(bFrame.origin.x, CGRectGetMaxY(bFrame) + margin, bFrame.size.width, scopeH);
+}
+
 static void styleSearchField(UIView *button) {
     CGSize size = button.bounds.size;
     if (size.width < 200 || size.height < 40 || size.height > 60) return;
@@ -89,6 +139,7 @@ static void styleSearchField(UIView *button) {
 
     SGForEachView(button, ^(UIView *v) { whiten(v); });
     traceField(button, @"styled");
+    attachScopeBar(button);
 }
 
 %hook _TtCCE16Encore_ButtonKitO16EncoreFoundation6Encore6Button8Tertiary

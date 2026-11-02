@@ -17,6 +17,7 @@ enum { kRing = 4 * kSGDSPEngineBlock };
 
 typedef enum {
     SlotBass, SlotEqualizer, SlotGraphicEq, SlotDDC, SlotCompander, SlotTube, SlotLiveprog, SlotWide, SlotCrossfeed,
+    Slot8D, SlotBinaural,
     SlotConvolver, SlotReverb, SlotCount,
 } Slot;
 
@@ -41,6 +42,8 @@ static const struct {
     [SlotLiveprog] = {SGDSPLiveprogRun, SGDSPLiveprogFree},
     [SlotWide] = {SGDSPWideRun, free},
     [SlotCrossfeed] = {SGDSPCrossfeedRun, free},
+    [Slot8D] = {SGDSP8DRun, SGDSP8DFree},
+    [SlotBinaural] = {SGDSPBinauralRun, SGDSPBinauralFree},
     [SlotConvolver] = {runConvolver, freeConvolver},
     [SlotReverb] = {SGDSPReverbRun, SGDSPReverbFree},
 };
@@ -451,6 +454,34 @@ void SGDSPEngineSetTube(SGDSPEngine *engine, bool on, double driveDB) {
         return;
     }
     install(engine, SlotTube, SGDSPTubeCreate(engine->rate, driveDB));
+}
+
+void SGDSPEngineSet8DAudio(SGDSPEngine *engine, bool on, double rotationSeconds) {
+    if (!on) {
+        install(engine, Slot8D, NULL);
+        return;
+    }
+    SGDSP8D *dsp = running(engine, Slot8D);
+    if (dsp) {
+        SGDSP8DSet(dsp, rotationSeconds);
+        done(engine);
+        return;
+    }
+    install(engine, Slot8D, SGDSP8DCreate(engine->rate, rotationSeconds));
+}
+
+void SGDSPEngineSetBinauralRoom(SGDSPEngine *engine, bool on, int roomType) {
+    if (!on) {
+        install(engine, SlotBinaural, NULL);
+        return;
+    }
+    SGDSPBinaural *dsp = running(engine, SlotBinaural);
+    if (dsp) {
+        SGDSPBinauralSet(dsp, roomType);
+        done(engine);
+        return;
+    }
+    install(engine, SlotBinaural, SGDSPBinauralCreate(engine->rate, roomType));
 }
 
 #pragma mark - effects that read something

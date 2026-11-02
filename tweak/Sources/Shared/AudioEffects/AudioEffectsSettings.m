@@ -26,6 +26,8 @@ static const SGDSPNumberKey kNumbers[] = {
     {SGKeyDSPStereoWideLevel,   {0, 100, 60, 1}},
     {SGKeyDSPCrossfeedMode,     {0, 2, 2, 1}},     // libbs2b's own default
     {SGKeyDSPTubeDrive,         {0, 18, 4, 0.5}},
+    {SGKeyDSP8DSpeed,           {2, 30, 8, 0.5}},
+    {SGKeyDSPBinauralRoomType,  {0, 3, 1, 1}},
 };
 
 static NSDictionary<NSString *, NSString *> *stringDefaults(void) {
@@ -47,7 +49,7 @@ static NSDictionary<NSString *, NSString *> *stringDefaults(void) {
 // The switches of the effects, each the prefix of its own keys' names.
 static NSArray<NSString *> *effectSwitches(void) {
     return @[SGKeyDSPCompander, SGKeyDSPBass, SGKeyDSPEqualizer, SGKeyDSPGraphicEq, SGKeyDSPConvolver, SGKeyDSPDDC,
-             SGKeyDSPLiveprog, SGKeyDSPReverb, SGKeyDSPStereoWide, SGKeyDSPCrossfeed, SGKeyDSPTube];
+             SGKeyDSPLiveprog, SGKeyDSPReverb, SGKeyDSPStereoWide, SGKeyDSPCrossfeed, SGKeyDSPTube, SGKeyDSP8DAudio, SGKeyDSPBinauralRoom];
 }
 
 NSString *SGDSPEffectOf(NSString *key) {
@@ -158,6 +160,10 @@ void SGDSPResetAll(void) {
 
 NSArray<NSString *> *SGDSPConvolverModeNames(void) {
     return @[@"Original", @"Trimmed", @"Minimum phase"];
+}
+
+NSArray<NSString *> *SGDSPBinauralRoomNames(void) {
+    return @[@"Studio", @"Living Room", @"Concert Hall", @"Ambient Chamber"];
 }
 
 NSArray<NSString *> *SGDSPCrossfeedModeNames(void) {

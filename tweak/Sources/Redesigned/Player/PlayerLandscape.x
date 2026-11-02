@@ -39,6 +39,7 @@ static BOOL sg_shut;
     NSTimer *_rest;
     UITapGestureRecognizer *_hide;   // only while the controls are up
     UIView *_shield;                 // only while they are not: the touch that brings them back
+    BOOL _transitioning;
 }
 
 // Portrait once the screen is on its way out, or the scene could not turn back while it fades.
@@ -155,8 +156,9 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
 }
 
 - (void)linesChanged {
-    if (self.view.window) {
-        [UIView animateWithDuration:0.6 delay:0 usingSpringWithDamping:0.85 initialSpringVelocity:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
+    if (_transitioning) return;
+    if (self.view.window && self.view.bounds.size.width > self.view.bounds.size.height) {
+        [UIView animateWithDuration:0.35 delay:0 usingSpringWithDamping:0.85 initialSpringVelocity:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
             [self.view setNeedsLayout];
             [self.view layoutIfNeeded];
         } completion:nil];
@@ -167,6 +169,7 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    if (self.view.bounds.size.width <= self.view.bounds.size.height) return;
     CGRect safe = UIEdgeInsetsInsetRect(self.view.bounds, self.view.safeAreaInsets);
     BOOL hasLyrics = SGRPlayerLyricsAvailable();
     if (!hasLyrics) {
@@ -222,10 +225,19 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
 - (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
     UIWindow *window = self.view.window;
-    if (!window || window != sg_window || size.width <= size.height) return;
+    if (!window || window != sg_window) return;
+    _transitioning = YES;
     [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
-        window.alpha = 1;
-    } completion:nil];
+        if (size.width > size.height) {
+            window.alpha = 1.0;
+        } else {
+            window.alpha = 0.0;
+        }
+        [self.view setNeedsLayout];
+        [self.view layoutIfNeeded];
+    } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        self->_transitioning = NO;
+    }];
 }
 
 - (void)artworkChanged {
@@ -351,7 +363,9 @@ static void answerForOrientations(void) {
 
 // A landscape window still clear when no turn is coming to fade it in.
 static void reveal(UIWindow *window) {
-    if (window && window == sg_window && window.alpha < 1) SGRAnimate(SGRMotionFade, ^{ window.alpha = 1; }, nil);
+    if (window && window == sg_window && window.alpha < 1 && window.bounds.size.width > window.bounds.size.height) {
+        SGRAnimate(SGRMotionFade, ^{ window.alpha = 1; }, nil);
+    }
 }
 
 static void requestOrientations(UIWindowScene *scene, UIInterfaceOrientationMask mask) {

@@ -146,6 +146,12 @@ static NSArray<SGDSPEffect *> *effects(void) {
         effect(SGKeyDSPTube, @"Analog modelling", @"Tube amplifier warmth", @"flame", @[
             slider(@"Drive", SGKeyDSPTubeDrive, @" dB"),
         ]),
+        effect(SGKeyDSP8DAudio, @"8D Audio", @"Rotates audio 360° around your head", @"arrow.triangle.2.circlepath", @[
+            slider(@"Speed", SGKeyDSP8DSpeed, @"s"),
+        ]),
+        effect(SGKeyDSPBinauralRoom, @"Binaural Room", @"Renders music as if playing inside a real room", @"cube", @[
+            choice(@"Room Type", SGKeyDSPBinauralRoomType, SGDSPBinauralRoomNames()),
+        ]),
     ];
 }
 
