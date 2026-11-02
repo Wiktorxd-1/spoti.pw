@@ -201,8 +201,10 @@ static UIButton *glassButton(NSString *title) {
     BOOL redesign = glass && (SGFlag(SGKeyOnboardingSeen, NO) ? SGRedesignedUIStored() : YES);
     _redesigned.selected = redesign;
     _legacy.selected = !redesign;
+    BOOL isPad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
     if (!glass) {
-        [_redesigned makeUnavailable:[NSString stringWithFormat:@"Needs iOS 26. This phone runs iOS %@.", UIDevice.currentDevice.systemVersion]];
+        [_redesigned makeUnavailable:[NSString stringWithFormat:@"Needs %@ 26. This %@ runs %@ %@.",
+            isPad ? @"iPadOS" : @"iOS", isPad ? @"iPad" : @"device", isPad ? @"iPadOS" : @"iOS", UIDevice.currentDevice.systemVersion]];
         _legacy.enabled = NO;
     }
     _beta = [self betaNote];
@@ -242,9 +244,6 @@ static UIButton *glassButton(NSString *title) {
         [scroll.bottomAnchor constraintEqualToAnchor:_primary.topAnchor constant:-12],
         [column.topAnchor constraintEqualToAnchor:content.topAnchor constant:48],
         [column.bottomAnchor constraintEqualToAnchor:content.bottomAnchor constant:-24],
-        [column.leadingAnchor constraintEqualToAnchor:content.leadingAnchor constant:kMargin],
-        [column.trailingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-kMargin],
-        [column.widthAnchor constraintEqualToAnchor:frame.widthAnchor constant:-2 * kMargin],
         [halo.leadingAnchor constraintEqualToAnchor:strip.leadingAnchor],
         [halo.topAnchor constraintEqualToAnchor:strip.topAnchor],
         [halo.bottomAnchor constraintEqualToAnchor:strip.bottomAnchor],
@@ -252,13 +251,29 @@ static UIButton *glassButton(NSString *title) {
         [halo.heightAnchor constraintEqualToConstant:88],
         [_hero.centerXAnchor constraintEqualToAnchor:halo.centerXAnchor],
         [_hero.centerYAnchor constraintEqualToAnchor:halo.centerYAnchor],
-        [_primary.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kMargin],
-        [_primary.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kMargin],
         [_primary.bottomAnchor constraintEqualToAnchor:footer.topAnchor constant:-12],
-        [footer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kMargin],
-        [footer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kMargin],
         [footer.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-8],
     ]];
+    if (isPad) {
+        [NSLayoutConstraint activateConstraints:@[
+            [column.centerXAnchor constraintEqualToAnchor:scroll.centerXAnchor],
+            [column.widthAnchor constraintEqualToConstant:540],
+            [_primary.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+            [_primary.widthAnchor constraintEqualToConstant:540],
+            [footer.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+            [footer.widthAnchor constraintEqualToConstant:540],
+        ]];
+    } else {
+        [NSLayoutConstraint activateConstraints:@[
+            [column.leadingAnchor constraintEqualToAnchor:content.leadingAnchor constant:kMargin],
+            [column.trailingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-kMargin],
+            [column.widthAnchor constraintEqualToAnchor:frame.widthAnchor constant:-2 * kMargin],
+            [_primary.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kMargin],
+            [_primary.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kMargin],
+            [footer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kMargin],
+            [footer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kMargin],
+        ]];
+    }
     [self refresh];
 }
 

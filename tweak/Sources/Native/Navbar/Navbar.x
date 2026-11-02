@@ -216,8 +216,24 @@ static void placeRow(UIStackView *stack) {
     NSArray<UIView *> *order = objc_getAssociatedObject(stack, &kOrderKey);
     UIView *bar = sg_navbarRoot;
     if (!order.count || !bar) return;
-    CGFloat width = bar.bounds.size.width / order.count;
+    CGFloat totalWidth = bar.bounds.size.width;
     CGFloat height = stack.bounds.size.height;
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        CGFloat maxTabWidth = 100;
+        CGFloat contentWidth = maxTabWidth * order.count;
+        if (contentWidth < totalWidth) {
+            CGFloat startX = (totalWidth - contentWidth) / 2.0;
+            [order enumerateObjectsUsingBlock:^(UIView *item, NSUInteger i, BOOL *stop) {
+                CGFloat x = [bar convertPoint:CGPointMake(startX + i * maxTabWidth, 0) toView:stack].x;
+                CGRect frame = CGRectMake(x, 0, maxTabWidth, height);
+                if (!CGAffineTransformIsIdentity(item.transform)) item.transform = CGAffineTransformIdentity;
+                if (!CGRectEqualToRect(item.frame, frame)) item.frame = frame;
+                centreContents(item);
+            }];
+            return;
+        }
+    }
+    CGFloat width = totalWidth / order.count;
     [order enumerateObjectsUsingBlock:^(UIView *item, NSUInteger i, BOOL *stop) {
         CGFloat x = [bar convertPoint:CGPointMake(i * width, 0) toView:stack].x;
         CGRect frame = CGRectMake(x, 0, width, height);

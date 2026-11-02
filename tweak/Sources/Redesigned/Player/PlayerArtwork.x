@@ -105,11 +105,14 @@ CGRect SGRPlayerArtworkAreaIn(UIView *host) {
     if (!tilt || !host) return CGRectNull;
     // The band is the first view over the cover as wide as the player: the cover sits inset inside it
     // (01.txt:33-36, CoverArtCellImpl > UIView {0, 110, 402, 466.67} > UIView {24, 8, ...} > the tilt view).
+    UIView *fallback = nil;
     for (UIView *v = tilt.superview; v; v = v.superview) {
         if (v == host) break;
+        fallback = v;
         if (v.bounds.size.width >= host.bounds.size.width - 1) return [host convertRect:v.bounds fromView:v];
     }
-    return CGRectNull;
+    if (fallback) return [host convertRect:fallback.bounds fromView:fallback];
+    return [host convertRect:tilt.bounds fromView:tilt];
 }
 
 // The cover hidden for a stand-in, so the same one comes back if the list moved on meanwhile.
