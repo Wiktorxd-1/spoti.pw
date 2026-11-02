@@ -553,7 +553,9 @@ typedef NS_ENUM(NSInteger, SGAddTabSection) {
         if (remove) remove();
     }]];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    alert.popoverPresentationController.sourceView = [self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:SGAddTabSectionRemove]];
+    UIView *cell = [self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:SGAddTabSectionRemove]];
+    alert.popoverPresentationController.sourceView = cell ?: self.tableView ?: self.view;
+    alert.popoverPresentationController.sourceRect = alert.popoverPresentationController.sourceView.bounds;
     [self presentViewController:alert animated:YES completion:nil];
 }
 

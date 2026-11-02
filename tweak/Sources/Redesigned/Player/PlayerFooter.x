@@ -310,9 +310,15 @@ static void lowerRow(UIView *row) {
     SGRPlayerVanish(sharedBy);
     SGRPlayerVanish(arrangedAround(sharedBy, host));
 
+    CGFloat middleX = round(width * 0.5);
+    CGFloat spread = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) ? MIN(width * 0.3, 140) : round(width * 0.3);
+    CGFloat leftX = middleX - spread, rightX = middleX + spread;
+    CGFloat leadingX = rtl ? rightX : leftX;
+    CGFloat trailingX = rtl ? leftX : rightX;
+
     SGRGlyphButton *lyrics = lyricsGlyphIn(host);
     lyrics.bounds = CGRectMake(0, 0, 44, 44);
-    lyrics.center = CGPointMake(round(width * (rtl ? kTrailing : kLeading)), middleY);
+    lyrics.center = CGPointMake(leadingX, middleY);
     SGRPlayerLyricsChanged();
 
     UIView *connect = SGRFindByIdentifier(host, @"Components.ConnectButtonOutputSwitcher", &kConnectKey);
@@ -333,10 +339,10 @@ static void lowerRow(UIView *row) {
     SGForEachView(connect, ^(UIView *view) {
         if ([view isKindOfClass:UILabel.class] || [NSStringFromClass(view.class) containsString:@"MarqueeLabel"]) SGRPlayerVanish(view);
     });
-    CGFloat connectFrom = glyph ? moveTo(arrangedAround(connect, host), glyph, CGPointMake(CGRectGetMidX(glyph.bounds), CGRectGetMidY(glyph.bounds)), host, round(width * kMiddle)) : -1;
+    CGFloat connectFrom = glyph ? moveTo(arrangedAround(connect, host), glyph, CGPointMake(CGRectGetMidX(glyph.bounds), CGRectGetMidY(glyph.bounds)), host, middleX) : -1;
 
     UIView *queue = SGRFindByIdentifier(host, @"QueueButtonNowPlaying", &kQueueKey);
-    CGFloat queueFrom = moveTo(arrangedAround(queue, host), queue, CGPointMake(CGRectGetMidX(queue.bounds), CGRectGetMidY(queue.bounds)), host, round(width * (rtl ? kLeading : kTrailing)));
+    CGFloat queueFrom = moveTo(arrangedAround(queue, host), queue, CGPointMake(CGRectGetMidX(queue.bounds), CGRectGetMidY(queue.bounds)), host, trailingX);
 
     lowerRow(host);
     coverConnect(arrangedAround(connect, host), glyph);

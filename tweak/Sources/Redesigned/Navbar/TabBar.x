@@ -652,8 +652,13 @@ static void logBarOnce(UITabBar *bar) {
 
 static const CGFloat kStockRow = 49;
 
+static CGFloat sg_lastBarWidth;
 static CGFloat glassHeight(UITabBar *bar, UIView *stockBar) {
-    if (sg_room < 0.5 || sg_glassHeight <= 0) sg_glassHeight = [bar sizeThatFits:CGSizeMake(stockBar.bounds.size.width, kStockRow)].height;
+    CGFloat currentWidth = stockBar.bounds.size.width;
+    if (sg_room < 0.5 || sg_glassHeight <= 0 || fabs(sg_lastBarWidth - currentWidth) > 1.0) {
+        sg_lastBarWidth = currentWidth;
+        sg_glassHeight = [bar sizeThatFits:CGSizeMake(currentWidth, kStockRow)].height;
+    }
     return sg_glassHeight;
 }
 

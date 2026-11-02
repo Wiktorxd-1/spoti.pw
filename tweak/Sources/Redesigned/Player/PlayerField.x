@@ -180,7 +180,8 @@ static UIImage *settledCover(UIScrollView *list) {
     if (!list.window || list.isDragging || list.isDecelerating) return nil;
     CGFloat middle = CGRectGetMidX(list.bounds);
     for (UIView *cell in list.subviews) {
-        if (cell.hidden || ![cell isKindOfClass:UICollectionViewCell.class] || fabs(CGRectGetMidX(cell.frame) - middle) > 1) continue;
+        if (cell.hidden || ![cell isKindOfClass:UICollectionViewCell.class]) continue;
+        if (middle < CGRectGetMinX(cell.frame) || middle > CGRectGetMaxX(cell.frame)) continue;
         UIView *holder = SGRFindByIdentifier(cell, @"Encore.ImageView", &kCoverImageKey);
         if (holder.bounds.size.width < kCoverMinWidth) return nil;
         for (UIView *sub in holder.subviews) {
