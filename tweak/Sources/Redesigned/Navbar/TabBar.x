@@ -327,10 +327,23 @@ static CGRect pillIn(UIView *host, UITabBar *bar) {
             best = SGFrameIn(v, host);
         }
     });
-    if (!CGRectIsNull(best)) return best;
+    if (!CGRectIsNull(best)) {
+        if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && best.size.width > 560) {
+            CGFloat maxWidth = 560;
+            best.origin.x = (host.bounds.size.width - maxWidth) / 2.0;
+            best.size.width = maxWidth;
+        }
+        return best;
+    }
     CGFloat bottom = host.window.safeAreaInsets.bottom;
     CGFloat height = 62;
-    return CGRectMake(20, host.bounds.size.height - bottom - height, host.bounds.size.width - 40, height);
+    CGFloat width = host.bounds.size.width - 40;
+    CGFloat x = 20;
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && width > 560) {
+        width = 560;
+        x = (host.bounds.size.width - width) / 2.0;
+    }
+    return CGRectMake(x, host.bounds.size.height - bottom - height, width, height);
 }
 
 // Sets a view's place without its frame, which means nothing while it is scaled.

@@ -209,7 +209,8 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     l.shift = title ? kThumbSide + kThumbGap : 0;
     CGFloat lines = MAX(CGRectGetMaxY(l.thumb), top + row.size.height) + kLyricsTop;
     l.stage = CGRectMake(0, lines, hostWidth, CGRectGetMinY(bar) - kLyricsBottom - lines);
-    l.ok = l.stage.size.height > kLivingHeight / 2 && l.lift < 0;
+    BOOL isPad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
+    l.ok = l.stage.size.height > kLivingHeight / 2 && (isPad || l.lift < 0);
     return l;
 }
 
