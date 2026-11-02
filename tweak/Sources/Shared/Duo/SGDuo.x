@@ -36,17 +36,13 @@ static CGFloat trueNativeHeight(UIScreen *screen) {
 %hook UIScreen
 - (CGRect)bounds {
     CGRect b = %orig;
-    CGFloat scale = self.scale ?: 1.0;
-    CGSize native = self.nativeBounds.size;
-    if (scale > 0 && native.width > 0 && native.height > 0) {
-        CGFloat trueW = native.width / scale;
-        CGFloat trueH = native.height / scale;
-        if (trueW > b.size.width + 5.0) {
-            b.size.width = trueW;
-        }
-        if (trueH > b.size.height + 5.0 && b.size.height < trueH - 20.0) {
-            b.size.height = trueH;
-        }
+    CGFloat trueW = trueNativeWidth(self);
+    CGFloat trueH = trueNativeHeight(self);
+    if (trueW > b.size.width + 5.0) {
+        b.size.width = trueW;
+    }
+    if (trueH > b.size.height + 5.0 && b.size.height < trueH - 20.0) {
+        b.size.height = trueH;
     }
     return b;
 }
