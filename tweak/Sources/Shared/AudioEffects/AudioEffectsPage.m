@@ -146,7 +146,7 @@ static NSArray<SGDSPEffect *> *effects(void) {
         effect(SGKeyDSPTube, @"Analog modelling", @"Tube amplifier warmth", @"flame", @[
             slider(@"Drive", SGKeyDSPTubeDrive, @" dB"),
         ]),
-        effect(SGKeyDSP8DAudio, @"8D Audio", @"Rotates audio 360° around your head", @"arrow.triangle.2.circlepath", @[
+        effect(SGKeyDSP8DAudio, @"8D Audio [EXPERIMENTAL]", @"Rotates audio 360° around your head", @"arrow.triangle.2.circlepath", @[
             slider(@"Speed", SGKeyDSP8DSpeed, @"s"),
         ]),
         effect(SGKeyDSPBinauralRoom, @"Binaural Room", @"Renders music as if playing inside a real room", @"cube", @[
@@ -569,6 +569,20 @@ static UIView *valueAndChevron(NSString *text) {
     content.image = SGTileImage(symbol);
     content.imageToTextPadding = 14;
     content.secondaryTextProperties.numberOfLines = 1;
+    if ([title containsString:@"[EXPERIMENTAL]"]) {
+        NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:title attributes:@{
+            NSFontAttributeName: SGTitleFont(),
+            NSForegroundColorAttributeName: UIColor.whiteColor
+        }];
+        NSRange expRange = [title rangeOfString:@"[EXPERIMENTAL]"];
+        if (expRange.location != NSNotFound) {
+            [attr addAttributes:@{
+                NSFontAttributeName: [UIFont systemFontOfSize:10 weight:UIFontWeightBold],
+                NSForegroundColorAttributeName: [UIColor colorWithRed:1.0 green:0.58 blue:0.0 alpha:1.0]
+            } range:expRange];
+        }
+        content.attributedText = attr;
+    }
     cell.contentConfiguration = content;
     cell.separatorInset = UIEdgeInsetsMake(0, 58, 0, 0);
 }
@@ -673,6 +687,16 @@ static UIView *valueAndChevron(NSString *text) {
 }
 
 #pragma mark - changes
+
+- (void)rowToggled:(UISwitch *)toggle {
+    NSInteger section = toggle.tag / 1000;
+    NSInteger rowIdx = toggle.tag % 1000;
+    NSIndexPath *path = [NSIndexPath indexPathForRow:rowIdx inSection:section];
+    SGDSPRow *r = [self rowAt:path];
+    if (r) {
+        SGDSPSetBool(r.key, toggle.on);
+    }
+}
 
 - (void)masterToggled:(UISwitch *)toggle {
     SGDSPSetSwitch(SGKeyDSP, toggle.on);

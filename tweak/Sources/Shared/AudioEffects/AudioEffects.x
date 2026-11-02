@@ -18,7 +18,7 @@ enum { kScratchFrames = 4096 };
 static NSArray<NSString *> *effectSwitches(void) {
     return @[SGKeyDSPCompander, SGKeyDSPBass, SGKeyDSPEqualizer, SGKeyDSPGraphicEq, SGKeyDSPConvolver, SGKeyDSPDDC,
              SGKeyDSPLiveprog, SGKeyDSPReverb, SGKeyDSPStereoWide, SGKeyDSPCrossfeed, SGKeyDSPTube,
-             SGKeyDSP8DAudio, SGKeyDSPBinauralRoom];
+             SGKeyDSP8DAudio];
 }
 
 #pragma mark - shared between the threads
@@ -208,7 +208,7 @@ static NSString *effectName(NSString *effect) {
         SGKeyDSPCompander: @"compander", SGKeyDSPBass: @"bass boost", SGKeyDSPEqualizer: @"equalizer", SGKeyDSPGraphicEq: @"graphic EQ",
         SGKeyDSPConvolver: @"convolver", SGKeyDSPDDC: @"DDC", SGKeyDSPLiveprog: @"Liveprog", SGKeyDSPReverb: @"reverb",
         SGKeyDSPStereoWide: @"stereo widening", SGKeyDSPCrossfeed: @"crossfeed", SGKeyDSPTube: @"analog modelling",
-        SGKeyDSP8DAudio: @"8D audio", SGKeyDSPBinauralRoom: @"binaural room",
+        SGKeyDSP8DAudio: @"8D audio",
     };
     return names[effect] ?: effect;
 }

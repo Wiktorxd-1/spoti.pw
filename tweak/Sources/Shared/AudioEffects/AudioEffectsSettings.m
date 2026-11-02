@@ -49,7 +49,7 @@ static NSDictionary<NSString *, NSString *> *stringDefaults(void) {
 // The switches of the effects, each the prefix of its own keys' names.
 static NSArray<NSString *> *effectSwitches(void) {
     return @[SGKeyDSPCompander, SGKeyDSPBass, SGKeyDSPEqualizer, SGKeyDSPGraphicEq, SGKeyDSPConvolver, SGKeyDSPDDC,
-             SGKeyDSPLiveprog, SGKeyDSPReverb, SGKeyDSPStereoWide, SGKeyDSPCrossfeed, SGKeyDSPTube, SGKeyDSP8DAudio, SGKeyDSPBinauralRoom];
+             SGKeyDSPLiveprog, SGKeyDSPReverb, SGKeyDSPStereoWide, SGKeyDSPCrossfeed, SGKeyDSPTube, SGKeyDSP8DAudio];
 }
 
 NSString *SGDSPEffectOf(NSString *key) {

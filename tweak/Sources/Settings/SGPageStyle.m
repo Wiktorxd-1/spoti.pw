@@ -108,7 +108,22 @@ const CGFloat SGSectionGap = 20;
 
 void SGFillCell(UITableViewCell *cell, NSString *title, NSString *subtitle, UIColor *color, NSString *symbolName) {
     UIListContentConfiguration *content = [UIListContentConfiguration subtitleCellConfiguration];
-    content.text = title;
+    if ([title containsString:@"[EXPERIMENTAL]"]) {
+        NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:title attributes:@{
+            NSFontAttributeName: SGTitleFont(),
+            NSForegroundColorAttributeName: color ?: UIColor.whiteColor
+        }];
+        NSRange expRange = [title rangeOfString:@"[EXPERIMENTAL]"];
+        if (expRange.location != NSNotFound) {
+            [attr addAttributes:@{
+                NSFontAttributeName: [UIFont systemFontOfSize:10 weight:UIFontWeightBold],
+                NSForegroundColorAttributeName: [UIColor colorWithRed:1.0 green:0.58 blue:0.0 alpha:1.0]
+            } range:expRange];
+        }
+        content.attributedText = attr;
+    } else {
+        content.text = title;
+    }
     content.secondaryText = subtitle;
     content.textProperties.font = SGTitleFont();
     content.textProperties.color = color ?: UIColor.whiteColor;

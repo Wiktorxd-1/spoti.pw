@@ -17,7 +17,7 @@ enum { kRing = 4 * kSGDSPEngineBlock };
 
 typedef enum {
     SlotBass, SlotEqualizer, SlotGraphicEq, SlotDDC, SlotCompander, SlotTube, SlotLiveprog, SlotWide, SlotCrossfeed,
-    Slot8D, SlotBinaural,
+    Slot8D,
     SlotConvolver, SlotReverb, SlotCount,
 } Slot;
 
