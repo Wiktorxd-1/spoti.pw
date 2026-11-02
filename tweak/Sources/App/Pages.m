@@ -158,6 +158,14 @@ UIViewController *SGPlayerSettingsPage(void) {
     } else {
         [pages addObject:SGWithSymbol(SGPageRow(@"Now playing", ^UIViewController *{ return SGRNowPlayingBarSettingsPage(); }), @"rectangle.bottomthird.inset.filled")];
     }
+    SGModRow *crossfadeRow = SGWithSymbol(SGActionRow(@"Seamless & Crossfade", @"How to configure track crossfade", ^{
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Seamless & Crossfade"
+            message:@"Crossfade, Automix, and Gapless Playback are built into Spotify's native audio engine.\n\nTo configure:\n1. Open Spotify Settings (gear icon in profile or Home)\n2. Tap 'Playback'\n3. Turn on 'Seamless', 'Automix', or adjust 'Crossfade between tracks' (0–12 sec).\n\nWith Taurus Premium unlocked, crossfade is fully enabled."
+            preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleCancel handler:nil]];
+        [SGTopController() presentViewController:alert animated:YES completion:nil];
+    }), @"waveform.badge.magnifyingglass");
+    [pages addObject:crossfadeRow];
     [sections addObject:SGSection(nil, pages)];
     // Playlists and artist pages: the alphabet index works with either look, the concerts card is the redesign's.
     NSMutableArray<SGModRow *> *browsing = [NSMutableArray arrayWithObject:SGWithSymbol(SGAlphaIndexRow(), @"textformat.abc")];

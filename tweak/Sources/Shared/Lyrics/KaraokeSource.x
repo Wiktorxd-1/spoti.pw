@@ -148,7 +148,9 @@ static NSString *lyricsCacheDirectory(void) {
     dispatch_once(&once, ^{
         NSString *base = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES).firstObject;
         path = [base stringByAppendingPathComponent:@"spoti.pw/Lyrics"];
-        [NSFileManager.defaultManager createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:nil];
+        NSDictionary *attrs = @{NSFileProtectionKey: NSFileProtectionNone};
+        [NSFileManager.defaultManager createDirectoryAtPath:path withIntermediateDirectories:YES attributes:attrs error:nil];
+        [NSFileManager.defaultManager setAttributes:attrs ofItemAtPath:path error:nil];
     });
     return path;
 }
@@ -212,10 +214,22 @@ BOOL SGIsDeviceOffline(void) {
 static NSString *cleanTrackIdentifier(NSString *trackID) {
     if (!trackID.length) return nil;
     NSString *clean = [trackID stringByRemovingPercentEncoding] ?: trackID;
+    clean = [clean componentsSeparatedByString:@"?"].firstObject;
+    clean = [clean componentsSeparatedByString:@"#"].firstObject;
+    clean = [clean componentsSeparatedByString:@"&"].firstObject;
     if ([clean hasPrefix:@"spotify:track:"]) clean = [clean substringFromIndex:14];
     else if ([clean hasPrefix:@"spotify_track_"]) clean = [clean substringFromIndex:14];
+    else if ([clean hasPrefix:@"spotify:episode:"]) clean = [clean substringFromIndex:16];
+    else if ([clean hasPrefix:@"spotify_episode_"]) clean = [clean substringFromIndex:16];
     else if ([clean hasPrefix:@"track:"]) clean = [clean substringFromIndex:6];
     else if ([clean hasPrefix:@"track_"]) clean = [clean substringFromIndex:6];
+    else if ([clean containsString:@":track:"]) {
+        clean = [clean componentsSeparatedByString:@":track:"].lastObject;
+    }
+    if ([clean containsString:@"/"]) {
+        clean = [clean componentsSeparatedByString:@"/"].lastObject;
+    }
+    clean = [clean stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     return clean.length ? clean : nil;
 }
 
@@ -223,7 +237,9 @@ static void refreshDiskLyricsCache(void) {
     NSMutableSet *cachedSet = [NSMutableSet set];
     NSMutableSet *missingSet = [NSMutableSet set];
     NSFileManager *fm = NSFileManager.defaultManager;
-    for (NSString *dir in @[lyricsCacheDirectory(), legacyLyricsCacheDirectory()]) {
+    NSString *mainDir = lyricsCacheDirectory();
+    NSString *legacyDir = legacyLyricsCacheDirectory();
+    for (NSString *dir in @[mainDir, legacyDir]) {
         NSArray<NSString *> *files = [fm contentsOfDirectoryAtPath:dir error:nil];
         for (NSString *file in files) {
             if (![file.pathExtension isEqualToString:@"json"]) continue;
@@ -234,6 +250,13 @@ static void refreshDiskLyricsCache(void) {
             if (!name.length) continue;
             if ([attrs fileSize] > 25) {
                 [cachedSet addObject:name];
+                if ([dir isEqualToString:legacyDir]) {
+                    NSString *destPath = [[mainDir stringByAppendingPathComponent:name] stringByAppendingPathExtension:@"json"];
+                    if (![fm fileExistsAtPath:destPath]) {
+                        [fm copyItemAtPath:filePath toPath:destPath error:nil];
+                        [fm setAttributes:@{NSFileProtectionKey: NSFileProtectionNone} ofItemAtPath:destPath error:nil];
+                    }
+                }
             } else {
                 [missingSet addObject:name];
             }
@@ -243,6 +266,7 @@ static void refreshDiskLyricsCache(void) {
     sg_cachedTrackIDsOnDisk = cachedSet;
     if (!sg_diskCheckedMissing) sg_diskCheckedMissing = [NSMutableSet set];
     [sg_diskCheckedMissing unionSet:missingSet];
+    [sg_diskCheckedMissing minusSet:cachedSet];
     os_unfair_lock_unlock(&sg_cacheDiskLock);
 }
 
@@ -439,6 +463,21 @@ static BOOL lyricsSignificantlyDiffer(NSArray<SGKaraokeLine *> *existing, NSArra
 static void saveLinesToDisk(NSString *trackID, NSArray<SGKaraokeLine *> *lines, NSString *credit) {
     NSString *clean = cleanTrackIdentifier(trackID);
     if (!clean.length) return;
+    if (lines.count == 0) {
+        os_unfair_lock_lock(&sg_cacheDiskLock);
+        if (![sg_cachedTrackIDsOnDisk containsObject:clean]) {
+            if (!sg_diskCheckedMissing) sg_diskCheckedMissing = [NSMutableSet set];
+            [sg_diskCheckedMissing addObject:clean];
+        }
+        os_unfair_lock_unlock(&sg_cacheDiskLock);
+        return;
+    }
+    os_unfair_lock_lock(&sg_cacheDiskLock);
+    if (!sg_cachedTrackIDsOnDisk) sg_cachedTrackIDsOnDisk = [NSMutableSet set];
+    [sg_cachedTrackIDsOnDisk addObject:clean];
+    [sg_diskCheckedMissing removeObject:clean];
+    os_unfair_lock_unlock(&sg_cacheDiskLock);
+
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
         NSMutableArray *arr = [NSMutableArray arrayWithCapacity:lines.count];
         for (SGKaraokeLine *l in lines) [arr addObject:dictFromLine(l)];
@@ -447,17 +486,10 @@ static void saveLinesToDisk(NSString *trackID, NSArray<SGKaraokeLine *> *lines, 
         if (credit.length) dict[@"credit"] = credit;
         NSData *data = [NSJSONSerialization dataWithJSONObject:dict options:0 error:nil];
         NSString *filePath = [[lyricsCacheDirectory() stringByAppendingPathComponent:clean] stringByAppendingPathExtension:@"json"];
-        if (data && filePath) [data writeToFile:filePath atomically:YES];
-        os_unfair_lock_lock(&sg_cacheDiskLock);
-        if (lines.count > 0) {
-            if (sg_cachedTrackIDsOnDisk) [sg_cachedTrackIDsOnDisk addObject:clean];
-            [sg_diskCheckedMissing removeObject:clean];
-        } else {
-            if (!sg_diskCheckedMissing) sg_diskCheckedMissing = [NSMutableSet set];
-            [sg_diskCheckedMissing addObject:clean];
-            [sg_cachedTrackIDsOnDisk removeObject:clean];
+        if (data && filePath) {
+            [data writeToFile:filePath options:NSDataWritingAtomic error:nil];
+            [NSFileManager.defaultManager setAttributes:@{NSFileProtectionKey: NSFileProtectionNone} ofItemAtPath:filePath error:nil];
         }
-        os_unfair_lock_unlock(&sg_cacheDiskLock);
     });
 }
 
@@ -477,6 +509,10 @@ static NSArray<SGKaraokeLine *> *loadLinesFromDisk(NSString *trackID) {
     if (!data.length) {
         NSString *legacyPath = [[legacyLyricsCacheDirectory() stringByAppendingPathComponent:clean] stringByAppendingPathExtension:@"json"];
         data = [NSData dataWithContentsOfFile:legacyPath];
+        if (data.length && filePath) {
+            [data writeToFile:filePath options:NSDataWritingAtomic error:nil];
+            [NSFileManager.defaultManager setAttributes:@{NSFileProtectionKey: NSFileProtectionNone} ofItemAtPath:filePath error:nil];
+        }
     }
     if (!data.length) return nil;
     id obj = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
@@ -693,7 +729,10 @@ NSArray<SGKaraokeLine *> *SGKaraokeLinesForTrack(NSString *trackID) {
         return lines;
     }
     if (!sg_diskCheckedMissing) sg_diskCheckedMissing = [NSMutableSet set];
-    if ([sg_diskCheckedMissing containsObject:trackID]) return nil;
+    if ([sg_diskCheckedMissing containsObject:trackID]) {
+        if (!isLyricsCachedOnDisk(trackID)) return nil;
+        [sg_diskCheckedMissing removeObject:trackID];
+    }
     lines = loadLinesFromDisk(trackID);
     if (lines) {
         sg_lyrics[trackID] = lines;
@@ -1161,7 +1200,7 @@ void SGKaraokeSeek(NSInteger ms) {
 static NSString *idOf(SPTPlayerTrack *track) {
     id uri = track.URI;
     NSString *text = [uri isKindOfClass:NSURL.class] ? ((NSURL *)uri).absoluteString : [uri description];
-    return [text hasPrefix:@"spotify:track:"] ? [text substringFromIndex:@"spotify:track:".length] : SGLocalFileLyricsKey(text);
+    return [text hasPrefix:@"spotify:track:"] ? cleanTrackIdentifier([text substringFromIndex:@"spotify:track:".length]) : SGLocalFileLyricsKey(text);
 }
 
 // Tracks come in from the player and from every list that reads their metadata, so when the table
@@ -1194,12 +1233,24 @@ void SGKaraokeRememberTrack(SPTPlayerTrack *track) {
 // beat of starting it and gives its card list about a second to load, so an answer that is already
 // in is what puts the card there. The track is named here, so no walk waits for a name.
 static void prefetch(SPTPlayerTrack *track, NSString *trackID, SPTPlayerState *state) {
-    // Spotify never asks for a local file's lyrics, so they are asked for and kept here, a source of the
-    // mod's on or not (SGKaraokeRequestLyrics). The state is read on any thread, and the kept lines are
-    // the main queue's.
     BOOL local = SGLocalFileIs(trackID);
     if (local) dispatch_async(dispatch_get_main_queue(), ^{ SGKaraokeRequestLyrics(trackID); });
-    if (!sg_ownSources) return;
+    if (!isLyricsCachedOnDisk(trackID) && !SGIsDeviceOffline()) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            SGKaraokeRequestLyrics(trackID);
+        });
+    }
+    if (!sg_ownSources) {
+        SPTPlayerTrack *next = upNextIn(state);
+        NSString *nextID = idOf(next);
+        if (nextID && ![nextID isEqualToString:trackID] && !isLyricsCachedOnDisk(nextID) && !SGIsDeviceOffline()) {
+            remember(next, nextID);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                SGKaraokeRequestLyrics(nextID);
+            });
+        }
+        return;
+    }
     if (!local) SGLyricsPrefetch(trackID);
     SPTPlayerTrack *next = upNextIn(state);
     NSString *nextID = idOf(next);
