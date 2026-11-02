@@ -66,6 +66,8 @@ SGDSPRange SGDSPRangeFor(NSString *key);
 // Switches, numbers (clamped to their range) and strings. Setting one applies it.
 BOOL SGDSPSwitch(NSString *key);
 void SGDSPSetSwitch(NSString *key, BOOL on);
+BOOL SGDSPBool(NSString *key, BOOL fallback);
+void SGDSPSetBool(NSString *key, BOOL on);
 double SGDSPNumber(NSString *key);
 void SGDSPSetNumber(NSString *key, double value);
 void SGDSPSetReverbAmount(double amount);
