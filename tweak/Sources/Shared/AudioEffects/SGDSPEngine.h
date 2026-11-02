@@ -33,8 +33,7 @@ void SGDSPEngineSetStereoWide(SGDSPEngine *engine, bool on, double levelPercent)
 // preset: an index of SGDSPCrossfeedPresetCount, lightest first.
 void SGDSPEngineSetCrossfeed(SGDSPEngine *engine, bool on, int preset);
 void SGDSPEngineSetTube(SGDSPEngine *engine, bool on, double driveDB);
-void SGDSPEngineSet8DAudio(SGDSPEngine *engine, bool on, double rotationSeconds);
-void SGDSPEngineSetBinauralRoom(SGDSPEngine *engine, bool on, int roomType);
+void SGDSPEngineSet8DAudio(SGDSPEngine *engine, bool on, double rotationSeconds, double orbitWidth, double reverbMix, bool anchorBass, bool rearFilter);
 
 bool SGDSPEngineSetGraphicEq(SGDSPEngine *engine, bool on, const char *nodes, char *error, size_t errorSize);
 // An impulse response file (.wav, .irs, .flac) read at the engine's rate. mode: SGDSPImpulseMode.

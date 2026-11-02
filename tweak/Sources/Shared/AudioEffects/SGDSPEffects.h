@@ -64,13 +64,7 @@ void SGDSPLiveprogRun(void *liveprog, float *left, float *right, uint32_t frames
 void SGDSPLiveprogFree(void *liveprog);
 
 typedef struct SGDSP8D SGDSP8D;
-SGDSP8D *SGDSP8DCreate(double rate, double rotationSeconds);
-void SGDSP8DSet(SGDSP8D *dsp, double rotationSeconds);
+SGDSP8D *SGDSP8DCreate(double rate, double rotationSeconds, double orbitWidth, double reverbMix, bool anchorBass, bool rearFilter);
+void SGDSP8DSet(SGDSP8D *dsp, double rotationSeconds, double orbitWidth, double reverbMix, bool anchorBass, bool rearFilter);
 void SGDSP8DRun(void *dsp, float *left, float *right, uint32_t frames);
 void SGDSP8DFree(void *dsp);
-
-typedef struct SGDSPBinaural SGDSPBinaural;
-SGDSPBinaural *SGDSPBinauralCreate(double rate, int roomType);
-void SGDSPBinauralSet(SGDSPBinaural *dsp, int roomType);
-void SGDSPBinauralRun(void *dsp, float *left, float *right, uint32_t frames);
-void SGDSPBinauralFree(void *dsp);

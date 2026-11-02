@@ -354,12 +354,12 @@ static void applyEffect(SGDSPEngine *engine, NSString *effect) {
     } else if ([effect isEqualToString:SGKeyDSP8DAudio]) {
         double speed = SGDSPNumber(SGKeyDSP8DSpeed);
         if (speed <= 0) speed = 8.0;
-        SGDSPEngineSet8DAudio(engine, on, speed);
-        what = [NSString stringWithFormat:@"8D audio %@, rotation %.1fs", onOff(on), speed];
-    } else if ([effect isEqualToString:SGKeyDSPBinauralRoom]) {
-        int room = (int)SGDSPNumber(SGKeyDSPBinauralRoomType);
-        SGDSPEngineSetBinauralRoom(engine, on, room);
-        what = [NSString stringWithFormat:@"binaural room %@, %@", onOff(on), choice(SGDSPBinauralRoomNames(), SGKeyDSPBinauralRoomType)];
+        double width = SGDSPNumber(SGKeyDSP8DWidth);
+        double reverb = SGDSPNumber(SGKeyDSP8DReverb);
+        BOOL anchor = SGDSPBool(SGKeyDSP8DAnchorBass, YES);
+        BOOL rear = SGDSPBool(SGKeyDSP8DDampening, YES);
+        SGDSPEngineSet8DAudio(engine, on, speed, width, reverb, anchor, rear);
+        what = [NSString stringWithFormat:@"8D audio %@, rotation %.1fs, width %.0f%%, reverb %.0f%%", onOff(on), speed, width, reverb];
     } else {
         return;
     }

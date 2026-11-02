@@ -49,10 +49,11 @@
 #define SGKeyDSPTubeDrive               @"spotifyglass.dsp.tube.drive"          // dB
 
 #define SGKeyDSP8DAudio                 @"spotifyglass.dsp.8d"
-#define SGKeyDSP8DSpeed                 @"spotifyglass.dsp.8d.speed"            // s, 2 ... 30s
-
-#define SGKeyDSPBinauralRoom            @"spotifyglass.dsp.binaural"
-#define SGKeyDSPBinauralRoomType        @"spotifyglass.dsp.binaural.room"       // SGDSPBinauralRoomNames index
+#define SGKeyDSP8DSpeed                 @"spotifyglass.dsp.8d.speed"            // s, 4 ... 16s, step 1, default 8
+#define SGKeyDSP8DWidth                 @"spotifyglass.dsp.8d.width"            // %, 0 ... 100%, step 5, default 80
+#define SGKeyDSP8DReverb                @"spotifyglass.dsp.8d.reverb"           // %, 0 ... 100%, step 5, default 20
+#define SGKeyDSP8DAnchorBass            @"spotifyglass.dsp.8d.anchorbass"       // BOOL, default YES
+#define SGKeyDSP8DDampening             @"spotifyglass.dsp.8d.dampening"        // BOOL, default YES
 
 #pragma mark - values
 
@@ -86,7 +87,6 @@ void SGDSPResetAll(void);
 extern const double SGDSPEqualizerFrequencies[15];     // Hz, 25 ... 16000
 extern const double SGDSPEqualizerGainLimit;           // ±12 dB
 extern const double SGDSPCompanderFrequencies[7];      // Hz, 95 ... 7500
-NSArray<NSString *> *SGDSPBinauralRoomNames(void);
 extern const double SGDSPCompanderGainLimit;           // ±1.2
 
 NSArray<NSString *> *SGDSPConvolverModeNames(void);

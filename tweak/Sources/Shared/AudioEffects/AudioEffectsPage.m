@@ -10,6 +10,7 @@ typedef NS_ENUM(NSInteger, SGDSPRowKind) {
     SGDSPRowChoice,   // one of a list of names, stored as its index
     SGDSPRowPage,     // a page of its own, its value beside the chevron
     SGDSPRowCurve,    // the equalizer's or the compressor's gains
+    SGDSPRowToggle,   // a boolean switch
 };
 
 @interface SGDSPRow : NSObject
@@ -52,6 +53,12 @@ static SGDSPRow *row(SGDSPRowKind kind, NSString *title, NSString *key) {
 static SGDSPRow *slider(NSString *title, NSString *key, NSString *unit) {
     SGDSPRow *r = row(SGDSPRowSlider, title, key);
     r.unit = unit;
+    return r;
+}
+
+static SGDSPRow *toggleRow(NSString *title, NSString *key, NSString *subtitle) {
+    SGDSPRow *r = row(SGDSPRowToggle, title, key);
+    r.unit = subtitle;
     return r;
 }
 
@@ -147,10 +154,11 @@ static NSArray<SGDSPEffect *> *effects(void) {
             slider(@"Drive", SGKeyDSPTubeDrive, @" dB"),
         ]),
         effect(SGKeyDSP8DAudio, @"8D Audio [EXPERIMENTAL]", @"Rotates audio 360° around your head", @"arrow.triangle.2.circlepath", @[
-            slider(@"Speed", SGKeyDSP8DSpeed, @"s"),
-        ]),
-        effect(SGKeyDSPBinauralRoom, @"Binaural Room", @"Renders music as if playing inside a real room", @"cube", @[
-            choice(@"Room Type", SGKeyDSPBinauralRoomType, SGDSPBinauralRoomNames()),
+            slider(@"Rotation Speed", SGKeyDSP8DSpeed, @" s"),
+            slider(@"Orbit Width", SGKeyDSP8DWidth, @"%"),
+            slider(@"Spatial Reverb", SGKeyDSP8DReverb, @"%"),
+            toggleRow(@"Anchor Bass", SGKeyDSP8DAnchorBass, @"Keeps frequencies below 120Hz centered"),
+            toggleRow(@"Behind-Head Dampening", SGKeyDSP8DDampening, @"Dynamic low-pass filter behind listener"),
         ]),
     ];
 }
@@ -639,6 +647,16 @@ static UIView *valueAndChevron(NSString *text) {
         }
         case SGDSPRowPage:
             return [self valueCell:table title:row.title value:row.value()];
+        case SGDSPRowToggle: {
+            UITableViewCell *cell = SGDequeueCell(table, @"toggle");
+            SGFillCell(cell, row.title, row.unit, nil, nil);
+            BOOL current = SGDSPBool(row.key, YES);
+            UISwitch *sw = [self switchOn:current action:@selector(rowToggled:) tag:path.section * 1000 + path.row];
+            cell.accessoryView = sw;
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            cell.separatorInset = UIEdgeInsetsMake(0, 16, 0, 0);
+            return cell;
+        }
     }
     return SGDequeueCell(table, @"row");
 }

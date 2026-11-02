@@ -26,8 +26,9 @@ static const SGDSPNumberKey kNumbers[] = {
     {SGKeyDSPStereoWideLevel,   {0, 100, 60, 1}},
     {SGKeyDSPCrossfeedMode,     {0, 2, 2, 1}},     // libbs2b's own default
     {SGKeyDSPTubeDrive,         {0, 18, 4, 0.5}},
-    {SGKeyDSP8DSpeed,           {2, 30, 8, 0.5}},
-    {SGKeyDSPBinauralRoomType,  {0, 3, 1, 1}},
+    {SGKeyDSP8DSpeed,           {4, 16, 8, 1}},
+    {SGKeyDSP8DWidth,           {0, 100, 80, 5}},
+    {SGKeyDSP8DReverb,          {0, 100, 20, 5}},
 };
 
 static NSDictionary<NSString *, NSString *> *stringDefaults(void) {
@@ -87,6 +88,17 @@ void SGDSPSetSwitch(NSString *key, BOOL on) {
         [store() setDouble:SGDSPRangeFor(SGKeyDSPReverbAmount).max forKey:SGKeyDSPReverbAmount];
     }
     SGSetEnabled(key, on);
+    SGDSPApply(SGDSPEffectOf(key));
+}
+
+BOOL SGDSPBool(NSString *key, BOOL fallback) {
+    id value = [store() objectForKey:key];
+    if (![value isKindOfClass:NSNumber.class]) return fallback;
+    return [value boolValue];
+}
+
+void SGDSPSetBool(NSString *key, BOOL on) {
+    [store() setBool:on forKey:key];
     SGDSPApply(SGDSPEffectOf(key));
 }
 
@@ -168,9 +180,6 @@ NSArray<NSString *> *SGDSPConvolverModeNames(void) {
     return @[@"Original", @"Trimmed", @"Minimum phase"];
 }
 
-NSArray<NSString *> *SGDSPBinauralRoomNames(void) {
-    return @[@"Studio", @"Living Room", @"Concert Hall", @"Ambient Chamber"];
-}
 
 NSArray<NSString *> *SGDSPCrossfeedModeNames(void) {
     return @[@"Jan Meier (650 Hz, 9.5 dB)", @"Chu Moy (700 Hz, 6 dB)", @"Default (700 Hz, 4.5 dB)"];

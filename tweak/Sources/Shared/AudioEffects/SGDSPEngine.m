@@ -43,7 +43,6 @@ static const struct {
     [SlotWide] = {SGDSPWideRun, free},
     [SlotCrossfeed] = {SGDSPCrossfeedRun, free},
     [Slot8D] = {SGDSP8DRun, SGDSP8DFree},
-    [SlotBinaural] = {SGDSPBinauralRun, SGDSPBinauralFree},
     [SlotConvolver] = {runConvolver, freeConvolver},
     [SlotReverb] = {SGDSPReverbRun, SGDSPReverbFree},
 };
@@ -456,32 +455,18 @@ void SGDSPEngineSetTube(SGDSPEngine *engine, bool on, double driveDB) {
     install(engine, SlotTube, SGDSPTubeCreate(engine->rate, driveDB));
 }
 
-void SGDSPEngineSet8DAudio(SGDSPEngine *engine, bool on, double rotationSeconds) {
+void SGDSPEngineSet8DAudio(SGDSPEngine *engine, bool on, double rotationSeconds, double orbitWidth, double reverbMix, bool anchorBass, bool rearFilter) {
     if (!on) {
         install(engine, Slot8D, NULL);
         return;
     }
     SGDSP8D *dsp = running(engine, Slot8D);
     if (dsp) {
-        SGDSP8DSet(dsp, rotationSeconds);
+        SGDSP8DSet(dsp, rotationSeconds, orbitWidth, reverbMix, anchorBass, rearFilter);
         done(engine);
         return;
     }
-    install(engine, Slot8D, SGDSP8DCreate(engine->rate, rotationSeconds));
-}
-
-void SGDSPEngineSetBinauralRoom(SGDSPEngine *engine, bool on, int roomType) {
-    if (!on) {
-        install(engine, SlotBinaural, NULL);
-        return;
-    }
-    SGDSPBinaural *dsp = running(engine, SlotBinaural);
-    if (dsp) {
-        SGDSPBinauralSet(dsp, roomType);
-        done(engine);
-        return;
-    }
-    install(engine, SlotBinaural, SGDSPBinauralCreate(engine->rate, roomType));
+    install(engine, Slot8D, SGDSP8DCreate(engine->rate, rotationSeconds, orbitWidth, reverbMix, anchorBass, rearFilter));
 }
 
 #pragma mark - effects that read something
