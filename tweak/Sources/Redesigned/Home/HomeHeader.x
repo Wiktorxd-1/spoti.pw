@@ -241,6 +241,15 @@ static void layoutHeader(UIViewController *page) {
 %end
 
 %hook _TtC19Home_FunkisPageImpl20FunkisViewController
+- (void)viewDidLoad {
+    %orig;
+    ((UIViewController *)self).view.backgroundColor = UIColor.blackColor;
+}
+- (void)viewWillAppear:(BOOL)animated {
+    %orig;
+    ((UIViewController *)self).view.backgroundColor = UIColor.blackColor;
+    layoutHeader((UIViewController *)self);
+}
 - (void)viewDidLayoutSubviews {
     %orig;
     CFTimeInterval began = SGRHomeProbeBegin();

@@ -25,7 +25,7 @@ include $(THEOS_MAKE_PATH)/tweak.mk
 spotifyglass.all.tweak.variables: sg-audio
 .PHONY: sg-audio
 sg-audio:
-	@$(MAKE) --no-print-directory -C $(SG_AUDIO) PLATFORM=ios
+	@$(MAKE) --no-print-directory -C $(SG_AUDIO) -j PLATFORM=ios
 
 before-all::
 	@bash ../scripts/check-layers.sh Sources

@@ -715,6 +715,16 @@ static void syncBar(UIView *stockBar) {
     }
     stockBar.superview.layer.backgroundColor = NULL;
 
+    // Attach host immediately so liquid glass bar covers the row from frame 0
+    CGRect bounds = stockBar.bounds;
+    CGFloat width = bounds.size.width;
+    CGFloat height = MAX(bounds.size.height, glassHeight(bar, stockBar));
+    CGRect frame = CGRectMake(0, CGRectGetMaxY(bounds) - height, width, height);
+    if (!CGRectEqualToRect(host.frame, frame)) host.frame = frame;
+    place(bar, host.bounds);
+    if (host.superview != stockBar) [stockBar addSubview:host];
+    else if (stockBar.subviews.lastObject != host) [stockBar bringSubviewToFront:host];
+
     NSArray<UIView *> *sources = tabItems(stockBar);
     if (!sources.count) return;
     // An item with no title is drawn by UIKit as its glyph alone, centred, on a bar of the same height.
@@ -766,14 +776,6 @@ static void syncBar(UIView *stockBar) {
         });
     }
 
-    CGRect bounds = stockBar.bounds;
-    CGFloat width = bounds.size.width;
-    CGFloat height = MAX(bounds.size.height, glassHeight(bar, stockBar));
-    CGRect frame = CGRectMake(0, CGRectGetMaxY(bounds) - height, width, height);
-    if (!CGRectEqualToRect(host.frame, frame)) host.frame = frame;
-    place(bar, host.bounds);
-    if (host.superview != stockBar) [stockBar addSubview:host];
-    else if (stockBar.subviews.lastObject != host) [stockBar bringSubviewToFront:host];
     if (host.window) {
         CGRect row = layoutDock(stockBar, host, bar, NULL, NULL);
         if (sg_minimized) SGRDockNowPlayingCard(YES, row, host, NO);
@@ -794,6 +796,22 @@ static UIView *tabBarOf(UIView *item) {
 static BOOL sg_barPass, sg_itemsLaidOut;
 
 %hook _TtC23NavigationUI_TabBarImpl10TabBarView
+- (void)willMoveToWindow:(UIWindow *)newWindow {
+    %orig;
+    if (newWindow) {
+        for (UIView *sub in ((UIView *)self).subviews) {
+            if (![sub isKindOfClass:NSClassFromString(@"SGRTabBarHost")]) {
+                sub.alpha = 0;
+            }
+        }
+    }
+}
+- (void)didMoveToWindow {
+    %orig;
+    if (((UIView *)self).window) {
+        syncBar((UIView *)self);
+    }
+}
 // Minimized, the middle of the row is the now playing card's, which lies under this view.
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *hit = %orig;
