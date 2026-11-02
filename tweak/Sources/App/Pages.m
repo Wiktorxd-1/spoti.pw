@@ -107,7 +107,7 @@ UIViewController *SGAppearanceSettingsPage(void) {
         }
         [rows addObjectsFromArray:SGAppFontRows()];
     }
-    SGModRow *bootRow = SGSwitchRow(@"Animated Boot Screen", @"Plays a fluid animation when opening Spotify.", SGKeyAnimatedSplash, YES, nil);
+    SGModRow *bootRow = SGSwitchRow(@"Animated Boot Screen", @"Plays a fluid animation when opening Spotify.", SGKeyAnimatedSplash);
     [rows addObject:SGWithSymbol(bootRow, @"bolt.fill")];
     [rows addObject:sidebarBadgeTextRow()];
     SGModSection *section = SGNotedSection(nil, rows, @"Some changes apply after you restart Spotify.");
