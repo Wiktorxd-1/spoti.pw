@@ -77,6 +77,12 @@ BOOL SGDSPSwitch(NSString *key) {
 }
 
 void SGDSPSetSwitch(NSString *key, BOOL on) {
+    if (on) {
+        if (!SGDSPSwitch(SGKeyDSP)) {
+            SGSetEnabled(SGKeyDSP, YES);
+            SGDSPApply(SGKeyDSP);
+        }
+    }
     if (on && [key isEqualToString:SGKeyDSPReverb] && SGDSPNumber(SGKeyDSPReverbAmount) == 0) {
         [store() setDouble:SGDSPRangeFor(SGKeyDSPReverbAmount).max forKey:SGKeyDSPReverbAmount];
     }

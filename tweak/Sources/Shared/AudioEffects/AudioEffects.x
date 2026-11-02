@@ -17,7 +17,8 @@ enum { kScratchFrames = 4096 };
 // The switches of the effects, in the order they are set when everything is.
 static NSArray<NSString *> *effectSwitches(void) {
     return @[SGKeyDSPCompander, SGKeyDSPBass, SGKeyDSPEqualizer, SGKeyDSPGraphicEq, SGKeyDSPConvolver, SGKeyDSPDDC,
-             SGKeyDSPLiveprog, SGKeyDSPReverb, SGKeyDSPStereoWide, SGKeyDSPCrossfeed, SGKeyDSPTube];
+             SGKeyDSPLiveprog, SGKeyDSPReverb, SGKeyDSPStereoWide, SGKeyDSPCrossfeed, SGKeyDSPTube,
+             SGKeyDSP8DAudio, SGKeyDSPBinauralRoom];
 }
 
 #pragma mark - shared between the threads
@@ -207,6 +208,7 @@ static NSString *effectName(NSString *effect) {
         SGKeyDSPCompander: @"compander", SGKeyDSPBass: @"bass boost", SGKeyDSPEqualizer: @"equalizer", SGKeyDSPGraphicEq: @"graphic EQ",
         SGKeyDSPConvolver: @"convolver", SGKeyDSPDDC: @"DDC", SGKeyDSPLiveprog: @"Liveprog", SGKeyDSPReverb: @"reverb",
         SGKeyDSPStereoWide: @"stereo widening", SGKeyDSPCrossfeed: @"crossfeed", SGKeyDSPTube: @"analog modelling",
+        SGKeyDSP8DAudio: @"8D audio", SGKeyDSPBinauralRoom: @"binaural room",
     };
     return names[effect] ?: effect;
 }
@@ -349,6 +351,15 @@ static void applyEffect(SGDSPEngine *engine, NSString *effect) {
         double drive = SGDSPNumber(SGKeyDSPTubeDrive);
         SGDSPEngineSetTube(engine, on, drive);
         what = [NSString stringWithFormat:@"analog modelling %@, %.1f dB", onOff(on), drive];
+    } else if ([effect isEqualToString:SGKeyDSP8DAudio]) {
+        double speed = SGDSPNumber(SGKeyDSP8DSpeed);
+        if (speed <= 0) speed = 8.0;
+        SGDSPEngineSet8DAudio(engine, on, speed);
+        what = [NSString stringWithFormat:@"8D audio %@, rotation %.1fs", onOff(on), speed];
+    } else if ([effect isEqualToString:SGKeyDSPBinauralRoom]) {
+        int room = (int)SGDSPNumber(SGKeyDSPBinauralRoomType);
+        SGDSPEngineSetBinauralRoom(engine, on, room);
+        what = [NSString stringWithFormat:@"binaural room %@, %@", onOff(on), choice(SGDSPBinauralRoomNames(), SGKeyDSPBinauralRoomType)];
     } else {
         return;
     }
