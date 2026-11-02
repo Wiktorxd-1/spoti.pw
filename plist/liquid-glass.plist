@@ -4,6 +4,20 @@
 <dict>
 	<key>UIDesignRequiresCompatibility</key>
 	<false/>
+	<key>DTSDKName</key>
+	<string>iphoneos27.2</string>
+	<key>DTSDKBuild</key>
+	<string>24D100</string>
+	<key>DTPlatformVersion</key>
+	<string>27.2</string>
+	<key>DTPlatformBuild</key>
+	<string>24D100</string>
+	<key>UISupportsFoldableDisplay</key>
+	<true/>
+	<key>UIDesignSupportsFoldable</key>
+	<true/>
+	<key>UIRequiresFullScreen</key>
+	<false/>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
@@ -24,7 +38,5 @@
 		<string>_spotify-connect._tcp</string>
 		<string>_googlecast._tcp</string>
 	</array>
-	<key>NSMotionUsageDescription</key>
-	<string>Head gestures and Spatial Audio use motion to respond to how you move.</string>
 </dict>
 </plist>

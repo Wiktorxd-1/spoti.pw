@@ -328,7 +328,7 @@ static CGRect pillIn(UIView *host, UITabBar *bar) {
         }
     });
     if (!CGRectIsNull(best)) {
-        if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && best.size.width > 560) {
+        if (best.size.width > 560) {
             CGFloat maxWidth = 560;
             best.origin.x = (host.bounds.size.width - maxWidth) / 2.0;
             best.size.width = maxWidth;
@@ -339,7 +339,7 @@ static CGRect pillIn(UIView *host, UITabBar *bar) {
     CGFloat height = 62;
     CGFloat width = host.bounds.size.width - 40;
     CGFloat x = 20;
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && width > 560) {
+    if (width > 560) {
         width = 560;
         x = (host.bounds.size.width - width) / 2.0;
     }
