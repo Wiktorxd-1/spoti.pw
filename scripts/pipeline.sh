@@ -100,7 +100,7 @@ fi
 # Theos builds its Swift support tools only at MAKELEVEL 0, and `make release` hands this script MAKELEVEL 1.
 NPROC="$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)"
 echo "==> building tweak (parallel with $NPROC jobs)"
-env -u MAKELEVEL gmake -C "$ROOT/tweak" -j"$NPROC" clean package >/dev/null
+env -u MAKELEVEL gmake -C "$ROOT/tweak" -j"$NPROC" package
 TWEAK_DEB="$(ls -t "$ROOT"/tweak/packages/*.deb | head -1)"
 echo "    $TWEAK_DEB"
 

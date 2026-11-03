@@ -16,7 +16,10 @@ FLEX_ARG := $(if $(filter 0,$(FLEX)),--no-flex,)
 DEV_NAME ?= Taurus.dev
 DEV_ICON ?= docs/icon.png
 
-.PHONY: build release install trees session log flags
+.PHONY: check build release install trees session log flags
+check:    ## syntax, layer boundaries, and logic check
+	python3 scripts/check-syntax.py
+
 build:    ## FLEX + glass IPA into out/
 	bash ./scripts/pipeline.sh $(IPA) $(SAFARI_ARG)
 release:  ## glass only, no FLEX
