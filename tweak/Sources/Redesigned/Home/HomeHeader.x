@@ -95,15 +95,29 @@ static BOOL findHeader(UIView *view) {
     if (sg_stack && [sg_stack isDescendantOfView:view]) return YES;
     sg_stack = nil;
     sg_scrim = nil;
+    sg_header = nil;
     for (UIView *wrapper in view.subviews) {
         UIView *scrim = childNamed(wrapper, @"GradientView");
         if (scrim) sg_scrim = scrim;
     }
-    UIView *header = childNamed(childNamed(view, @"HomeHeaderElement"), @"HomeHeaderView");
-    for (UIView *sub in header.subviews) {
-        if ([sub isKindOfClass:UIStackView.class]) sg_stack = (UIStackView *)sub;
+    SGForEachView(view, ^(UIView *v) {
+        if (!sg_header && [NSStringFromClass(v.class) containsString:@"HomeHeaderView"]) {
+            sg_header = v;
+            for (UIView *sub in v.subviews) {
+                if ([sub isKindOfClass:UIStackView.class]) {
+                    sg_stack = (UIStackView *)sub;
+                    break;
+                }
+            }
+        }
+    });
+    if (!sg_header) {
+        UIView *header = childNamed(childNamed(view, @"HomeHeaderElement"), @"HomeHeaderView");
+        for (UIView *sub in header.subviews) {
+            if ([sub isKindOfClass:UIStackView.class]) sg_stack = (UIStackView *)sub;
+        }
+        sg_header = header;
     }
-    sg_header = header;
     if (sg_stack) return YES;
     static dispatch_once_t once;
     dispatch_once(&once, ^{ SGLog(@"redesign home: header stack not found, header left as Spotify's"); });
@@ -154,6 +168,35 @@ void SGRHomeProfilePhotoPreferenceChanged(void) {
     sg_face.accessibilityElementsHidden = !visible;
 }
 
+static BOOL isAvatarView(UIView *view) {
+    if (!view) return NO;
+    static Class faceClass;
+    if (!faceClass) faceClass = NSClassFromString(@"_TtC29ListeningActivity_ElementsKit21AdaptiveFaceContainer");
+    if (faceClass && [view isKindOfClass:faceClass]) return YES;
+    NSString *className = NSStringFromClass(view.class);
+    if ([className containsString:@"AdaptiveFace"] || [className containsString:@"SideDrawer"]) return YES;
+    NSString *ident = view.accessibilityIdentifier;
+    if ([ident containsString:@"SideDrawerButton"] || [ident containsString:@"AdaptiveFace"] || [ident containsString:@"Profile"]) return YES;
+    NSString *label = [view.accessibilityLabel lowercaseString];
+    if ([label containsString:@"profile"] || [label containsString:@"settings"]) return YES;
+    return NO;
+}
+
+static UIView *avatarIn(UIStackView *stack) {
+    __block UIView *face = SGRFindByIdentifier(stack, @"Components.UI.SideDrawerButton*", nil);
+    if (face) return face;
+    SGForEachView(stack, ^(UIView *v) {
+        if (!face && isAvatarView(v) && v.bounds.size.width > 1) face = v;
+    });
+    if (face) return face;
+    for (UIView *part in stack.arrangedSubviews) {
+        if (![part isKindOfClass:UIScrollView.class] && ![NSStringFromClass(part.class) containsString:@"Pill"] && part.bounds.size.width <= 60 && part.bounds.size.width > 1) {
+            return part;
+        }
+    }
+    return stack.arrangedSubviews.firstObject;
+}
+
 static void layoutHeader(UIViewController *page) {
     UIView *view = page.viewIfLoaded;
     if (!view || !findHeader(view)) return;
@@ -171,13 +214,22 @@ static void layoutHeader(UIViewController *page) {
     }
     vanish(sg_scrim);
 
-    // The avatar by its side drawer button's id: Spotify renamed the button's class from
-    // AdaptiveFaceContainer in 9.1.90, and the id (a11y "Your profile and settings") is Spotify's own.
-    UIView *face = SGRFindByIdentifier(stack, @"Components.UI.SideDrawerButton", nil);
-    // Everything else in the stack goes; a part that holds the avatar stays.
+    UIView *face = avatarIn(stack);
     for (UIView *part in stack.arrangedSubviews) {
-        if (face && [face isDescendantOfView:part]) continue;
+        if (face && (face == part || [face isDescendantOfView:part])) {
+            part.alpha = 1;
+            part.hidden = NO;
+            part.userInteractionEnabled = YES;
+            part.accessibilityElementsHidden = NO;
+            continue;
+        }
         vanish(part);
+    }
+    if (face) {
+        face.alpha = 1;
+        face.hidden = NO;
+        face.userInteractionEnabled = YES;
+        face.accessibilityElementsHidden = NO;
     }
     SGRNavbarSetProfilePhotoVisible(face);
     if (stack.semanticContentAttribute != UISemanticContentAttributeForceLeftToRight) {
@@ -196,7 +248,8 @@ static void layoutHeader(UIViewController *page) {
     if (![title.font isEqual:font]) title.font = font;
 
     // The avatar keeps the leading edge, as in the Library header; the title starts after it.
-    CGFloat leading = face ? CGRectGetMaxX(SGFrameIn(face, header)) + SGRGrid : SGRSideMargin;
+    BOOL faceVisible = SGFlag(SGRKeyNavbarProfilePhoto, YES);
+    CGFloat leading = (face && faceVisible) ? MAX(SGRSideMargin + 40, CGRectGetMaxX(SGFrameIn(face, header)) + SGRGrid) : SGRSideMargin;
     CGFloat height = ceil(font.lineHeight);
     CGRect frame = CGRectMake(leading, round(CGRectGetMidY(stack.frame) - height / 2), MAX(0, header.bounds.size.width - leading - SGRSideMargin), height);
     if (!CGRectEqualToRect(title.frame, frame)) title.frame = frame;

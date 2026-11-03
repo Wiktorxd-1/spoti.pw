@@ -13,6 +13,7 @@
 #import "Shared/ListeningStats/ListeningStats.h"
 #import "Shared/Lossless/SGLossless.h"
 #import "Shared/Player/PlayerSettings.h"
+#import "Shared/Player/ContextMenuAlbum.h"
 #import "Native/Appearance/Appearance.h"
 #import "Native/Navbar/Navbar.h"
 #import "Native/NowPlayingBar/NowPlayingBar.h"
@@ -166,6 +167,7 @@ UIViewController *SGPlayerSettingsPage(void) {
     [sections addObject:SGSection(nil, pages)];
     // Playlists and artist pages: the alphabet index works with either look, the concerts card is the redesign's.
     NSMutableArray<SGModRow *> *browsing = [NSMutableArray arrayWithObject:SGWithSymbol(SGAlphaIndexRow(), @"textformat.abc")];
+    [browsing addObject:SGWithSymbol(SGSwitchRow(@"Show album in track menu", @"Show album name next to artist in the ⋯ menu", SGKeyContextMenuAlbum), @"opticaldisc")];
     if (!native) {
         [browsing addObject:SGWithSymbol(SGSwitchRow(@"Upcoming concerts", @"Show an artist's tour dates under their name", SGKeyConcerts), @"ticket")];
     }

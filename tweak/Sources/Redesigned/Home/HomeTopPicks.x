@@ -37,6 +37,31 @@ static void stripBase(UIView *cell, NSUInteger depth);
 @implementation SGRLayoutBox
 @end
 
+static BOOL isShortcutsGrid(UIView *root) {
+    if (![root isKindOfClass:UICollectionView.class]) return NO;
+    static Class shelf;
+    if (!shelf) shelf = NSClassFromString(@"_TtC16Home_CarouselKit29TouchCancellingCollectionView");
+    if (shelf && [root isKindOfClass:shelf]) return NO;
+    if ([root.accessibilityIdentifier isEqualToString:@"ActionCardCarouselElement"]) return NO;
+
+    id ds = ((UICollectionView *)root).dataSource;
+    if (ds && [NSStringFromClass(object_getClass(ds)) containsString:@"Shortcuts"]) return YES;
+    id del = ((UICollectionView *)root).delegate;
+    if (del && [NSStringFromClass(object_getClass(del)) containsString:@"Shortcuts"]) return YES;
+
+    for (UIView *cell in ((UICollectionView *)root).visibleCells) {
+        if ([NSStringFromClass(object_getClass(cell.subviews.firstObject)) containsString:@"Home_AnchorsAndShortcutsKit"] ||
+            [NSStringFromClass(object_getClass(cell)) containsString:@"Shortcuts"]) return YES;
+    }
+    for (UIView *sub in root.subviews) {
+        if ([NSStringFromClass(object_getClass(sub)) containsString:@"Shortcuts"] ||
+            [NSStringFromClass(object_getClass(sub.subviews.firstObject)) containsString:@"Shortcuts"]) return YES;
+    }
+
+    if (!root.accessibilityIdentifier.length) return YES;
+    return NO;
+}
+
 static UICollectionViewCompositionalLayoutSectionProvider wrapped(UICollectionViewCompositionalLayoutSectionProvider provider, SGRLayoutBox *box) {
     return ^NSCollectionLayoutSection *(NSInteger section, id<NSCollectionLayoutEnvironment> environment) {
         UICollectionViewCompositionalLayout *layout = box.layout;
@@ -46,7 +71,12 @@ static UICollectionViewCompositionalLayoutSectionProvider wrapped(UICollectionVi
         sg_enlarging = YES;
         sg_cardWidth = 0;
         NSCollectionLayoutSection *made = provider(section, environment);
-        if (layout && sg_cardWidth > 0) objc_setAssociatedObject(layout, &kWidthKey, @(sg_cardWidth), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        if (layout && sg_cardWidth > 0) {
+            objc_setAssociatedObject(layout, &kWidthKey, @(sg_cardWidth), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [sg_pageLayout invalidateLayout];
+            });
+        }
         sg_enlarging = was;
         sg_cardWidth = wasWidth;
         return made;
@@ -216,7 +246,30 @@ static NSDictionary<NSIndexPath *, NSValue *> *swappedFrames(UICollectionViewLay
     %orig;
     UICollectionViewCell *cell = (UICollectionViewCell *)self;
     UICollectionView *page = sg_pageLayout.collectionView;
+    if (!page) {
+        for (UIView *v = cell.superview; v; v = v.superview) {
+            if ([v isKindOfClass:UICollectionView.class]) {
+                page = (UICollectionView *)v;
+                sg_pageLayout = page.collectionViewLayout;
+                break;
+            }
+        }
+    }
     if (page && cell.superview == page && objc_getAssociatedObject(page, &kAuraKey)) stripBase(cell, 3);
+
+    if (SGFlag(SGRKeyHomeTopPicks, NO) && !sg_shortcutsPath) {
+        UIView *content = cell.contentView.subviews.firstObject;
+        if ([NSStringFromClass(object_getClass(content)) containsString:@"Home_EvoPageImpl13HomeStructure"]) {
+            UIView *root = content.subviews.firstObject;
+            if (root && isShortcutsGrid(root)) {
+                NSIndexPath *path = [page indexPathForCell:cell];
+                if (path) {
+                    sg_shortcutsPath = path;
+                    [page.collectionViewLayout invalidateLayout];
+                }
+            }
+        }
+    }
 }
 
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)attributes {
@@ -238,13 +291,9 @@ static NSDictionary<NSIndexPath *, NSValue *> *swappedFrames(UICollectionViewLay
         sg_topIndex = NSIntegerMax;
     }
     if (!SGFlag(SGRKeyHomeTopPicks, NO)) return result;
-    if (root && ![root isKindOfClass:shelf ?: NSObject.class] && [root isKindOfClass:UICollectionView.class]) {
-        UIView *first = ((UICollectionView *)root).visibleCells.firstObject;
-        if ([NSStringFromClass(object_getClass(first.subviews.firstObject)) containsString:@"Home_AnchorsAndShortcutsKit"]
-            && ![attributes.indexPath isEqual:sg_shortcutsPath]) {
-            sg_shortcutsPath = attributes.indexPath;
-            [sg_pageLayout invalidateLayout];
-        }
+    if (root && isShortcutsGrid(root) && ![attributes.indexPath isEqual:sg_shortcutsPath]) {
+        sg_shortcutsPath = attributes.indexPath;
+        [sg_pageLayout invalidateLayout];
     }
     NSInteger index = attributes.indexPath.section * 10000 + attributes.indexPath.item;
     if (!shelf || ![root isKindOfClass:shelf] || result.size.height <= kHeading) {
@@ -280,11 +329,9 @@ static NSDictionary<NSIndexPath *, NSValue *> *swappedFrames(UICollectionViewLay
         objc_setAssociatedObject(layout, &kNaturalKey, natural, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     NSNumber *card = objc_getAssociatedObject(layout, &kWidthKey);
-    // Never shorter than what the shelf lays out: Spotify's height can be taken before its tallest card sized
-    // itself (a title on 4 lines), and the shelf then scrolls inside its cell. The shelf's height comes from its
-    // cards, not from the cell, so taking it does not feed back.
-    if (natural && large && card) result.size = CGSizeMake(result.size.width, MAX(natural.doubleValue + growth(card.doubleValue),
-                                                                              ceil(layout.collectionViewContentSize.height)));
+    CGFloat cWidth = card ? card.doubleValue : 149.0;
+    if (natural && large) result.size = CGSizeMake(result.size.width, MAX(natural.doubleValue + growth(cWidth),
+                                                                          ceil(layout.collectionViewContentSize.height)));
     else if (natural && was) result.size = CGSizeMake(result.size.width, natural.doubleValue);
     return result;
 }

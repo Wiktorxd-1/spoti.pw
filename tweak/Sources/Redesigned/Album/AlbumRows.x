@@ -1,6 +1,7 @@
 #import "Core/SGCore.h"
 #import "Redesigned/Kit/SGRKit.h"
 #import "Album.h"
+#import "Shared/Player/ContextMenuAlbum.h"
 
 static const CGFloat kHairline = 0.5;
 
@@ -115,7 +116,33 @@ static void applyHairline(UIView *row) {
     [CATransaction commit];
 }
 
+static NSString *albumName(UIView *page) {
+    UIView *header = SGRFindByIdentifier(page, @"CreativeWorkPlatform.Components.UI.CreativeWorkHeader", &kAlbumHeaderKey);
+    UIView *title = SGRFindByIdentifier(header, @"CreativeWorkPlatform.Components.UI.TitleRow", nil);
+    __block NSString *name = nil;
+    SGForEachView(title, ^(UIView *v) {
+        if (!name && [v isKindOfClass:UILabel.class] && ((UILabel *)v).text.length) {
+            name = ((UILabel *)v).text;
+        }
+    });
+    return name;
+}
+
+static NSString *rowTrackTitle(UIView *row) {
+    UIView *title = SGRFindByIdentifier(row, @"EncoreConsumerMobile.View.Granular.Title", nil);
+    __block NSString *name = nil;
+    SGForEachView(title, ^(UIView *v) {
+        if (!name && [v isKindOfClass:UILabel.class] && ((UILabel *)v).text.length) {
+            name = ((UILabel *)v).text;
+        }
+    });
+    return name;
+}
+
 static void applyRow(UIView *cell, UIView *page, UIView *row) {
+    NSString *alb = albumName(page);
+    NSString *trk = rowTrackTitle(row);
+    if (alb.length && trk.length) SGCacheTrackAlbum(trk, alb);
     clearSurface(cell);
     if (SGRRevealWaitsFor(page, SGRRevealList) && SGRRevealShowsText(row)) SGRRevealMark(page, SGRRevealList);
     // The row, and every box the element framework wraps it in on the way back up to the cell.
