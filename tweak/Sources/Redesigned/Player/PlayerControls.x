@@ -186,7 +186,14 @@ static void playGlyph(UIView *host) {
     if (!host) return;
     if (SGRLyricsFadedView(host)) host.alpha = 0;
     // The unit lays out before its row does, and the glyphs are centered on the buttons in it.
-    [SGRowIn(host) layoutIfNeeded];
+    UIStackView *row = SGRowIn(host);
+    if (row && UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && host.bounds.size.width > 440) {
+        CGFloat maxRowWidth = 400;
+        CGFloat rowX = round((host.bounds.size.width - maxRowWidth) / 2.0);
+        CGRect rowFrame = CGRectMake(rowX, row.frame.origin.y, maxRowWidth, row.frame.size.height);
+        if (!CGRectEqualToRect(row.frame, rowFrame)) row.frame = rowFrame;
+    }
+    [row layoutIfNeeded];
     sg_controlsHost = host;
     skipGlyph(host, @"SPTNowPlayingPreviousTrackButton", &kPreviousKey, @"backward.fill");
     skipGlyph(host, @"SPTNowPlayingNextTrackButton", &kNextKey, @"forward.fill");

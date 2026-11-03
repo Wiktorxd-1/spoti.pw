@@ -336,7 +336,13 @@ BOOL SGRPlayerPlaceVolume(UIView *stack, UIView *controls, UIView *row, CGFloat 
                          : controls.center.y + controls.transform.ty + kButtonsHalf;
     CGFloat below = [row convertPoint:CGPointMake(CGRectGetMidX(row.bounds), CGRectGetMidY(row.bounds)) toView:stack].y - kGlyphsHalf;
     CGFloat height = kRowHeight, room = below - above;
-    CGRect frame = CGRectMake(margin, round((above + below - height) / 2), MAX(0, stack.bounds.size.width - 2 * margin), height);
+    CGFloat stackWidth = stack.bounds.size.width;
+    CGFloat volumeWidth = MAX(0, stackWidth - 2 * margin);
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && volumeWidth > 520) {
+        volumeWidth = 520;
+    }
+    CGFloat volumeX = round((stackWidth - volumeWidth) / 2.0);
+    CGRect frame = CGRectMake(volumeX, round((above + below - height) / 2), volumeWidth, height);
     if (volume.matchTimeSlider) {
         UIView *player = stack.superview;
         UISlider *progress = (UISlider *)SGRFindByIdentifier(player, @"SPTNowPlayingSliderV2", &kProgressSliderKey);

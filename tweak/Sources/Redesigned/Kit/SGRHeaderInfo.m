@@ -364,7 +364,9 @@ static BOOL setText(UILabel *label, NSString *text) {
 
     if (!_about.hidden) {
         y += kAboutAbove;
-        _about.frame = CGRectMake(kSide, y, text, ceil([_about sizeThatFits:CGSizeMake(text, CGFLOAT_MAX)].height));
+        CGFloat aboutWidth = MIN(text, 640);
+        CGFloat aboutX = round((width - aboutWidth) / 2.0);
+        _about.frame = CGRectMake(aboutX, y, aboutWidth, ceil([_about sizeThatFits:CGSizeMake(aboutWidth, CGFLOAT_MAX)].height));
     }
 
     if (_card) {

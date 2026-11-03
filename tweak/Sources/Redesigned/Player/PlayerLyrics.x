@@ -212,8 +212,10 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     CGFloat lines = MAX(CGRectGetMaxY(l.thumb), top + row.size.height) + kLyricsTop;
     CGFloat durationY = CGRectGetMinY(bar);
     CGFloat bottomLimit = (durationY > lines + 50 && durationY < host.bounds.size.height) ? durationY : host.bounds.size.height - 200;
-    l.stage = CGRectMake(0, lines, hostWidth, MAX(0, bottomLimit - kLyricsBottom - lines));
     BOOL isPad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
+    CGFloat stageWidth = (isPad && hostWidth > 680) ? MIN(hostWidth * 0.75, 720) : hostWidth;
+    CGFloat stageX = round((hostWidth - stageWidth) / 2.0);
+    l.stage = CGRectMake(stageX, lines, stageWidth, MAX(0, bottomLimit - kLyricsBottom - lines));
     l.ok = l.stage.size.height > kLivingHeight / 2 && (isPad || l.lift < 0);
     return l;
 }

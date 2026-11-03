@@ -273,8 +273,15 @@ static UIViewPropertyAnimator *setBlurIntensity(UIVisualEffectView *view, UIView
     _lyricsBlur.frame = bounds;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    CGFloat y = height > total ? round((total - height) / 2.0) : 0;
-    _still.frame = CGRectMake(0, y, width, height);
+    CGFloat targetWidth = width;
+    CGFloat targetHeight = height;
+    if (targetHeight < total) {
+        targetHeight = total;
+        targetWidth = _aspect > 0 ? round(total / _aspect) : width;
+    }
+    CGFloat x = round((width - targetWidth) / 2.0);
+    CGFloat y = round((total - targetHeight) / 2.0);
+    _still.frame = CGRectMake(x, y, targetWidth, targetHeight);
     _clip.frame = _still.bounds;
     _clipMask.frame = _still.bounds;
     CGFloat stillBottom = CGRectGetMaxY(_still.frame);

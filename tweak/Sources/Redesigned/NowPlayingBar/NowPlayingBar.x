@@ -631,6 +631,14 @@ void SGRUpdateIPadBottomDock(void) {
 }
 
 %hook _TtC18NowPlaying_BarImpl36NowPlayingBarContainerViewController
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+    %orig;
+    [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        SGRUpdateIPadBottomDock();
+    } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        SGRUpdateIPadBottomDock();
+    }];
+}
 - (void)viewDidLoad {
     %orig;
     styleNowPlayingBar((UIViewController *)self);

@@ -88,6 +88,8 @@ static char kReadyContext;
     AVQueuePlayer *_player;
     AVPlayerLooper *_looper;
     AVPlayerLayer *_motion;
+    UIVisualEffectView *_ambientBlur;
+    UIImageView *_card;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -101,6 +103,21 @@ static char kReadyContext;
     _picture.clipsToBounds = YES;
     _picture.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self addSubview:_picture];
+
+    _ambientBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark]];
+    _ambientBlur.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    _ambientBlur.alpha = 0;
+    [self addSubview:_ambientBlur];
+
+    _card = [UIImageView new];
+    _card.contentMode = UIViewContentModeScaleAspectFill;
+    _card.clipsToBounds = YES;
+    _card.layer.cornerRadius = 18;
+    _card.layer.cornerCurve = kCACornerCurveContinuous;
+    _card.layer.borderWidth = 1;
+    _card.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.18].CGColor;
+    _card.hidden = YES;
+    [self addSubview:_card];
 
     _scrim = [CAGradientLayer layer];
     _scrim.zPosition = 1;
@@ -143,12 +160,31 @@ static char kReadyContext;
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGRect bounds = self.bounds;
+    BOOL isWide = bounds.size.width > bounds.size.height * 1.45 && bounds.size.width > 500;
+    _ambientBlur.frame = bounds;
+    _ambientBlur.alpha = isWide ? 1 : 0;
+    _card.hidden = !isWide;
+    if (isWide) {
+        CGFloat cardSide = round(MIN(bounds.size.height - 24, 260));
+        CGFloat cardX = round((bounds.size.width - cardSide) / 2.0);
+        CGFloat cardY = round((bounds.size.height - cardSide) / 2.0);
+        _card.frame = CGRectMake(cardX, cardY, cardSide, cardSide);
+        _card.image = _picture.image;
+    }
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _scrim.frame = CGRectMake(0, 0, bounds.size.width, MIN(kTopScrim, bounds.size.height));
     CGFloat fade = round(bounds.size.height * kDissolve);
     _dissolve.frame = CGRectMake(0, bounds.size.height - fade, bounds.size.width, fade);
-    _motion.frame = bounds;
+    if (_motion) {
+        if (isWide) {
+            _motion.frame = _card.bounds;
+            if (_motion.superlayer != _card.layer) [_card.layer addSublayer:_motion];
+        } else {
+            _motion.frame = bounds;
+            if (_motion.superlayer != self.layer) [self.layer addSublayer:_motion];
+        }
+    }
     [CATransaction commit];
 }
 
@@ -197,8 +233,14 @@ static char kReadyContext;
     _motion.videoGravity = AVLayerVideoGravityResizeAspectFill;
     _motion.zPosition = 0.5;
     _motion.opacity = 0;
-    _motion.frame = self.bounds;
-    [self.layer addSublayer:_motion];
+    BOOL isWide = self.bounds.size.width > self.bounds.size.height * 1.45 && self.bounds.size.width > 500;
+    if (isWide) {
+        _motion.frame = _card.bounds;
+        [_card.layer addSublayer:_motion];
+    } else {
+        _motion.frame = self.bounds;
+        [self.layer addSublayer:_motion];
+    }
     [_motion addObserver:self forKeyPath:@"readyForDisplay" options:0 context:&kReadyContext];
     NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
     for (NSNotificationName name in @[UIApplicationDidBecomeActiveNotification, UIApplicationWillResignActiveNotification,
@@ -249,6 +291,7 @@ static char kReadyContext;
     UIImage *image = source.image;
     if (!image || source.bounds.size.width < kMinCover || _picture.image == image) return;
     _picture.image = image;
+    _card.image = image;
     // The page's field takes its colour from the same picture.
     SGRAlbumSetArtwork(self, image);
     SGRRevealMark(SGRAlbumPageOf(self), SGRRevealPicture);
