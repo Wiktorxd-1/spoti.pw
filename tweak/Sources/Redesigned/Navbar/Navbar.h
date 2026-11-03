@@ -54,3 +54,4 @@ BOOL SGRFireTapRecognizers(UIView *view);
 UIView *SGRTabBarStockBar(void);
 UIView *SGRTabBarHostView(void);
 CGRect SGRTabBarPillInHost(void);
+void SGRTabBarRefreshDock(void);

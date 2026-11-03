@@ -547,6 +547,16 @@ static void styleNowPlayingBar(UIViewController *container) {
     frame.size.height = MIN(frame.size.height, 80);
     if (frame.size.height < 30 || frame.size.width < 100) return;
 
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        CGFloat maxWidth = MIN(container.view.bounds.size.width - 40, 560);
+        if (frame.size.width > maxWidth) {
+            frame.origin.x = round((container.view.bounds.size.width - maxWidth) / 2.0);
+            frame.size.width = maxWidth;
+        } else {
+            frame.origin.x = round((container.view.bounds.size.width - frame.size.width) / 2.0);
+        }
+    }
+
     CGFloat radius = MIN(kCardRadius, frame.size.height / 2);
     if (card) {
         roundView(card, radius);
@@ -582,8 +592,6 @@ void SGRUpdateIPadBottomDock(void) {
     UIWindow *window = (containerView && containerView.window) ? containerView.window : (stockBar ? stockBar.window : nil);
     if (!window) return;
 
-    CGFloat windowWidth = window.bounds.size.width;
-
     BOOL playerPresented = SGRPlayerIsPresented();
     if (playerPresented) {
         if (tabHost && tabHost.alpha > 0.01) {
@@ -601,84 +609,21 @@ void SGRUpdateIPadBottomDock(void) {
         tabHost.alpha = 1;
         tabHost.userInteractionEnabled = YES;
     }
-
-    CGFloat contentCenter = round(windowWidth / 2.0);
-
-    BOOL hasTabBar = stockBar && tabHost && stockBar.window && !stockBar.hidden && tabHost.alpha > 0.01;
-    CGRect tabPill = hasTabBar ? SGRTabBarPillInHost() : CGRectNull;
-    if (CGRectIsNull(tabPill) || tabPill.size.width < 50) hasTabBar = NO;
-
-    CGFloat originalTabXInWindow = 0;
-    CGFloat tabWidth = 0;
-    UIView *tabSuper = nil;
-    if (hasTabBar) {
-        stockBar.clipsToBounds = NO;
-        if (stockBar.superview) stockBar.superview.clipsToBounds = NO;
-        tabSuper = stockBar.superview ?: stockBar;
-        CGFloat currentTabOffset = tabHost.transform.tx;
-        CGRect tabPillInSuper = [tabSuper convertRect:tabPill fromView:tabHost];
-        CGFloat originalTabXInSuper = tabPillInSuper.origin.x - currentTabOffset;
-        originalTabXInWindow = [window convertPoint:CGPointMake(originalTabXInSuper, 0) fromView:tabSuper].x;
-        tabWidth = tabPill.size.width;
+    if (containerView && containerView.alpha < 0.99 && (!container || !container.view.hidden)) {
+        containerView.alpha = 1;
+        containerView.userInteractionEnabled = YES;
     }
 
-    UIVisualEffectView *glass = sg_cardGlass;
-    BOOL hasNowPlaying = hasTrack() && containerView && glass && containerView.window && !containerView.hidden && containerView.alpha > 0.01;
-    CGFloat originalCardXInWindow = 0;
-    CGFloat cardWidth = 0;
-    UIView *cardSuper = nil;
-    if (hasNowPlaying) {
-        containerView.clipsToBounds = NO;
-        if (containerView.superview) containerView.superview.clipsToBounds = NO;
-        cardSuper = containerView.superview ?: containerView;
-        CGFloat currentCardOffset = containerView.transform.tx;
-        CGRect glassInSuper = [cardSuper convertRect:glass.bounds fromView:glass];
-        CGFloat originalCardXInSuper = glassInSuper.origin.x - currentCardOffset;
-        originalCardXInWindow = [window convertPoint:CGPointMake(originalCardXInSuper, 0) fromView:cardSuper].x;
-        cardWidth = glass.bounds.size.width;
-        if (cardWidth < 80) hasNowPlaying = NO;
+    // Reset horizontal transforms so the dock acts as iOS (centered stack, no side-by-side break)
+    if (tabHost && !CGAffineTransformIsIdentity(tabHost.transform)) {
+        tabHost.transform = CGAffineTransformIdentity;
+    }
+    if (containerView && !CGAffineTransformIsIdentity(containerView.transform)) {
+        containerView.transform = CGAffineTransformIdentity;
     }
 
-    CGFloat gap = 16;
-    if (hasTabBar && hasNowPlaying) {
-        CGFloat totalDockWidth = tabWidth + gap + cardWidth;
-        CGFloat dockX = round((windowWidth - totalDockWidth) / 2.0);
-        CGFloat tabTargetX = dockX;
-        CGFloat cardTargetX = dockX + tabWidth + gap;
-
-        CGFloat deltaTab = tabTargetX - originalTabXInWindow;
-        CGAffineTransform tabTrans = CGAffineTransformMakeTranslation(round(deltaTab), 0);
-        if (!CGAffineTransformEqualToTransform(tabHost.transform, tabTrans)) tabHost.transform = tabTrans;
-
-        CGFloat deltaCard = cardTargetX - originalCardXInWindow;
-        CGAffineTransform cardTrans = CGAffineTransformMakeTranslation(round(deltaCard), 0);
-        if (!CGAffineTransformEqualToTransform(containerView.transform, cardTrans)) containerView.transform = cardTrans;
-    } else if (hasTabBar) {
-        CGFloat dockX = round(contentCenter - tabWidth / 2.0);
-        CGFloat deltaTab = dockX - originalTabXInWindow;
-        CGAffineTransform tabTrans = CGAffineTransformMakeTranslation(round(deltaTab), 0);
-        if (!CGAffineTransformEqualToTransform(tabHost.transform, tabTrans)) tabHost.transform = tabTrans;
-
-        if (containerView && !CGAffineTransformIsIdentity(containerView.transform)) {
-            containerView.transform = CGAffineTransformIdentity;
-        }
-    } else if (hasNowPlaying) {
-        CGFloat cardTargetX = round(contentCenter - cardWidth / 2.0);
-        CGFloat deltaCard = cardTargetX - originalCardXInWindow;
-        CGAffineTransform cardTrans = CGAffineTransformMakeTranslation(round(deltaCard), 0);
-        if (!CGAffineTransformEqualToTransform(containerView.transform, cardTrans)) containerView.transform = cardTrans;
-
-        if (tabHost && !CGAffineTransformIsIdentity(tabHost.transform)) {
-            tabHost.transform = CGAffineTransformIdentity;
-        }
-    } else {
-        if (tabHost && !CGAffineTransformIsIdentity(tabHost.transform)) {
-            tabHost.transform = CGAffineTransformIdentity;
-        }
-        if (containerView && !CGAffineTransformIsIdentity(containerView.transform)) {
-            containerView.transform = CGAffineTransformIdentity;
-        }
-    }
+    // Refresh dock pill coordinates when resizing in Stage Manager / Split View
+    SGRTabBarRefreshDock();
 }
 
 %hook _TtC18NowPlaying_BarImpl36NowPlayingBarContainerViewController

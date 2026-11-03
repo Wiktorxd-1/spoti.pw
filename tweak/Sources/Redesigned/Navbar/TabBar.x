@@ -52,6 +52,7 @@ UIView *SGRTabBarHostView(void) {
 }
 
 static CGRect pillIn(UIView *host, UITabBar *bar);
+static CGRect layoutDock(UIView *stockBar, UIView *host, UITabBar *bar, CGRect circles[2], CGRect shapes[2]);
 
 CGRect SGRTabBarPillInHost(void) {
     UIView *stock = sg_stockBar;
@@ -60,6 +61,17 @@ CGRect SGRTabBarPillInHost(void) {
     UITabBar *bar = objc_getAssociatedObject(stock, &kBarKey);
     if (!host || !bar) return CGRectNull;
     return pillIn(host, bar);
+}
+
+void SGRTabBarRefreshDock(void) {
+    UIView *stock = sg_stockBar;
+    if (!stock) return;
+    UIView *host = objc_getAssociatedObject(stock, &kHostKey);
+    UITabBar *bar = objc_getAssociatedObject(stock, &kBarKey);
+    if (host && bar && host.window) {
+        CGRect row = layoutDock(stock, host, bar, NULL, NULL);
+        if (sg_minimized) SGRDockNowPlayingCard(YES, row, host, NO);
+    }
 }
 
 void SGRSetTabBarMinimized(BOOL minimized, BOOL animated) {
@@ -353,10 +365,9 @@ static CGRect pillIn(UIView *host, UITabBar *bar) {
     });
     if (!CGRectIsNull(best)) {
         if (best.size.width > 560) {
-            CGFloat maxWidth = 560;
-            best.origin.x = (host.bounds.size.width - maxWidth) / 2.0;
-            best.size.width = maxWidth;
+            best.size.width = 560;
         }
+        best.origin.x = round((host.bounds.size.width - best.size.width) / 2.0);
         return best;
     }
     CGFloat bottom = host.window.safeAreaInsets.bottom;

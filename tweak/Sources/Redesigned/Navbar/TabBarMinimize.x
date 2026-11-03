@@ -24,7 +24,6 @@ static BOOL inContainer(UIView *view) {
 }
 
 static void scrolled(UIScrollView *scrollView) {
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) return;
     if ((!scrollView.isTracking && !scrollView.isDecelerating) || scrollView == sg_other) return;
     // Nothing playing: the pill has nothing to show, so the bar is never minimized (one already minimized can come back).
     if (!SGRTabBarMinimized() && !SGRNowPlayingAvailable()) return;
