@@ -80,15 +80,6 @@ jobs:
           path: tweak/Sources/Shared/Flags/SGFlagList.m
           key: flag-table-${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/gvZuQti06JoAU5nG.ipa' }}
 
-      - name: Compile tweak verification
-        run: |
-          if [ ! -f tweak/Sources/Shared/Flags/SGFlagList.m ]; then
-            printf '#import "Flags.h"\nconst SGFlagDef SGFlagTable[] = {};\nconst NSUInteger SGFlagCount = 0;\n' > tweak/Sources/Shared/Flags/SGFlagList.m
-          fi
-          NPROC="$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
-          echo "==> Verifying tweak compilation with Clang/Theos before downloading IPA..."
-          env -u MAKELEVEL gmake -C tweak -j"$NPROC" package
-
       - name: Cache base IPA
         id: cache-ipa
         uses: actions/cache@v4

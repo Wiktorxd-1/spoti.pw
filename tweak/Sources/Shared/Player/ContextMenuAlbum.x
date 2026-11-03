@@ -1,5 +1,3 @@
-#import <objc/message.h>
-#import <objc/runtime.h>
 #import "Core/SGCore.h"
 #import "Shared/Player/PlayerState.h"
 #import "ContextMenuAlbum.h"
@@ -15,25 +13,28 @@ void SGCacheTrackAlbum(NSString *title, NSString *album) {
 
 static void updateCacheFromState(SPTPlayerState *state) {
     if (!state) return;
-    if (state.track) {
-        NSString *title = state.track.trackTitle;
-        NSString *album = state.track.metadata[@"album_title"];
+    SPTPlayerTrack *curr = state.track;
+    if (curr) {
+        NSString *title = curr.trackTitle;
+        NSString *album = curr.metadata[@"album_title"];
         if (title.length && album.length) SGCacheTrackAlbum(title, album);
     }
     if ([state.future isKindOfClass:NSArray.class]) {
         for (id item in state.future) {
-            if ([item respondsToSelector:@selector(trackTitle)] && [item respondsToSelector:@selector(metadata)]) {
-                NSString *title = [item trackTitle];
-                NSString *album = [item metadata][@"album_title"];
+            if ([item isKindOfClass:NSClassFromString(@"SPTPlayerTrack")]) {
+                SPTPlayerTrack *t = (SPTPlayerTrack *)item;
+                NSString *title = t.trackTitle;
+                NSString *album = t.metadata[@"album_title"];
                 if (title.length && album.length) SGCacheTrackAlbum(title, album);
             }
         }
     }
     if ([state.reverse isKindOfClass:NSArray.class]) {
         for (id item in state.reverse) {
-            if ([item respondsToSelector:@selector(trackTitle)] && [item respondsToSelector:@selector(metadata)]) {
-                NSString *title = [item trackTitle];
-                NSString *album = [item metadata][@"album_title"];
+            if ([item isKindOfClass:NSClassFromString(@"SPTPlayerTrack")]) {
+                SPTPlayerTrack *t = (SPTPlayerTrack *)item;
+                NSString *title = t.trackTitle;
+                NSString *album = t.metadata[@"album_title"];
                 if (title.length && album.length) SGCacheTrackAlbum(title, album);
             }
         }
@@ -41,20 +42,13 @@ static void updateCacheFromState(SPTPlayerState *state) {
 }
 
 static NSString *findAlbumInObject(id obj, int depth) {
-    if (!obj || depth > 4) return nil;
+    if (!obj || depth > 2) return nil;
 
-    for (NSString *selName in @[@"albumTitle", @"albumName", @"album", @"name", @"title"]) {
-        SEL sel = NSSelectorFromString(selName);
-        if ([obj respondsToSelector:sel]) {
-            @try {
-                id res = ((id (*)(id, SEL))objc_msgSend)(obj, sel);
-                if ([res isKindOfClass:NSString.class] && [res length] > 0) {
-                    if (![selName isEqualToString:@"name"] && ![selName isEqualToString:@"title"]) {
-                        return res;
-                    }
-                }
-            } @catch (__unused NSException *e) {}
-        }
+    for (NSString *key in @[@"albumTitle", @"albumName", @"album"]) {
+        @try {
+            id val = [obj valueForKey:key];
+            if ([val isKindOfClass:NSString.class] && [val length] > 0) return val;
+        } @catch (NSException *e) {}
     }
 
     if ([obj isKindOfClass:NSDictionary.class]) {
@@ -68,29 +62,6 @@ static NSString *findAlbumInObject(id obj, int depth) {
             }
         }
     }
-
-    unsigned int count = 0;
-    Ivar *ivars = class_copyIvarList([obj class], &count);
-    if (ivars) {
-        for (unsigned int i = 0; i < count; i++) {
-            const char *ivarName = ivar_getName(ivars[i]);
-            if (!ivarName) continue;
-            NSString *name = @(ivarName);
-            if ([name containsString:@"album"] || [name containsString:@"model"] || [name containsString:@"props"] || [name containsString:@"metadata"] || [name containsString:@"item"]) {
-                id val = object_getIvar(obj, ivars[i]);
-                if ([val isKindOfClass:NSString.class] && [val length] > 0 && [name containsString:@"album"]) {
-                    free(ivars);
-                    return val;
-                }
-                NSString *found = findAlbumInObject(val, depth + 1);
-                if (found.length) {
-                    free(ivars);
-                    return found;
-                }
-            }
-        }
-        free(ivars);
-    }
     return nil;
 }
 
@@ -100,17 +71,19 @@ static NSString *findAlbumFromTable(UITableView *table) {
         for (NSInteger r = 0; r < [table numberOfRowsInSection:s]; r++) {
             UITableViewCell *cell = [table cellForRowAtIndexPath:[NSIndexPath indexPathForRow:r inSection:s]];
             if (!cell) continue;
-            __block BOOL isAlbumRow = NO;
+            __block NSString *album = nil;
             SGForEachView(cell, ^(UIView *v) {
                 if ([v.accessibilityIdentifier containsString:@"album"] ||
                     [v.accessibilityLabel.lowercaseString containsString:@"album"]) {
-                    isAlbumRow = YES;
+                    if ([v isKindOfClass:UILabel.class]) {
+                        NSString *text = ((UILabel *)v).text;
+                        if (text.length && ![text.lowercaseString containsString:@"go to"]) {
+                            album = text;
+                        }
+                    }
                 }
             });
-            if (isAlbumRow) {
-                NSString *album = findAlbumInObject(cell, 0);
-                if (album.length && ![album.lowercaseString containsString:@"go to"]) return album;
-            }
+            if (album.length) return album;
         }
     }
     return nil;
