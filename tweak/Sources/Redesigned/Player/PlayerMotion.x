@@ -171,6 +171,7 @@ static UIViewPropertyAnimator *setBlurIntensity(UIVisualEffectView *view, UIView
                                                                                animations:^{
         weakView.effect = blurEffect();
     }];
+    fractional.pausesOnCompletion = YES;
     [fractional startAnimation];
     [fractional pauseAnimation];
     fractional.fractionComplete = intensity;
@@ -400,7 +401,10 @@ static UIViewPropertyAnimator *setBlurIntensity(UIVisualEffectView *view, UIView
 
 // The power state is reported off the main thread.
 - (void)updateMotionSoon {
-    dispatch_async(dispatch_get_main_queue(), ^{ [self updateMotion]; });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self updateMotion];
+        [self updateBlurOpacity];
+    });
 }
 
 // A locked phone keeps the player in its window, so being in front counts as much as being in one.

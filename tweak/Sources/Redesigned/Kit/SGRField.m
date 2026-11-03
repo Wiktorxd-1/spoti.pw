@@ -146,7 +146,17 @@ static const CGFloat kLyricsBlur = 0.3;
     }
     _fillBlurLayers = blurLayers;
     _fillBlurMasks = blurMasks;
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(_sgrFieldDidBecomeActive)
+                                               name:UIApplicationDidBecomeActiveNotification
+                                             object:nil];
     return self;
+}
+
+- (void)_sgrFieldDidBecomeActive {
+    if (_lyricsBlurred) {
+        [self applyLyricsBlurAnimated:NO];
+    }
 }
 
 - (UIColor *)fieldColor {
@@ -195,6 +205,9 @@ static const CGFloat kLyricsBlur = 0.3;
     // The screen's part of it, so the copies turn about it and the shade ends at the screen's foot.
     _fluidLayer.visibleRect = CGRectMake(bleed.left, bleed.top, bounds.size.width, height);
     [CATransaction commit];
+    if (_lyricsBlurred && (!_lyricsBlurAnimator || _lyricsBlurAnimator.state == UIViewAnimatingStateInactive)) {
+        [self applyLyricsBlurAnimated:NO];
+    }
 }
 
 #pragma mark - the moving field
@@ -273,6 +286,7 @@ static const CGFloat kLyricsBlur = 0.3;
                                                                                    animations:^{
             weak.effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
         }];
+        fractional.pausesOnCompletion = YES;
         [fractional startAnimation];
         [fractional pauseAnimation];
         fractional.fractionComplete = intensity;

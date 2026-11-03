@@ -938,6 +938,9 @@ BOOL SGRPlayerIsPresented(void) {
     if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
         SGRUpdateIPadBottomDock();
     }
+    if (sg_open) {
+        SGRPlayerLyricsChanged();
+    }
 }
 - (void)viewDidLayoutSubviews {
     %orig;

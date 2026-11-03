@@ -117,6 +117,7 @@ static UIViewPropertyAnimator *setBlurIntensity(UIVisualEffectView *view, UIView
                                                                                animations:^{
         weakView.effect = blurEffect();
     }];
+    fractional.pausesOnCompletion = YES;
     [fractional startAnimation];
     [fractional pauseAnimation];
     fractional.fractionComplete = intensity;
@@ -277,7 +278,10 @@ static CAGradientLayer *fill(CAShapeLayer *shape) {
 
 // The power state is reported off the main thread.
 - (void)updateMotionSoon {
-    dispatch_async(dispatch_get_main_queue(), ^{ [self updateMotion]; });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self updateMotion];
+        [self updateBlurOpacity];
+    });
 }
 
 - (BOOL)settled {
