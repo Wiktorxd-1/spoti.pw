@@ -50,6 +50,8 @@ UIView *SGRTabBarHostView(void) {
     return stock ? objc_getAssociatedObject(stock, &kHostKey) : nil;
 }
 
+static CGRect pillIn(UIView *host, UITabBar *bar);
+
 CGRect SGRTabBarPillInHost(void) {
     UIView *stock = sg_stockBar;
     if (!stock) return CGRectNull;
@@ -815,6 +817,17 @@ static UIView *tabBarOf(UIView *item) {
 static BOOL sg_barPass, sg_itemsLaidOut;
 
 %hook _TtC23NavigationUI_TabBarImpl10TabBarView
+- (void)willMoveToSuperview:(UIView *)newSuperview {
+    %orig;
+    if (newSuperview) {
+        for (UIView *sub in ((UIView *)self).subviews) {
+            if (![sub isKindOfClass:NSClassFromString(@"SGRTabBarHost")]) {
+                sub.alpha = 0;
+            }
+        }
+        syncBar((UIView *)self);
+    }
+}
 - (void)willMoveToWindow:(UIWindow *)newWindow {
     %orig;
     if (newWindow) {
@@ -823,6 +836,7 @@ static BOOL sg_barPass, sg_itemsLaidOut;
                 sub.alpha = 0;
             }
         }
+        syncBar((UIView *)self);
     }
 }
 - (void)didMoveToWindow {

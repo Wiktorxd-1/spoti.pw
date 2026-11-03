@@ -74,27 +74,29 @@ SGModRow *SGSigningWarningRow(void) {
 }
 
 void SGCheckSigningOnce(void) {
-    if (SGSigningOpensFromLockScreen()) return;
-    if (SGFlag(SGKeyHideSigningWarning, NO)) return;
-    NSString *appID = SGSigningAppIdentifier();
-    NSUserDefaults *store = NSUserDefaults.standardUserDefaults;
-    SGLog(@"signing: installed as %@ but signed under %@; the now playing card cannot open this build",
-          NSBundle.mainBundle.bundleIdentifier, appID);
-    if ([[store stringForKey:kWarned] isEqualToString:appID]) return;
-    [store setObject:appID forKey:kWarned];
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
+        if (SGSigningOpensFromLockScreen()) return;
+        if (SGFlag(SGKeyHideSigningWarning, NO)) return;
+        NSString *appID = SGSigningAppIdentifier();
+        NSUserDefaults *store = NSUserDefaults.standardUserDefaults;
+        SGLog(@"signing: installed as %@ but signed under %@; the now playing card cannot open this build",
+              NSBundle.mainBundle.bundleIdentifier, appID);
+        if ([[store stringForKey:kWarned] isEqualToString:appID]) return;
+        [store setObject:appID forKey:kWarned];
 
-    // The first activation, plus a moment for Spotify's own start-up screens to get out of the way.
-    __block id token = [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification
-                                                                      object:nil
-                                                                       queue:nil
-                                                                  usingBlock:^(NSNotification *note) {
-        [NSNotificationCenter.defaultCenter removeObserver:token];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            // The welcome tour has the screen; it shows the fix when it goes.
-            if (SGOnboardingShowing()) sg_fixPending = YES;
-            else showFix();
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __block id token = [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification
+                                                                              object:nil
+                                                                               queue:nil
+                                                                          usingBlock:^(NSNotification *note) {
+                [NSNotificationCenter.defaultCenter removeObserver:token];
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    if (SGOnboardingShowing()) sg_fixPending = YES;
+                    else showFix();
+                });
+            }];
         });
-    }];
+    });
 }
 
 void SGShowSigningFixIfPending(void) {

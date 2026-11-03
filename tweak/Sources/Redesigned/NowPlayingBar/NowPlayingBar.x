@@ -578,6 +578,8 @@ void SGRUpdateIPadBottomDock(void) {
     UIWindow *window = stockBar.window;
     CGFloat windowWidth = window.bounds.size.width;
 
+    stockBar.clipsToBounds = NO;
+    if (stockBar.superview) stockBar.superview.clipsToBounds = NO;
     UIView *tabSuper = stockBar.superview ?: stockBar;
     CGFloat currentTabOffset = tabHost.transform.tx;
     CGRect tabPillInSuper = [tabSuper convertRect:tabPill fromView:tabHost];
@@ -592,6 +594,8 @@ void SGRUpdateIPadBottomDock(void) {
 
     CGFloat gap = 16;
     if (hasNowPlaying) {
+        containerView.clipsToBounds = NO;
+        if (containerView.superview) containerView.superview.clipsToBounds = NO;
         UIView *cardSuper = containerView.superview ?: containerView;
         CGFloat currentCardOffset = containerView.transform.tx;
         CGRect glassInSuper = [cardSuper convertRect:glass.bounds fromView:glass];
@@ -627,6 +631,15 @@ void SGRUpdateIPadBottomDock(void) {
 }
 
 %hook _TtC18NowPlaying_BarImpl36NowPlayingBarContainerViewController
+- (void)viewDidLoad {
+    %orig;
+    styleNowPlayingBar((UIViewController *)self);
+}
+- (void)viewWillAppear:(BOOL)animated {
+    %orig;
+    styleNowPlayingBar((UIViewController *)self);
+    SGRUpdateIPadBottomDock();
+}
 - (void)viewDidLayoutSubviews {
     %orig;
     styleNowPlayingBar((UIViewController *)self);
