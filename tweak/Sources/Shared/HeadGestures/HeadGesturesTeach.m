@@ -281,9 +281,15 @@ static BOOL headOffset(double *pitch, double *yaw) {
 }
 
 - (UIButton *)buttonTitled:(NSString *)title prominent:(BOOL)prominent action:(SEL)action {
-    UIButtonConfiguration *config;
-    if (@available(iOS 26.0, *)) config = prominent ? [UIButtonConfiguration prominentGlassButtonConfiguration] : [UIButtonConfiguration glassButtonConfiguration];
-    else config = prominent ? [UIButtonConfiguration filledButtonConfiguration] : [UIButtonConfiguration grayButtonConfiguration];
+    UIButtonConfiguration *config = nil;
+    if (SGLiquidGlassEnabled()) {
+        if (@available(iOS 26.0, *)) {
+            config = prominent ? [UIButtonConfiguration prominentGlassButtonConfiguration] : [UIButtonConfiguration glassButtonConfiguration];
+        }
+    }
+    if (!config) {
+        config = prominent ? [UIButtonConfiguration filledButtonConfiguration] : [UIButtonConfiguration grayButtonConfiguration];
+    }
     config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
     if (prominent) {
         config.baseBackgroundColor = SGGreen();

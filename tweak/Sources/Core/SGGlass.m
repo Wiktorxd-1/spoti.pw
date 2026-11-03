@@ -11,7 +11,7 @@ UIVisualEffect *SGGlassEffect(void) {
         });
         if ([glass respondsToSelector:@selector(effectWithStyle:)]) return [glass effectWithStyle:0];
     }
-    return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark];
+    return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
 }
 
 static UIVisualEffectView *newPane(void) {
@@ -72,7 +72,9 @@ void SGShapeGlass(UIView *glass, CGFloat radius, BOOL capsule) {
         [glass setCornerConfiguration:shape];
         glass.clipsToBounds = NO;
     } else {
-        glass.layer.cornerRadius = capsule ? glass.bounds.size.height / 2 : radius;
+        CGFloat h = glass.bounds.size.height;
+        CGFloat r = capsule ? (h > 0 ? h / 2.0 : (radius > 0 ? radius : 24.0)) : (radius > 0 ? radius : 24.0);
+        glass.layer.cornerRadius = r;
         glass.layer.cornerCurve = kCACornerCurveContinuous;
         glass.clipsToBounds = YES;
     }

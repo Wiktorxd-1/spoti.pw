@@ -325,6 +325,9 @@ static const CGFloat kDockSize = 48, kDockGap = 8;
 - (void)layoutSubviews {
     [super layoutSubviews];
     _glyph.frame = self.bounds;
+    self.layer.cornerRadius = self.bounds.size.height / 2.0;
+    self.layer.cornerCurve = kCACornerCurveContinuous;
+    self.clipsToBounds = YES;
 }
 // A tap on a round button opens its tab and brings the bar back, as the Music app's does: the pill and the two
 // buttons gather into the full bar again, with the now playing card above it.
@@ -510,6 +513,40 @@ static void applyMinimized(UIView *stockBar, BOOL animated) {
 #pragma mark - the system bar
 
 @implementation SGRSystemTabBar
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!SGLiquidGlassEnabled()) {
+        UIView *host = self.superview;
+        CGRect pill = host ? pillIn(host, self) : CGRectNull;
+        if (!CGRectIsNull(pill)) {
+            CGRect pillInBar = [self convertRect:pill fromView:host];
+            for (UIView *v in self.subviews) {
+                if ([NSStringFromClass(v.class) containsString:@"BarBackground"]) {
+                    v.frame = pillInBar;
+                    v.layer.cornerRadius = pillInBar.size.height / 2.0;
+                    v.layer.cornerCurve = kCACornerCurveContinuous;
+                    v.layer.masksToBounds = YES;
+                    v.clipsToBounds = YES;
+                    for (UIView *bgSub in v.subviews) {
+                        bgSub.layer.cornerRadius = pillInBar.size.height / 2.0;
+                        bgSub.layer.cornerCurve = kCACornerCurveContinuous;
+                        bgSub.layer.masksToBounds = YES;
+                        bgSub.clipsToBounds = YES;
+                    }
+                }
+            }
+        }
+        SGForEachView(self, ^(UIView *v) {
+            CGSize size = v.bounds.size;
+            if (v != self && size.width >= self.bounds.size.width * 0.4 && size.height >= 40 && size.height <= 80) {
+                v.layer.cornerRadius = size.height / 2.0;
+                v.layer.cornerCurve = kCACornerCurveContinuous;
+                v.layer.masksToBounds = YES;
+            }
+        });
+    }
+}
 
 - (void)tabBar:(UITabBar *)tabBar didSelectItem:(UITabBarItem *)item {
     NSUInteger index = [self.items indexOfObject:item];
@@ -713,6 +750,14 @@ static void syncBar(UIView *stockBar) {
     if (!bar) {
         bar = [[SGRSystemTabBar alloc] initWithFrame:stockBar.bounds];
         bar.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+        if (!SGLiquidGlassEnabled()) {
+            UITabBarAppearance *appearance = [UITabBarAppearance new];
+            [appearance configureWithDefaultBackground];
+            appearance.backgroundEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
+            appearance.shadowColor = UIColor.clearColor;
+            bar.standardAppearance = appearance;
+            bar.scrollEdgeAppearance = appearance;
+        }
         bar.delegate = bar;
         bar.stockBar = stockBar;
         UILongPressGestureRecognizer *hold = [[UILongPressGestureRecognizer alloc] initWithTarget:bar action:@selector(held:)];

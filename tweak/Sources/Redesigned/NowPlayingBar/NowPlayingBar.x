@@ -271,6 +271,9 @@ static void togglePlayback(void);
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGRect bounds = self.bounds;
+    self.layer.cornerRadius = bounds.size.height / 2.0;
+    self.layer.cornerCurve = kCACornerCurveContinuous;
+    self.clipsToBounds = YES;
     CGFloat side = bounds.size.height - 2 * kPillInset;
     _open.frame = bounds;
     BOOL rounded = SGFlag(SGRKeyNowPlayingRoundedArtwork, NO);
@@ -554,6 +557,9 @@ static void styleNowPlayingBar(UIViewController *container) {
     sg_cardGlass = glass;
     glass.frame = frame;
     SGShapeGlass(glass, radius, NO);
+    glass.layer.cornerRadius = radius;
+    glass.layer.cornerCurve = kCACornerCurveContinuous;
+    glass.clipsToBounds = YES;
     // A new track can change the card's size and brings its cover; the pill follows them.
     if (sg_docked) applyDock(NO);
     else refreshMini();
@@ -568,65 +574,104 @@ static void styleNowPlayingBar(UIViewController *container) {
 
 void SGRUpdateIPadBottomDock(void) {
     if (UIDevice.currentDevice.userInterfaceIdiom != UIUserInterfaceIdiomPad) return;
-    UIView *stockBar = SGRTabBarStockBar();
-    UIView *tabHost = SGRTabBarHostView();
-    if (!stockBar || !tabHost || !stockBar.window) return;
-
-    CGRect tabPill = SGRTabBarPillInHost();
-    if (CGRectIsNull(tabPill) || tabPill.size.width < 50) return;
-
-    UIWindow *window = stockBar.window;
-    CGFloat windowWidth = window.bounds.size.width;
-
-    stockBar.clipsToBounds = NO;
-    if (stockBar.superview) stockBar.superview.clipsToBounds = NO;
-    UIView *tabSuper = stockBar.superview ?: stockBar;
-    CGFloat currentTabOffset = tabHost.transform.tx;
-    CGRect tabPillInSuper = [tabSuper convertRect:tabPill fromView:tabHost];
-    CGFloat originalTabXInSuper = tabPillInSuper.origin.x - currentTabOffset;
-    CGFloat originalTabXInWindow = [window convertPoint:CGPointMake(originalTabXInSuper, 0) fromView:tabSuper].x;
-    CGFloat tabWidth = tabPill.size.width;
-
     UIViewController *container = sg_container;
     UIView *containerView = container.viewIfLoaded;
+    UIView *stockBar = SGRTabBarStockBar();
+    UIView *tabHost = SGRTabBarHostView();
+    UIWindow *window = (containerView && containerView.window) ? containerView.window : (stockBar ? stockBar.window : nil);
+    if (!window) return;
+
+    CGFloat windowWidth = window.bounds.size.width;
+    CGFloat windowHeight = window.bounds.size.height;
+
+    CGFloat contentLeft = 0;
+    CGFloat contentRight = windowWidth;
+    UIViewController *rootVC = window.rootViewController;
+    if (rootVC && rootVC.isViewLoaded) {
+        for (UIView *sub in rootVC.view.subviews) {
+            if (sub.hidden || sub.alpha < 0.05) continue;
+            CGRect f = [window convertRect:sub.bounds fromView:sub];
+            if (f.origin.x <= 2 && f.size.width >= 160 && f.size.width <= 440 && f.size.height >= windowHeight * 0.7) {
+                contentLeft = MAX(contentLeft, CGRectGetMaxX(f));
+            }
+        }
+    }
+    CGFloat contentCenter = round(contentLeft + (contentRight - contentLeft) / 2.0);
+
+    BOOL hasTabBar = stockBar && tabHost && stockBar.window && !stockBar.hidden && tabHost.alpha > 0.01;
+    CGRect tabPill = hasTabBar ? SGRTabBarPillInHost() : CGRectNull;
+    if (CGRectIsNull(tabPill) || tabPill.size.width < 50) hasTabBar = NO;
+
+    CGFloat originalTabXInWindow = 0;
+    CGFloat tabWidth = 0;
+    UIView *tabSuper = nil;
+    if (hasTabBar) {
+        stockBar.clipsToBounds = NO;
+        if (stockBar.superview) stockBar.superview.clipsToBounds = NO;
+        tabSuper = stockBar.superview ?: stockBar;
+        CGFloat currentTabOffset = tabHost.transform.tx;
+        CGRect tabPillInSuper = [tabSuper convertRect:tabPill fromView:tabHost];
+        CGFloat originalTabXInSuper = tabPillInSuper.origin.x - currentTabOffset;
+        originalTabXInWindow = [window convertPoint:CGPointMake(originalTabXInSuper, 0) fromView:tabSuper].x;
+        tabWidth = tabPill.size.width;
+    }
+
     UIVisualEffectView *glass = sg_cardGlass;
     BOOL hasNowPlaying = hasTrack() && containerView && glass && containerView.window && !containerView.hidden && containerView.alpha > 0.01;
-
-    CGFloat gap = 16;
+    CGFloat originalCardXInWindow = 0;
+    CGFloat cardWidth = 0;
+    UIView *cardSuper = nil;
     if (hasNowPlaying) {
         containerView.clipsToBounds = NO;
         if (containerView.superview) containerView.superview.clipsToBounds = NO;
-        UIView *cardSuper = containerView.superview ?: containerView;
+        cardSuper = containerView.superview ?: containerView;
         CGFloat currentCardOffset = containerView.transform.tx;
         CGRect glassInSuper = [cardSuper convertRect:glass.bounds fromView:glass];
         CGFloat originalCardXInSuper = glassInSuper.origin.x - currentCardOffset;
-        CGFloat originalCardXInWindow = [window convertPoint:CGPointMake(originalCardXInSuper, 0) fromView:cardSuper].x;
-        CGFloat cardWidth = glass.bounds.size.width;
-
-        if (cardWidth >= 100) {
-            CGFloat totalDockWidth = tabWidth + gap + cardWidth;
-            CGFloat dockX = round((windowWidth - totalDockWidth) / 2.0);
-            CGFloat tabTargetX = dockX;
-            CGFloat cardTargetX = dockX + tabWidth + gap;
-
-            CGFloat deltaTab = tabTargetX - originalTabXInWindow;
-            CGAffineTransform tabTrans = CGAffineTransformMakeTranslation(round(deltaTab), 0);
-            if (!CGAffineTransformEqualToTransform(tabHost.transform, tabTrans)) tabHost.transform = tabTrans;
-
-            CGFloat deltaCard = cardTargetX - originalCardXInWindow;
-            CGAffineTransform cardTrans = CGAffineTransformMakeTranslation(round(deltaCard), 0);
-            if (!CGAffineTransformEqualToTransform(containerView.transform, cardTrans)) containerView.transform = cardTrans;
-            return;
-        }
+        originalCardXInWindow = [window convertPoint:CGPointMake(originalCardXInSuper, 0) fromView:cardSuper].x;
+        cardWidth = glass.bounds.size.width;
+        if (cardWidth < 80) hasNowPlaying = NO;
     }
 
-    CGFloat dockX = round((windowWidth - tabWidth) / 2.0);
-    CGFloat deltaTab = dockX - originalTabXInWindow;
-    CGAffineTransform tabTrans = CGAffineTransformMakeTranslation(round(deltaTab), 0);
-    if (!CGAffineTransformEqualToTransform(tabHost.transform, tabTrans)) tabHost.transform = tabTrans;
+    CGFloat gap = 16;
+    if (hasTabBar && hasNowPlaying) {
+        CGFloat totalDockWidth = tabWidth + gap + cardWidth;
+        CGFloat dockX = round(contentLeft + (contentRight - contentLeft - totalDockWidth) / 2.0);
+        CGFloat tabTargetX = dockX;
+        CGFloat cardTargetX = dockX + tabWidth + gap;
 
-    if (containerView && !CGAffineTransformIsIdentity(containerView.transform)) {
-        containerView.transform = CGAffineTransformIdentity;
+        CGFloat deltaTab = tabTargetX - originalTabXInWindow;
+        CGAffineTransform tabTrans = CGAffineTransformMakeTranslation(round(deltaTab), 0);
+        if (!CGAffineTransformEqualToTransform(tabHost.transform, tabTrans)) tabHost.transform = tabTrans;
+
+        CGFloat deltaCard = cardTargetX - originalCardXInWindow;
+        CGAffineTransform cardTrans = CGAffineTransformMakeTranslation(round(deltaCard), 0);
+        if (!CGAffineTransformEqualToTransform(containerView.transform, cardTrans)) containerView.transform = cardTrans;
+    } else if (hasTabBar) {
+        CGFloat dockX = round(contentCenter - tabWidth / 2.0);
+        CGFloat deltaTab = dockX - originalTabXInWindow;
+        CGAffineTransform tabTrans = CGAffineTransformMakeTranslation(round(deltaTab), 0);
+        if (!CGAffineTransformEqualToTransform(tabHost.transform, tabTrans)) tabHost.transform = tabTrans;
+
+        if (containerView && !CGAffineTransformIsIdentity(containerView.transform)) {
+            containerView.transform = CGAffineTransformIdentity;
+        }
+    } else if (hasNowPlaying) {
+        CGFloat cardTargetX = round(contentCenter - cardWidth / 2.0);
+        CGFloat deltaCard = cardTargetX - originalCardXInWindow;
+        CGAffineTransform cardTrans = CGAffineTransformMakeTranslation(round(deltaCard), 0);
+        if (!CGAffineTransformEqualToTransform(containerView.transform, cardTrans)) containerView.transform = cardTrans;
+
+        if (tabHost && !CGAffineTransformIsIdentity(tabHost.transform)) {
+            tabHost.transform = CGAffineTransformIdentity;
+        }
+    } else {
+        if (tabHost && !CGAffineTransformIsIdentity(tabHost.transform)) {
+            tabHost.transform = CGAffineTransformIdentity;
+        }
+        if (containerView && !CGAffineTransformIsIdentity(containerView.transform)) {
+            containerView.transform = CGAffineTransformIdentity;
+        }
     }
 }
 
@@ -660,6 +705,7 @@ void SGRUpdateIPadBottomDock(void) {
     %orig;
     UIViewController *parent = ((UIViewController *)self).parentViewController;
     if ([NSStringFromClass(parent.class) containsString:@"NowPlayingBarContainer"]) styleNowPlayingBar(parent);
+    SGRUpdateIPadBottomDock();
 }
 %end
 

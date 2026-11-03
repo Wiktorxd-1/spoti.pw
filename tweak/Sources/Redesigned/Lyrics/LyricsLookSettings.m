@@ -151,10 +151,13 @@ static UIColor *readableOn(UIColor *color) {
 }
 
 static UIButtonConfiguration *chipConfiguration(NSString *title, NSString *symbol, BOOL chosen) {
-    UIButtonConfiguration *config;
-    if (@available(iOS 26.0, *)) {
-        config = chosen ? [UIButtonConfiguration prominentGlassButtonConfiguration] : [UIButtonConfiguration glassButtonConfiguration];
-    } else {
+    UIButtonConfiguration *config = nil;
+    if (SGLiquidGlassEnabled()) {
+        if (@available(iOS 26.0, *)) {
+            config = chosen ? [UIButtonConfiguration prominentGlassButtonConfiguration] : [UIButtonConfiguration glassButtonConfiguration];
+        }
+    }
+    if (!config) {
         config = chosen ? [UIButtonConfiguration filledButtonConfiguration] : [UIButtonConfiguration grayButtonConfiguration];
     }
     config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;

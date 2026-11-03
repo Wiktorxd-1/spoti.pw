@@ -3,13 +3,17 @@
 
 %hook SPTHubViewController
 - (BOOL)prefersLiquidGlassNavigationBar {
-    return YES;
+    return SGLiquidGlassEnabled();
 }
 %end
 
 %ctor {
-    SGRedesignForceFlags(@"glass design", @{
-        @"ios-reprise-liquid-glass-properties.context_menu_in_navigation_bar_enabled": @YES,
+    if (SGLiquidGlassEnabled()) {
+        SGRedesignForceFlags(@"glass design", @{
+            @"ios-reprise-liquid-glass-properties.context_menu_in_navigation_bar_enabled": @YES,
+        });
+    }
+    SGRedesignForceFlags(@"now playing sheets", @{
         @"ios-feature-encoreexperiments.new_npv_slider_enabled": @YES,
         @"ios-feature-nowplaying.sheet_style_npv": @YES,
         @"ios-feature-nowplaying.bottom_sheet_queue_enabled": @YES,
