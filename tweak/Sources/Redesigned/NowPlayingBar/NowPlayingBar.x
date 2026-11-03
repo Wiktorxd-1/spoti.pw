@@ -605,11 +605,11 @@ void SGRUpdateIPadBottomDock(void) {
         return;
     }
 
-    if (tabHost && tabHost.alpha < 0.99 && stockBar && !stockBar.hidden) {
+    if (tabHost && stockBar && !stockBar.hidden) {
         tabHost.alpha = 1;
         tabHost.userInteractionEnabled = YES;
     }
-    if (containerView && containerView.alpha < 0.99 && (!container || !container.view.hidden)) {
+    if (containerView && (!container || !container.view.hidden)) {
         containerView.alpha = 1;
         containerView.userInteractionEnabled = YES;
     }

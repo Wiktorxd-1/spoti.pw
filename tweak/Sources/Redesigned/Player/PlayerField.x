@@ -43,6 +43,10 @@ SGRArtworkField *SGRPlayerField(void) {
     return sg_field;
 }
 
+UIScrollView *SGRPlayerAccessibleCoverList(void) {
+    return sg_coverList;
+}
+
 SGRPlayerBackgroundKind SGRPlayerBackground(void) {
     NSInteger kind = SGInt(SGRKeyPlayerBackground, SGEnabled(SGRKeyPlayerMotion) ? SGRPlayerBackgroundColours : SGRPlayerBackgroundStill);
     return kind >= SGRPlayerBackgroundStill && kind <= SGRPlayerBackgroundFill ? kind : SGRPlayerBackgroundColours;

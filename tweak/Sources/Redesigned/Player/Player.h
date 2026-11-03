@@ -40,6 +40,7 @@ void SGRPlayerHoldField(void);
 
 // The sideways list of covers behind the player, nil until one has laid out.
 UIView *SGRPlayerCoverList(void);
+UIScrollView *SGRPlayerAccessibleCoverList(void);
 CGRect SGRPlayerCoverFrameIn(UIView *host);
 CGRect SGRPlayerArtworkAreaIn(UIView *host);
 void SGRPlayerSetCoverHidden(BOOL hidden);

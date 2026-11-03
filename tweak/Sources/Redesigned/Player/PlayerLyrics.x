@@ -95,6 +95,8 @@ static void restartRest(void);
 
 - (instancetype)initWithFrame:(CGRect)frame {
     if (!(self = [super initWithFrame:frame])) return nil;
+    self.backgroundColor = UIColor.clearColor;
+    self.layer.backgroundColor = NULL;
     _thumb = [[UIView alloc] initWithFrame:CGRectZero];
     // A tap on the cover beside the lines brings the full player back.
     [_thumb addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(sgr_thumbTapped)]];
@@ -108,6 +110,8 @@ static void restartRest(void);
     _cover.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [_thumb addSubview:_cover];
     _stage = [[UIView alloc] initWithFrame:CGRectZero];
+    _stage.backgroundColor = UIColor.clearColor;
+    _stage.layer.backgroundColor = NULL;
     _stage.clipsToBounds = YES;
     _noLyrics = [[UILabel alloc] initWithFrame:CGRectZero];
     _noLyrics.text = @"No lyrics found";
@@ -426,6 +430,12 @@ static void place(SGRPlayerLyricsOverlay *overlay, UIView *host, SGRLyricsLayout
     plate.center = CGPointMake(CGRectGetMidX(overlay.thumb.bounds), CGRectGetMidY(overlay.thumb.bounds));
     overlay.stage.bounds = (CGRect){CGPointZero, stage.size};
     overlay.stage.center = CGPointMake(CGRectGetMidX(stage), CGRectGetMidY(stage));
+    overlay.backgroundColor = UIColor.clearColor;
+    overlay.layer.backgroundColor = NULL;
+    overlay.stage.backgroundColor = UIColor.clearColor;
+    overlay.stage.layer.backgroundColor = NULL;
+    overlay.lyrics.backgroundColor = UIColor.clearColor;
+    overlay.lyrics.layer.backgroundColor = NULL;
     overlay.lyrics.frame = overlay.stage.bounds;
     overlay.noLyrics.frame = overlay.stage.bounds;
     BOOL hasLyrics = SGRPlayerLyricsAvailable();
@@ -796,7 +806,7 @@ static void setOpen(BOOL open, BOOL animated) {
         // Spotify's cover goes the moment the redesign's own takes its place: the same picture at the
         // same size with the same corners, so there is nothing to see in the swap. Coming back it waits
         // for the thumbnail to land on it, or the two would be on screen at once, one of them half size.
-        UIView *coverList = SGRPlayerCoverList();
+        UIView *coverList = SGRPlayerCoverList() ?: (UIView *)SGRPlayerAccessibleCoverList();
         coverList.alpha = 0;
         if (coverList) {
             coverList.layer.backgroundColor = NULL;
@@ -909,10 +919,15 @@ static void replace(void) {
 static BOOL sg_playerPresented;
 
 BOOL SGRPlayerIsPresented(void) {
-    if (sg_player && sg_player.viewIfLoaded && sg_player.view.window != nil && !sg_player.view.hidden && sg_player.view.alpha > 0.01) {
-        return YES;
+    if (!sg_playerPresented) return NO;
+    if (sg_player) {
+        UIViewController *presenter = sg_player.presentingViewController ?: sg_player.navigationController.presentingViewController;
+        if (!presenter) return NO;
+        if (sg_player.viewIfLoaded && (!sg_player.view.window || sg_player.view.hidden || sg_player.view.alpha < 0.01)) {
+            return NO;
+        }
     }
-    return sg_playerPresented;
+    return YES;
 }
 
 %hook _TtC19NowPlaying_ViewImpl24NowPlayingViewController

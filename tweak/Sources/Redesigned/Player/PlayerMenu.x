@@ -884,6 +884,9 @@ static void logDarkness(UIView *anyView) {
 
 static void ensureSheetDarkBackground(UIPresentationController *presentation) {
     if (!presentation) return;
+    UIViewController *presentedVC = presentation.presentedViewController;
+    NSString *vcClass = presentedVC ? NSStringFromClass(presentedVC.class) : @"";
+    if ([vcClass containsString:@"NowPlaying"]) return;
     UIColor *sheetBg = [UIColor colorWithRed:0.07 green:0.07 blue:0.07 alpha:1.0];
     UIView *presented = presentation.presentedView;
     if (presented) {
@@ -894,7 +897,6 @@ static void ensureSheetDarkBackground(UIPresentationController *presentation) {
         presented.layer.cornerCurve = kCACornerCurveContinuous;
         presented.clipsToBounds = YES;
     }
-    UIViewController *presentedVC = presentation.presentedViewController;
     UIView *sheetContent = presentedVC.viewIfLoaded;
     if (sheetContent) {
         if (!sheetContent.backgroundColor || CGColorGetAlpha(sheetContent.backgroundColor.CGColor) < 0.95) {
@@ -904,6 +906,8 @@ static void ensureSheetDarkBackground(UIPresentationController *presentation) {
         sheetContent.layer.cornerCurve = kCACornerCurveContinuous;
         sheetContent.clipsToBounds = YES;
         SGForEachView(sheetContent, ^(UIView *sub) {
+            NSString *subClass = NSStringFromClass(sub.class);
+            if ([subClass containsString:@"SGR"] || [subClass containsString:@"Karaoke"]) return;
             if ([sub isKindOfClass:UIScrollView.class] && (!sub.backgroundColor || CGColorGetAlpha(sub.backgroundColor.CGColor) < 0.95)) {
                 sub.backgroundColor = sheetBg;
             }
@@ -975,6 +979,8 @@ static void ensureSheetDarkBackground(UIPresentationController *presentation) {
             view.layer.cornerCurve = kCACornerCurveContinuous;
             view.clipsToBounds = YES;
             SGForEachView(view, ^(UIView *sub) {
+                NSString *subClass = NSStringFromClass(sub.class);
+                if ([subClass containsString:@"SGR"] || [subClass containsString:@"Karaoke"]) return;
                 if ([sub isKindOfClass:UIScrollView.class] && (!sub.backgroundColor || CGColorGetAlpha(sub.backgroundColor.CGColor) < 0.95)) {
                     sub.backgroundColor = dark;
                 }

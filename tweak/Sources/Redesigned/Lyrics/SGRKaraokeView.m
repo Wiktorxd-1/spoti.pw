@@ -1187,6 +1187,8 @@ typedef struct {
     _margin = kMargin;
     [self applyLook];
     _extrasEnabled = YES;
+    self.backgroundColor = UIColor.clearColor;
+    self.layer.backgroundColor = NULL;
     _shown = [NSMutableDictionary dictionary];
     _sightArrangement = NSUIntegerMax;
     _fade = [CAGradientLayer layer];
@@ -1194,6 +1196,8 @@ typedef struct {
                      (id)UIColor.whiteColor.CGColor, (id)UIColor.clearColor.CGColor];
     _fade.locations = @[@0, @(kEdgeFade), @(1 - kEdgeFade), @1];
     _scroll = [[UIScrollView alloc] initWithFrame:self.bounds];
+    _scroll.backgroundColor = UIColor.clearColor;
+    _scroll.layer.backgroundColor = NULL;
     _scroll.layer.mask = _fade;
     _scroll.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     _scroll.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
@@ -1423,6 +1427,10 @@ typedef struct {
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+    self.backgroundColor = UIColor.clearColor;
+    self.layer.backgroundColor = NULL;
+    _scroll.backgroundColor = UIColor.clearColor;
+    _scroll.layer.backgroundColor = NULL;
     [self alignFade];
     _scroll.contentSize = self.bounds.size;
     [_credit sizeToFit];
