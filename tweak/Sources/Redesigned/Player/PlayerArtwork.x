@@ -93,7 +93,7 @@ CGRect SGRPlayerCoverFrameIn(UIView *host) {
     UIView *tilt = showingTilt();
     UIView *cover = coverIn(tilt);
     // The cover's own transform is the paused shrink, which is what the eye sees it at.
-    return cover && host ? [host convertRect:cover.bounds fromView:cover] : CGRectNull;
+    return cover && host && cover.window && host.window ? [host convertRect:cover.bounds fromView:cover] : CGRectNull;
 }
 
 CGFloat SGRPlayerCoverScale(void) {
@@ -102,7 +102,7 @@ CGFloat SGRPlayerCoverScale(void) {
 
 CGRect SGRPlayerArtworkAreaIn(UIView *host) {
     UIView *tilt = showingTilt();
-    if (!tilt || !host) return CGRectNull;
+    if (!tilt || !host || !tilt.window || !host.window) return CGRectNull;
     // The band is the first view over the cover as wide as the player: the cover sits inset inside it
     // (01.txt:33-36, CoverArtCellImpl > UIView {0, 110, 402, 466.67} > UIView {24, 8, ...} > the tilt view).
     UIView *fallback = nil;

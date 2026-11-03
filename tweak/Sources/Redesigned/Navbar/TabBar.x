@@ -821,7 +821,7 @@ static BOOL sg_barPass, sg_itemsLaidOut;
     %orig;
     if (newSuperview) {
         for (UIView *sub in ((UIView *)self).subviews) {
-            if (![sub isKindOfClass:NSClassFromString(@"SGRTabBarHost")]) {
+            if (![sub isKindOfClass:SGRTabBarHost.class]) {
                 sub.alpha = 0;
             }
         }
@@ -832,7 +832,7 @@ static BOOL sg_barPass, sg_itemsLaidOut;
     %orig;
     if (newWindow) {
         for (UIView *sub in ((UIView *)self).subviews) {
-            if (![sub isKindOfClass:NSClassFromString(@"SGRTabBarHost")]) {
+            if (![sub isKindOfClass:SGRTabBarHost.class]) {
                 sub.alpha = 0;
             }
         }
