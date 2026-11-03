@@ -24,3 +24,12 @@ BOOL SGNativeUI(void) {
 BOOL SGRedesignedUIStored(void) {
     return SGRedesignAvailable() && SGFlag(SGKeyRedesign, YES);
 }
+
+BOOL SGLiquidGlassEnabled(void) {
+    static BOOL enabled;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        enabled = @available(iOS 26.0, *) ? (SGRedesignedUI() && SGFlag(SGRKeyLiquidGlass, YES)) : NO;
+    });
+    return enabled;
+}

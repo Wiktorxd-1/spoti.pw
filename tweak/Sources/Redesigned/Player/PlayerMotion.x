@@ -266,13 +266,6 @@ static UIViewPropertyAnimator *setBlurIntensity(UIVisualEffectView *view, UIView
     CGFloat screen = _screenHeight > 0 ? _screenHeight : total;
     CGFloat height = round(width * _aspect);
     if (_aspect > kCanvasAspect) height = MAX(height, screen);
-    CGFloat seam = round(height * kFootFrom), blurFrom = MIN(seam, round(screen * kBlurByControls));
-    _picture.frame = bounds;
-    _seamBlur.frame = bounds;
-    _seamBlur.maskView.frame = bounds;
-    _lyricsBlur.frame = bounds;
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
     CGFloat targetWidth = width;
     CGFloat targetHeight = height;
     if (targetHeight < total) {
@@ -281,12 +274,25 @@ static UIViewPropertyAnimator *setBlurIntensity(UIVisualEffectView *view, UIView
     }
     CGFloat x = round((width - targetWidth) / 2.0);
     CGFloat y = round((total - targetHeight) / 2.0);
+    CGFloat effectiveHeight = MAX(height, targetHeight);
+    CGFloat seam = round(effectiveHeight * kFootFrom);
+    CGFloat blurFrom = MIN(seam, round(screen * kBlurByControls));
+    _picture.frame = bounds;
+    _seamBlur.frame = bounds;
+    _seamBlur.maskView.frame = bounds;
+    _lyricsBlur.frame = bounds;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
     _still.frame = CGRectMake(x, y, targetWidth, targetHeight);
     _clip.frame = _still.bounds;
     _clipMask.frame = _still.bounds;
     CGFloat stillBottom = CGRectGetMaxY(_still.frame);
-    CGFloat footY = MIN(stillBottom, y + seam);
-    _foot.frame = CGRectMake(0, footY, width, MAX(0, total - footY));
+    if (stillBottom >= total) {
+        _foot.frame = CGRectMake(0, total, width, 0);
+    } else {
+        CGFloat footY = MIN(stillBottom, y + seam);
+        _foot.frame = CGRectMake(0, footY, width, MAX(0, total - footY));
+    }
     _dim.frame = bounds;
     _seamMask.frame = bounds;
     _seamMask.locations = @[@(MIN(1, blurFrom / total)), @(MIN(1, (blurFrom + kBlurRamp) / total))];

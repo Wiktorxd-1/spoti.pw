@@ -24,7 +24,7 @@ static UIVisualEffectView *copyPane(UIView *pane) {
     glass.overrideUserInterfaceStyle = pane.traitCollection.userInterfaceStyle;
     if (platter) {
         SGShapeGlass(glass, pane.bounds.size.height / 2, YES);
-    } else if ([pane respondsToSelector:@selector(cornerConfiguration)] && [glass respondsToSelector:@selector(setCornerConfiguration:)]) {
+    } else if (SGLiquidGlassEnabled() && [pane respondsToSelector:@selector(cornerConfiguration)] && [glass respondsToSelector:@selector(setCornerConfiguration:)]) {
         [glass setCornerConfiguration:[(id)pane cornerConfiguration]];
     }
     glass.layer.cornerRadius = pane.layer.cornerRadius;

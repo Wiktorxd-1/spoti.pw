@@ -23,6 +23,8 @@ static void chooseAccent(void) {
 
 // The redesign's rows of the Appearance card (App/Pages.m). AMOLED has no row: the redesign is always black.
 NSArray<SGModRow *> *SGRAppearanceRows(void) {
+    SGModRow *liquidGlass = SGSwitchRow(@"Liquid Glass", @"Use Apple's Liquid Glass material instead of system blur",
+                                        SGRKeyLiquidGlass);
     SGModRow *profile = SGSwitchRow(@"Show profile photo", @"Show the profile photo at the top right",
                                     SGRKeyNavbarProfilePhoto);
     profile.changed = ^(BOOL on) { SGRHomeProfilePhotoPreferenceChanged(); };
@@ -30,6 +32,7 @@ NSArray<SGModRow *> *SGRAppearanceRows(void) {
                                      SGRKeyNavbarBottomGradient);
     gradient.changed = ^(BOOL on) { SGRSetTabBarGradientVisible(on); };
     return @[
+        liquidGlass,
         profile,
         gradient,
         SGWithSymbol(SGStatActionRow(@"Accent colour", nil, ^NSString *{ return SGRAccentLabel(); }, ^{ chooseAccent(); }), @"paintpalette"),

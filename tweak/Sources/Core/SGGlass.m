@@ -1,13 +1,16 @@
 #import "SGGlass.h"
 #import "SGRuntime.h"
+#import "SGUIMode.h"
 
 UIVisualEffect *SGGlassEffect(void) {
-    static Class glass;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        glass = NSClassFromString(@"UIGlassEffect");
-    });
-    if ([glass respondsToSelector:@selector(effectWithStyle:)]) return [glass effectWithStyle:0];
+    if (SGLiquidGlassEnabled()) {
+        static Class glass;
+        static dispatch_once_t once;
+        dispatch_once(&once, ^{
+            glass = NSClassFromString(@"UIGlassEffect");
+        });
+        if ([glass respondsToSelector:@selector(effectWithStyle:)]) return [glass effectWithStyle:0];
+    }
     return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark];
 }
 
@@ -49,18 +52,20 @@ void SGHideGlassFrom(UIView *host, NSUInteger count) {
 }
 
 void SGShapeGlass(UIView *glass, CGFloat radius, BOOL capsule) {
-    static Class config, cornerRadius;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        config = NSClassFromString(@"UICornerConfiguration");
-        cornerRadius = NSClassFromString(@"UICornerRadius");
-    });
     id shape = nil;
-    if (config && [glass respondsToSelector:@selector(setCornerConfiguration:)]) {
-        if (capsule && [config respondsToSelector:@selector(capsuleConfiguration)]) {
-            shape = [config capsuleConfiguration];
-        } else if ([config respondsToSelector:@selector(configurationWithUniformRadius:)] && [cornerRadius respondsToSelector:@selector(fixedRadius:)]) {
-            shape = [config configurationWithUniformRadius:[cornerRadius fixedRadius:radius]];
+    if (SGLiquidGlassEnabled()) {
+        static Class config, cornerRadius;
+        static dispatch_once_t once;
+        dispatch_once(&once, ^{
+            config = NSClassFromString(@"UICornerConfiguration");
+            cornerRadius = NSClassFromString(@"UICornerRadius");
+        });
+        if (config && [glass respondsToSelector:@selector(setCornerConfiguration:)]) {
+            if (capsule && [config respondsToSelector:@selector(capsuleConfiguration)]) {
+                shape = [config capsuleConfiguration];
+            } else if ([config respondsToSelector:@selector(configurationWithUniformRadius:)] && [cornerRadius respondsToSelector:@selector(fixedRadius:)]) {
+                shape = [config configurationWithUniformRadius:[cornerRadius fixedRadius:radius]];
+            }
         }
     }
     if (shape) {

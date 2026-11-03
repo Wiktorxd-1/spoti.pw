@@ -333,7 +333,7 @@ static BOOL setText(UILabel *label, NSString *text) {
         if (!CGSizeEqualToSize(_albumControls.contentSize, size)) _albumControls.contentSize = size;
 
         CGFloat cluster = size.width + kRowSpacing + playWidth;
-        if (width > 500 && cluster <= text) {
+        if ((width > 440 || UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) && cluster <= text) {
             CGFloat startX = round((width - cluster) / 2.0);
             if (rtl) {
                 _play.frame = CGRectMake(startX + size.width + kRowSpacing, y, playWidth, side);

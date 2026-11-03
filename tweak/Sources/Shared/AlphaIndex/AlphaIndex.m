@@ -89,7 +89,7 @@ static NSString *titleOf(UICollectionViewCell *cell) {
 #pragma mark - the map
 
 static UIVisualEffect *glassEffect(UIColor *tint, BOOL interactive) {
-    Class glass = NSClassFromString(@"UIGlassEffect");
+    Class glass = SGLiquidGlassEnabled() ? NSClassFromString(@"UIGlassEffect") : nil;
     if ([glass respondsToSelector:@selector(effectWithStyle:)]) {
         id effect = [glass effectWithStyle:0];
         if (tint && [effect respondsToSelector:NSSelectorFromString(@"setTintColor:")]) [effect setValue:tint forKey:@"tintColor"];

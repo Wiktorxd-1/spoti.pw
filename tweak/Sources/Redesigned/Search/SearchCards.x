@@ -83,6 +83,7 @@ static UIColor *darker(UIColor *color) {
 
 static BOOL glassAllowed(void) {
     if (SGRReduceTransparency()) return NO;
+    if (!SGLiquidGlassEnabled()) return NO;
     if (@available(iOS 26.0, *)) return YES;
     return NO;
 }
