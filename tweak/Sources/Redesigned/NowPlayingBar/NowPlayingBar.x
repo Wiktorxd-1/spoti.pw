@@ -456,6 +456,7 @@ static NSString *sg_miniTrackURI;
         // The queue ended with the bar minimized: the pill has nothing left to show, so the whole bar comes back.
         if (!hasTrack() && SGRTabBarMinimized()) SGRSetTabBarMinimized(NO, YES);
         refreshMini();
+        SGRUpdateIPadBottomDock();
     });
     if (!trackChanged) return;
     // A new track's cover reaches the card a little after the state does.
@@ -556,6 +557,7 @@ static void styleNowPlayingBar(UIViewController *container) {
     // A new track can change the card's size and brings its cover; the pill follows them.
     if (sg_docked) applyDock(NO);
     else refreshMini();
+    SGRUpdateIPadBottomDock();
 
     static dispatch_once_t once;
     dispatch_once(&once, ^{
@@ -564,10 +566,71 @@ static void styleNowPlayingBar(UIViewController *container) {
     });
 }
 
+void SGRUpdateIPadBottomDock(void) {
+    if (UIDevice.currentDevice.userInterfaceIdiom != UIUserInterfaceIdiomPad) return;
+    UIView *stockBar = SGRTabBarStockBar();
+    UIView *tabHost = SGRTabBarHostView();
+    if (!stockBar || !tabHost || !stockBar.window) return;
+
+    CGRect tabPill = SGRTabBarPillInHost();
+    if (CGRectIsNull(tabPill) || tabPill.size.width < 50) return;
+
+    UIWindow *window = stockBar.window;
+    CGFloat windowWidth = window.bounds.size.width;
+
+    UIView *tabSuper = stockBar.superview ?: stockBar;
+    CGFloat currentTabOffset = tabHost.transform.tx;
+    CGRect tabPillInSuper = [tabSuper convertRect:tabPill fromView:tabHost];
+    CGFloat originalTabXInSuper = tabPillInSuper.origin.x - currentTabOffset;
+    CGFloat originalTabXInWindow = [window convertPoint:CGPointMake(originalTabXInSuper, 0) fromView:tabSuper].x;
+    CGFloat tabWidth = tabPill.size.width;
+
+    UIViewController *container = sg_container;
+    UIView *containerView = container.viewIfLoaded;
+    UIVisualEffectView *glass = sg_cardGlass;
+    BOOL hasNowPlaying = hasTrack() && containerView && glass && containerView.window && !containerView.hidden && containerView.alpha > 0.01;
+
+    CGFloat gap = 16;
+    if (hasNowPlaying) {
+        UIView *cardSuper = containerView.superview ?: containerView;
+        CGFloat currentCardOffset = containerView.transform.tx;
+        CGRect glassInSuper = [cardSuper convertRect:glass.bounds fromView:glass];
+        CGFloat originalCardXInSuper = glassInSuper.origin.x - currentCardOffset;
+        CGFloat originalCardXInWindow = [window convertPoint:CGPointMake(originalCardXInSuper, 0) fromView:cardSuper].x;
+        CGFloat cardWidth = glass.bounds.size.width;
+
+        if (cardWidth >= 100) {
+            CGFloat totalDockWidth = tabWidth + gap + cardWidth;
+            CGFloat dockX = round((windowWidth - totalDockWidth) / 2.0);
+            CGFloat tabTargetX = dockX;
+            CGFloat cardTargetX = dockX + tabWidth + gap;
+
+            CGFloat deltaTab = tabTargetX - originalTabXInWindow;
+            CGAffineTransform tabTrans = CGAffineTransformMakeTranslation(round(deltaTab), 0);
+            if (!CGAffineTransformEqualToTransform(tabHost.transform, tabTrans)) tabHost.transform = tabTrans;
+
+            CGFloat deltaCard = cardTargetX - originalCardXInWindow;
+            CGAffineTransform cardTrans = CGAffineTransformMakeTranslation(round(deltaCard), 0);
+            if (!CGAffineTransformEqualToTransform(containerView.transform, cardTrans)) containerView.transform = cardTrans;
+            return;
+        }
+    }
+
+    CGFloat dockX = round((windowWidth - tabWidth) / 2.0);
+    CGFloat deltaTab = dockX - originalTabXInWindow;
+    CGAffineTransform tabTrans = CGAffineTransformMakeTranslation(round(deltaTab), 0);
+    if (!CGAffineTransformEqualToTransform(tabHost.transform, tabTrans)) tabHost.transform = tabTrans;
+
+    if (containerView && !CGAffineTransformIsIdentity(containerView.transform)) {
+        containerView.transform = CGAffineTransformIdentity;
+    }
+}
+
 %hook _TtC18NowPlaying_BarImpl36NowPlayingBarContainerViewController
 - (void)viewDidLayoutSubviews {
     %orig;
     styleNowPlayingBar((UIViewController *)self);
+    SGRUpdateIPadBottomDock();
 }
 %end
 

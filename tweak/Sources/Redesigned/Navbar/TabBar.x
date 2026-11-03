@@ -41,6 +41,24 @@ BOOL SGRTabBarMinimized(void) {
     return sg_minimized;
 }
 
+UIView *SGRTabBarStockBar(void) {
+    return sg_stockBar;
+}
+
+UIView *SGRTabBarHostView(void) {
+    UIView *stock = sg_stockBar;
+    return stock ? objc_getAssociatedObject(stock, &kHostKey) : nil;
+}
+
+CGRect SGRTabBarPillInHost(void) {
+    UIView *stock = sg_stockBar;
+    if (!stock) return CGRectNull;
+    UIView *host = objc_getAssociatedObject(stock, &kHostKey);
+    UITabBar *bar = objc_getAssociatedObject(stock, &kBarKey);
+    if (!host || !bar) return CGRectNull;
+    return pillIn(host, bar);
+}
+
 void SGRSetTabBarMinimized(BOOL minimized, BOOL animated) {
     if (sg_minimized == minimized) return;
     // With nothing playing there is no pill for the row between the buttons: the bar stays whole.
@@ -782,6 +800,7 @@ static void syncBar(UIView *stockBar) {
     }
     logBarOnce(bar);
     makeRoom(containerOf(stockBar));
+    SGRUpdateIPadBottomDock();
 }
 
 #pragma mark - hooks
@@ -829,6 +848,7 @@ static BOOL sg_barPass, sg_itemsLaidOut;
     if (sg_itemsLaidOut) SGRComposeTabBar((UIView *)self);
     holdHome((UIView *)self);
     syncBar((UIView *)self);
+    SGRUpdateIPadBottomDock();
     SGRLogTabBarRow((UIView *)self);
 }
 %end

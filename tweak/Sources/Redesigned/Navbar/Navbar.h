@@ -50,3 +50,7 @@ void SGRTabBarMarkCustomSelected(UIView *customItem);
 // TabBar.x: passes a tap on to the Spotify view a mod view stands in for, so the mini player's pill opens the player.
 // SGRFireTapRecognizers fires the tap recognizers on that one view alone; it answers whether it had any.
 BOOL SGRFireTapRecognizers(UIView *view);
+
+UIView *SGRTabBarStockBar(void);
+UIView *SGRTabBarHostView(void);
+CGRect SGRTabBarPillInHost(void);

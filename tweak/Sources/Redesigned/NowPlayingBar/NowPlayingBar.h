@@ -24,3 +24,4 @@ void SGRDockNowPlayingCard(BOOL docked, CGRect row, UIView *host, BOOL animated)
 // Whether a track is playing or paused on the card, so there is something for the minimized pill to show. The glass bar
 // only minimizes while there is, and is left whole otherwise.
 BOOL SGRNowPlayingAvailable(void);
+void SGRUpdateIPadBottomDock(void);
