@@ -47,6 +47,14 @@ static void holdAtTop(UIScrollView *list) {
 %end
 
 %hook _TtC21NowPlaying_ScrollImpl23NPVScrollViewController
+- (void)viewDidLayoutSubviews {
+    %orig;
+    UIView *view = ((UIViewController *)self).viewIfLoaded;
+    if (view) {
+        view.layer.backgroundColor = NULL;
+        view.backgroundColor = UIColor.clearColor;
+    }
+}
 - (void)scrollViewDidScroll:(UIScrollView *)list {
     holdAtTop(list);
     %orig;

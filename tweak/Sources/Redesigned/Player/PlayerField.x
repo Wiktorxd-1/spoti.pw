@@ -151,6 +151,12 @@ static SGRArtworkField *fieldIn(UIView *plane) {
     %orig;
     UIView *plane = ((UIViewController *)self).viewIfLoaded;
     if (!plane || plane.bounds.size.height < 200) return;
+    plane.layer.backgroundColor = NULL;
+    plane.backgroundColor = UIColor.clearColor;
+    if (plane.superview) {
+        plane.superview.layer.backgroundColor = NULL;
+        plane.superview.backgroundColor = UIColor.clearColor;
+    }
     SGRArtworkField *field = fieldIn(plane);
     sg_field = field;
     if (field.superview != plane) [plane addSubview:field];

@@ -7,6 +7,7 @@
 #import "Shared/Player/NowPlayingExtras.h"
 #import "Shared/Player/PlayerEvents.h"
 #import "Shared/Player/PlayerState.h"
+#import "Redesigned/Player/Player.h"
 #import "NowPlayingBar.h"
 #import <objc/message.h>
 #import <objc/runtime.h>
@@ -582,21 +583,26 @@ void SGRUpdateIPadBottomDock(void) {
     if (!window) return;
 
     CGFloat windowWidth = window.bounds.size.width;
-    CGFloat windowHeight = window.bounds.size.height;
 
-    CGFloat contentLeft = 0;
-    CGFloat contentRight = windowWidth;
-    UIViewController *rootVC = window.rootViewController;
-    if (rootVC && rootVC.isViewLoaded) {
-        for (UIView *sub in rootVC.view.subviews) {
-            if (sub.hidden || sub.alpha < 0.05) continue;
-            CGRect f = [window convertRect:sub.bounds fromView:sub];
-            if (f.origin.x <= 2 && f.size.width >= 160 && f.size.width <= 440 && f.size.height >= windowHeight * 0.7) {
-                contentLeft = MAX(contentLeft, CGRectGetMaxX(f));
-            }
+    BOOL playerPresented = SGRPlayerIsPresented();
+    if (playerPresented) {
+        if (tabHost && tabHost.alpha > 0.01) {
+            tabHost.alpha = 0;
+            tabHost.userInteractionEnabled = NO;
         }
+        if (containerView && containerView.alpha > 0.01) {
+            containerView.alpha = 0;
+            containerView.userInteractionEnabled = NO;
+        }
+        return;
     }
-    CGFloat contentCenter = round(contentLeft + (contentRight - contentLeft) / 2.0);
+
+    if (tabHost && tabHost.alpha < 0.99 && stockBar && !stockBar.hidden) {
+        tabHost.alpha = 1;
+        tabHost.userInteractionEnabled = YES;
+    }
+
+    CGFloat contentCenter = round(windowWidth / 2.0);
 
     BOOL hasTabBar = stockBar && tabHost && stockBar.window && !stockBar.hidden && tabHost.alpha > 0.01;
     CGRect tabPill = hasTabBar ? SGRTabBarPillInHost() : CGRectNull;
@@ -636,7 +642,7 @@ void SGRUpdateIPadBottomDock(void) {
     CGFloat gap = 16;
     if (hasTabBar && hasNowPlaying) {
         CGFloat totalDockWidth = tabWidth + gap + cardWidth;
-        CGFloat dockX = round(contentLeft + (contentRight - contentLeft - totalDockWidth) / 2.0);
+        CGFloat dockX = round((windowWidth - totalDockWidth) / 2.0);
         CGFloat tabTargetX = dockX;
         CGFloat cardTargetX = dockX + tabWidth + gap;
 

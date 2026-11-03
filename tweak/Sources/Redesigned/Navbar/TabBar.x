@@ -2,6 +2,7 @@
 #import "Navbar.h"
 #import "Redesigned/Kit/SGRTokens.h"
 #import "Redesigned/NowPlayingBar/NowPlayingBar.h"
+#import "Redesigned/Player/Player.h"
 #import "Settings/SGPage.h"
 #import "Shared/Navigation/TabIcons.h"
 #import "Headers/SPTEncoreIconView.h"
@@ -772,6 +773,10 @@ static void syncBar(UIView *stockBar) {
     UIColor *accent = SGRAccent();
     if (![bar.tintColor isEqual:accent]) bar.tintColor = accent;
     UIView *host = objc_getAssociatedObject(stockBar, &kHostKey);
+    if (SGRPlayerIsPresented() && UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        host.alpha = 0;
+        host.userInteractionEnabled = NO;
+    }
 
     for (UIView *sub in stockBar.subviews) {
         if (sub == host) continue;

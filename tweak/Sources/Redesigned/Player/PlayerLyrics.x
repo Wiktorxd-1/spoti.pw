@@ -34,6 +34,7 @@
 #import "Shared/Lyrics/Lyrics.h"
 #import "Shared/LyricsSources/LyricsSources.h"
 #import "Shared/LocalFiles/LocalFiles.h"
+#import "Redesigned/NowPlayingBar/NowPlayingBar.h"
 #import "Player.h"
 
 static const CGFloat kThumbSide = 72;          // the cover once the lyrics are up
@@ -795,7 +796,16 @@ static void setOpen(BOOL open, BOOL animated) {
         // Spotify's cover goes the moment the redesign's own takes its place: the same picture at the
         // same size with the same corners, so there is nothing to see in the swap. Coming back it waits
         // for the thumbnail to land on it, or the two would be on screen at once, one of them half size.
-        SGRPlayerCoverList().alpha = 0;
+        UIView *coverList = SGRPlayerCoverList();
+        coverList.alpha = 0;
+        if (coverList) {
+            coverList.layer.backgroundColor = NULL;
+            coverList.backgroundColor = UIColor.clearColor;
+            for (UIView *p = coverList.superview; p && p != host; p = p.superview) {
+                p.layer.backgroundColor = NULL;
+                p.backgroundColor = UIColor.clearColor;
+            }
+        }
     }
 
     // Moves and fades apart, as in setAlone: Reduce Motion takes the move and keeps the thumbnail's fade over
@@ -896,11 +906,49 @@ static void replace(void) {
 
 #pragma mark - the units
 
+static BOOL sg_playerPresented;
+
+BOOL SGRPlayerIsPresented(void) {
+    if (sg_player && sg_player.viewIfLoaded && sg_player.view.window != nil && !sg_player.view.hidden && sg_player.view.alpha > 0.01) {
+        return YES;
+    }
+    return sg_playerPresented;
+}
+
 %hook _TtC19NowPlaying_ViewImpl24NowPlayingViewController
+- (void)viewWillAppear:(BOOL)animated {
+    %orig;
+    sg_playerPresented = YES;
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        id<UIViewControllerTransitionCoordinator> coordinator = ((UIViewController *)self).transitionCoordinator;
+        if (coordinator) {
+            [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+                SGRUpdateIPadBottomDock();
+            } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+                SGRUpdateIPadBottomDock();
+            }];
+        } else {
+            SGRUpdateIPadBottomDock();
+        }
+    }
+}
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    sg_playerPresented = YES;
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        SGRUpdateIPadBottomDock();
+    }
+}
 - (void)viewDidLayoutSubviews {
     %orig;
     UIView *host = ((UIViewController *)self).viewIfLoaded;
     if (!host || host.bounds.size.height < kLivingHeight) return;
+    host.layer.backgroundColor = NULL;
+    host.backgroundColor = UIColor.clearColor;
+    if (host.superview) {
+        host.superview.layer.backgroundColor = NULL;
+        host.superview.backgroundColor = UIColor.clearColor;
+    }
     sg_player = (UIViewController *)self;
     if (sg_host != host) {
         sg_host = host;
@@ -916,7 +964,27 @@ static void replace(void) {
 // The bar morphs back out of a full size cover as the player closes, so the thumbnail is put away first.
 - (void)viewWillDisappear:(BOOL)animated {
     if (sg_open) setOpen(NO, NO);
+    sg_playerPresented = NO;
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        id<UIViewControllerTransitionCoordinator> coordinator = ((UIViewController *)self).transitionCoordinator;
+        if (coordinator) {
+            [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+                SGRUpdateIPadBottomDock();
+            } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+                SGRUpdateIPadBottomDock();
+            }];
+        } else {
+            SGRUpdateIPadBottomDock();
+        }
+    }
     %orig;
+}
+- (void)viewDidDisappear:(BOOL)animated {
+    %orig;
+    sg_playerPresented = NO;
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        SGRUpdateIPadBottomDock();
+    }
 }
 %end
 

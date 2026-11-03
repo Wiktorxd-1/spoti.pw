@@ -88,6 +88,7 @@ void SGRPlayerPaintCover(UIView *stack);
 // Landscape lyrics take over the player when enabled.
 #define SGRKeyLyricsLandscape @"spotifyglass.redesign.lyrics.landscape"
 void SGRPlayerShowLandscape(BOOL show);
+BOOL SGRPlayerIsPresented(void);
 
 void SGRPlayerMotionLyricsChanged(void);
 BOOL SGRPlayerMotionLyricsBlurEnabled(void);

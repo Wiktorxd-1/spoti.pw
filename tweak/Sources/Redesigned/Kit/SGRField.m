@@ -247,7 +247,7 @@ static const CGFloat kLyricsBlur = 0.3;
 }
 
 - (void)applyLyricsBlurAnimated:(BOOL)animated {
-    BOOL on = _lyricsBlurred && _fills;
+    BOOL on = _lyricsBlurred;
     if (!on && !_lyricsBlur) return;
     if (!_lyricsBlur) {
         _lyricsBlur = [[UIVisualEffectView alloc] initWithEffect:nil];
@@ -258,7 +258,9 @@ static const CGFloat kLyricsBlur = 0.3;
         [self addSubview:_lyricsBlur];
     }
     [self bringSubviewToFront:_lyricsBlur];
-    CGFloat intensity = on ? kLyricsBlur : 0;
+    CGFloat blurPref = MIN(100, MAX(0, SGInt(@"spotifyglass.redesign.player.lyricsBlurOpacity", 100))) / 100.0;
+    CGFloat intensity = on ? (blurPref > 0 ? blurPref * 0.75 : kLyricsBlur) : 0;
+    intensity = MIN(1, MAX(0, intensity));
     void (^apply)(void) = ^{
         UIViewPropertyAnimator *old = self->_lyricsBlurAnimator;
         if (old && old.state != UIViewAnimatingStateInactive) [old stopAnimation:YES];
