@@ -18,3 +18,7 @@ tweak/Sources/Shared/Flags/SGFlagList.m
 harness/*/build/
 vendor/*/build/
 /video
+
+apps.json
+sidestore.json
+scratch/
