@@ -367,11 +367,35 @@ static void placeRow(UICollectionView *list, SGModSettingsRow *row) {
                 break;
             }
         }
+        for (UICollectionViewCell *cell in list.visibleCells) {
+            CGRect contentFrame = [list convertRect:cell.contentView.bounds fromView:cell.contentView];
+            if (contentFrame.size.width > 0 && contentFrame.size.width < rowWidth - 20) {
+                rowX = contentFrame.origin.x;
+                rowWidth = contentFrame.size.width;
+                break;
+            }
+            for (UIView *sub in cell.contentView.subviews) {
+                CGRect subFrame = [list convertRect:sub.bounds fromView:sub];
+                if (subFrame.size.width > 200 && subFrame.size.width < rowWidth - 20) {
+                    rowX = subFrame.origin.x;
+                    rowWidth = subFrame.size.width;
+                    break;
+                }
+            }
+            if (rowX > 0) break;
+        }
         if (rowX == 0 && rowWidth == list.bounds.size.width) {
             CGRect readable = list.readableContentGuide.layoutFrame;
             if (readable.size.width > 0 && readable.size.width < rowWidth - 20) {
                 rowX = readable.origin.x;
                 rowWidth = readable.size.width;
+            }
+        }
+        if (rowWidth > 580 || UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+            CGFloat targetWidth = MIN(list.bounds.size.width - 32, 540);
+            if (rowWidth >= list.bounds.size.width - 40 || rowWidth > 640) {
+                rowWidth = targetWidth;
+                rowX = round((list.bounds.size.width - targetWidth) / 2.0);
             }
         }
     }

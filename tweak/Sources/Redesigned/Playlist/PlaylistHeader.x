@@ -109,12 +109,12 @@ static UIView *firstOfClass(UIView *root, Class wanted) {
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGRect bounds = self.bounds;
-    BOOL isWide = bounds.size.width > bounds.size.height * 1.45 && bounds.size.width > 500;
+    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && bounds.size.width > 480) || (bounds.size.width > bounds.size.height * 1.35 && bounds.size.width > 500);
     _ambientBlur.frame = bounds;
     _ambientBlur.alpha = isWide ? 1 : 0;
     _card.hidden = !isWide;
     if (isWide) {
-        CGFloat cardSide = round(MIN(bounds.size.height - 24, 260));
+        CGFloat cardSide = round(MIN(MIN(bounds.size.height - 24, bounds.size.width - 48), 280));
         CGFloat cardX = round((bounds.size.width - cardSide) / 2.0);
         CGFloat cardY = round((bounds.size.height - cardSide) / 2.0);
         _card.frame = CGRectMake(cardX, cardY, cardSide, cardSide);

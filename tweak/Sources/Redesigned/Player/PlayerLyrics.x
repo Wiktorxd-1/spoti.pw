@@ -202,19 +202,21 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     if (CGRectIsNull(area) || CGRectIsNull(cover)) return l;
     CGRect row = untransformed(info, host), bar = untransformed(duration, host);
     CGFloat hostWidth = host.bounds.size.width;
-    CGFloat leading = title ? CGRectGetMinX(untransformed(title, host)) : SGRSideMargin;
+    BOOL isPad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
+    CGFloat stageWidth = (isPad && hostWidth > 680) ? MIN(hostWidth * 0.75, 720) : hostWidth;
+    CGFloat stageX = round((hostWidth - stageWidth) / 2.0);
+    CGFloat leading = (isPad && hostWidth > 680) ? stageX + 16 : (title ? CGRectGetMinX(untransformed(title, host)) : SGRSideMargin);
     leading = MAX(SGRSideMargin, MIN(leading, hostWidth - kThumbSide - SGRSideMargin));
     l.cover = cover;
     l.thumb = CGRectMake(leading, CGRectGetMinY(area) + kThumbTop, kThumbSide, kThumbSide);
     CGFloat top = title ? CGRectGetMidY(l.thumb) - row.size.height / 2 : CGRectGetMaxY(l.thumb) + SGRGrid;
     l.lift = top - CGRectGetMinY(row);
-    l.shift = title ? kThumbSide + kThumbGap : 0;
+    CGFloat targetTitleX = CGRectGetMaxX(l.thumb) + kThumbGap;
+    CGFloat currentTitleX = title ? CGRectGetMinX(untransformed(title, host)) : leading;
+    l.shift = title ? (targetTitleX - currentTitleX) : 0;
     CGFloat lines = MAX(CGRectGetMaxY(l.thumb), top + row.size.height) + kLyricsTop;
     CGFloat durationY = CGRectGetMinY(bar);
     CGFloat bottomLimit = (durationY > lines + 50 && durationY < host.bounds.size.height) ? durationY : host.bounds.size.height - 200;
-    BOOL isPad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
-    CGFloat stageWidth = (isPad && hostWidth > 680) ? MIN(hostWidth * 0.75, 720) : hostWidth;
-    CGFloat stageX = round((hostWidth - stageWidth) / 2.0);
     l.stage = CGRectMake(stageX, lines, stageWidth, MAX(0, bottomLimit - kLyricsBottom - lines));
     l.ok = l.stage.size.height > kLivingHeight / 2 && (isPad || l.lift < 0);
     return l;
@@ -806,6 +808,11 @@ static void setOpen(BOOL open, BOOL animated) {
     void (^fade)(void) = ^{
         overlay.thumb.alpha = !open && fades ? 0 : 1;
         sg_floating.viewIfLoaded.alpha = open ? 0 : 1;
+        SGForEachView(host, ^(UIView *view) {
+            if ([view isKindOfClass:UIPageControl.class]) {
+                view.alpha = open ? 0 : 1;
+            }
+        });
     };
     void (^show)(void) = ^{
         overlay.stage.alpha = open ? 1 : 0;
