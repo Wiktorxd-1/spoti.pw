@@ -73,13 +73,15 @@ static void scaleCover(UIView *tilt, CGFloat scale) {
 // The tilt view of the cover on screen: the queue is a cover per cell and the cells out of view are
 // kept hidden (player/02.txt:521), so the one showing is the one in a window with nothing hidden over it.
 static UIView *showingTilt(void) {
+    UIView *fallback = nil;
     for (UIView *tilt in sg_tilts) {
-        if (!tilt.window) continue;
         BOOL hidden = NO;
         for (UIView *v = tilt; v && !hidden; v = v.superview) hidden = v.hidden;
-        if (!hidden) return tilt;
+        if (hidden) continue;
+        if (tilt.window) return tilt;
+        if (tilt.superview && !fallback) fallback = tilt;
     }
-    return nil;
+    return fallback;
 }
 
 UIView *SGRPlayerCoverList(void) {
@@ -93,7 +95,7 @@ CGRect SGRPlayerCoverFrameIn(UIView *host) {
     UIView *tilt = showingTilt();
     UIView *cover = coverIn(tilt);
     // The cover's own transform is the paused shrink, which is what the eye sees it at.
-    return cover && host && cover.window && host.window ? [host convertRect:cover.bounds fromView:cover] : CGRectNull;
+    return cover && host ? [host convertRect:cover.bounds fromView:cover] : CGRectNull;
 }
 
 CGFloat SGRPlayerCoverScale(void) {
@@ -102,7 +104,7 @@ CGFloat SGRPlayerCoverScale(void) {
 
 CGRect SGRPlayerArtworkAreaIn(UIView *host) {
     UIView *tilt = showingTilt();
-    if (!tilt || !host || !tilt.window || !host.window) return CGRectNull;
+    if (!tilt || !host) return CGRectNull;
     // The band is the first view over the cover as wide as the player: the cover sits inset inside it
     // (01.txt:33-36, CoverArtCellImpl > UIView {0, 110, 402, 466.67} > UIView {24, 8, ...} > the tilt view).
     UIView *fallback = nil;
@@ -278,7 +280,7 @@ static void watchHold(UIView *tilt) {
     plate.bounds = cover.bounds;
     plate.center = cover.center;
     // The same value an animation in flight is heading to, so a layout pass never cuts one short.
-    scaleCover(tilt, currentScale());
+    if (!cover.layer.animationKeys.count) scaleCover(tilt, currentScale());
 
     static dispatch_once_t once;
     dispatch_once(&once, ^{ SGLog(@"redesign player: cover %@ rounded %.0f with a shadow plate, scale %.2f", NSStringFromClass(cover.class), SGRRadiusArtwork, currentScale()); });

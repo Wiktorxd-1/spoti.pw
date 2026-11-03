@@ -51,10 +51,14 @@
     NSString *uri = SGURIString(state.track.URI);
     if (!uri) return;
     NSURL *canvas = SGMotionCanvasIn(state.track.metadata);
+    NSDictionary *metadata = [state.track.metadata isKindOfClass:NSDictionary.class] ? state.track.metadata : nil;
+    NSString *album = metadata[@"album_title"];
     if ([uri isEqualToString:_track]) {
-        if (!_walked || !canvas || [canvas isEqual:_canvas]) return;
-        if (![_source isEqualToString:@"canvas"] && !SGMotionCanvasOutranks(SGMotionSourceOrder(), _source)) return;
-        SGLog(@"motion: the Canvas metadata of %@ changed, asked again", uri);
+        BOOL newCanvas = canvas && (![canvas isEqual:_canvas] && (!_source || SGMotionCanvasOutranks(SGMotionSourceOrder(), _source)));
+        BOOL newAlbum = !_source && album.length > 0;
+        if (!_walked || (!newCanvas && !newAlbum)) return;
+        if (newCanvas) SGLog(@"motion: the Canvas metadata of %@ changed, asked again", uri);
+        else if (newAlbum) SGLog(@"motion: album metadata for %@ arrived, asked again", uri);
     }
     [self walk:state uri:uri canvas:canvas];
 }
