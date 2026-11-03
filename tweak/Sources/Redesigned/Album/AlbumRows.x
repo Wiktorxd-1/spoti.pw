@@ -143,19 +143,6 @@ static UIView *trackRowInCell(UIView *cell) {
 }
 
 %hook _TtC12Element_List18CollectionViewCell
-- (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes {
-    UICollectionViewLayoutAttributes *attributes = %orig;
-    UICollectionViewCell *cell = (UICollectionViewCell *)self;
-    UIView *row = trackRowInCell(cell);
-    if (!row) return attributes;
-    UIView *page = SGRAlbumPageOf(cell);
-    if (!page) return attributes;
-    applyRow(cell, page, row);
-    [cell.contentView setNeedsLayout];
-    [cell.contentView layoutIfNeeded];
-    return %orig(attributes);
-}
-
 - (void)layoutSubviews {
     %orig;
     UICollectionViewCell *cell = (UICollectionViewCell *)self;
