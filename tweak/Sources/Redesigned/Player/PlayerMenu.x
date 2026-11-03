@@ -882,12 +882,42 @@ static void logDarkness(UIView *anyView) {
     }
 }
 
+static void ensureSheetDarkBackground(UIPresentationController *presentation) {
+    if (!presentation) return;
+    UIColor *sheetBg = [UIColor colorWithRed:0.07 green:0.07 blue:0.07 alpha:1.0];
+    UIView *presented = presentation.presentedView;
+    if (presented) {
+        if (!presented.backgroundColor || CGColorGetAlpha(presented.backgroundColor.CGColor) < 0.95) {
+            presented.backgroundColor = sheetBg;
+        }
+        presented.layer.cornerRadius = 24.0;
+        presented.layer.cornerCurve = kCACornerCurveContinuous;
+        presented.clipsToBounds = YES;
+    }
+    UIViewController *presentedVC = presentation.presentedViewController;
+    UIView *sheetContent = presentedVC.viewIfLoaded;
+    if (sheetContent) {
+        if (!sheetContent.backgroundColor || CGColorGetAlpha(sheetContent.backgroundColor.CGColor) < 0.95) {
+            sheetContent.backgroundColor = sheetBg;
+        }
+        sheetContent.layer.cornerRadius = 24.0;
+        sheetContent.layer.cornerCurve = kCACornerCurveContinuous;
+        sheetContent.clipsToBounds = YES;
+        SGForEachView(sheetContent, ^(UIView *sub) {
+            if ([sub isKindOfClass:UIScrollView.class] && (!sub.backgroundColor || CGColorGetAlpha(sub.backgroundColor.CGColor) < 0.95)) {
+                sub.backgroundColor = sheetBg;
+            }
+        });
+    }
+}
+
 %hook _TtC22NavigationUI_SheetImpl27SheetPresentationController
 
 - (void)presentationTransitionWillBegin {
     %orig;
     UIPresentationController *presentation = (UIPresentationController *)self;
     UIViewController *sheet = presentation.presentedViewController;
+    ensureSheetDarkBackground(presentation);
     if (!moreTappedRecently() || !holdsContextMenu(sheet, 0)) return;
     objc_setAssociatedObject(sheet, &kClaimKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     hidePresentation(presentation.presentedView, presentation.containerView);
@@ -907,8 +937,49 @@ static void logDarkness(UIView *anyView) {
 - (void)containerViewDidLayoutSubviews {
     %orig;
     UIPresentationController *presentation = (UIPresentationController *)self;
+    ensureSheetDarkBackground(presentation);
     if ([objc_getAssociatedObject(presentation.presentedViewController, &kClaimKey) boolValue]) {
         hidePresentation(presentation.presentedView, presentation.containerView);
+    }
+}
+
+%end
+
+%hook UISheetPresentationController
+
+- (void)presentationTransitionWillBegin {
+    %orig;
+    ensureSheetDarkBackground((UIPresentationController *)self);
+}
+
+- (void)containerViewDidLayoutSubviews {
+    %orig;
+    ensureSheetDarkBackground((UIPresentationController *)self);
+}
+
+%end
+
+%hook UIViewController
+
+- (void)viewDidLayoutSubviews {
+    %orig;
+    NSString *name = NSStringFromClass(self.class);
+    if ([name containsString:@"Queue"] && ([name containsString:@"ViewController"] || [name containsString:@"Page"])) {
+        UIView *view = ((UIViewController *)self).viewIfLoaded;
+        if (view) {
+            UIColor *dark = [UIColor colorWithRed:0.07 green:0.07 blue:0.07 alpha:1.0];
+            if (!view.backgroundColor || CGColorGetAlpha(view.backgroundColor.CGColor) < 0.95) {
+                view.backgroundColor = dark;
+            }
+            view.layer.cornerRadius = 24.0;
+            view.layer.cornerCurve = kCACornerCurveContinuous;
+            view.clipsToBounds = YES;
+            SGForEachView(view, ^(UIView *sub) {
+                if ([sub isKindOfClass:UIScrollView.class] && (!sub.backgroundColor || CGColorGetAlpha(sub.backgroundColor.CGColor) < 0.95)) {
+                    sub.backgroundColor = dark;
+                }
+            });
+        }
     }
 }
 
