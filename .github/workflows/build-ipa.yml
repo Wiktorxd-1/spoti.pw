@@ -74,8 +74,17 @@ jobs:
           brew install make dpkg ldid
           python3 -m pip install --break-system-packages git+https://github.com/asdfzxcvbn/pyzule-rw.git
 
+      - name: Cache Flag Table
+        uses: actions/cache@v4
+        with:
+          path: tweak/Sources/Shared/Flags/SGFlagList.m
+          key: flag-table-${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/gvZuQti06JoAU5nG.ipa' }}
+
       - name: Compile tweak verification
         run: |
+          if [ ! -f tweak/Sources/Shared/Flags/SGFlagList.m ]; then
+            printf '#import "Flags.h"\nconst SGFlagDef SGFlagTable[] = {};\nconst NSUInteger SGFlagCount = 0;\n' > tweak/Sources/Shared/Flags/SGFlagList.m
+          fi
           NPROC="$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
           echo "==> Verifying tweak compilation with Clang/Theos before downloading IPA..."
           env -u MAKELEVEL gmake -C tweak -j"$NPROC" package
@@ -86,12 +95,6 @@ jobs:
         with:
           path: ipa/spotify.ipa
           key: base-ipa-${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/gvZuQti06JoAU5nG.ipa' }}
-
-      - name: Cache Flag Table
-        uses: actions/cache@v4
-        with:
-          path: tweak/Sources/Shared/Flags/SGFlagList.m
-          key: flag-table-${{ inputs.ipa_url || 'https://cdn.wiktorxd-1.dev/f/wiktor/d/gvZuQti06JoAU5nG.ipa' }}
 
       - name: Download IPA
         if: steps.cache-ipa.outputs.cache-hit != 'true'
