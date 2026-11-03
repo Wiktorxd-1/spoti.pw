@@ -11,6 +11,7 @@ Validates:
   4. Logos directives (%hook, %group, %subclass matching %end)
   5. Preprocessor balance (#if/#ifdef/#ifndef matching #endif)
   6. Static function ordering (ensures static functions called before definition have prototypes)
+  7. Clang @available syntax (@available cannot be combined with &&, ||, or used in ternary ? expressions)
 """
 
 import os
@@ -41,7 +42,7 @@ def strip_comments_and_strings(code):
 
 
 # 1. Python Syntax Check
-print("==> [1/6] Checking Python syntax...")
+print("==> [1/7] Checking Python syntax...")
 for root, dirs, files in os.walk(ROOT):
     if any(p in root for p in [".git", "theos", ".theos", "build", "node_modules", "scratch"]):
         continue
@@ -55,7 +56,7 @@ for root, dirs, files in os.walk(ROOT):
                 log_error(f"Python syntax error in {rel}: {e}")
 
 # 2. JSON Files Check
-print("==> [2/6] Validating JSON files...")
+print("==> [2/7] Validating JSON files...")
 for f in ["apps.json", "sidestore.json"]:
     p = os.path.join(ROOT, f)
     if os.path.exists(p):
@@ -66,7 +67,7 @@ for f in ["apps.json", "sidestore.json"]:
             log_error(f"Malformed JSON in {f}: {e}")
 
 # 3. Layer Boundary Check
-print("==> [3/6] Checking architecture layer boundaries...")
+print("==> [3/7] Checking architecture layer boundaries...")
 layer_rules = [
     ("Core", r"Settings|Shared|Native|Redesigned|App"),
     ("Headers", r"Core|Settings|Shared|Native|Redesigned|App"),
@@ -92,7 +93,7 @@ for layer, pattern in layer_rules:
                             log_error(f"Layer boundary violation at {rel}:{i}: {line.strip()}")
 
 # 4. Logos Directive Check (%hook, %group, %subclass vs %end)
-print("==> [4/6] Verifying Logos blocks balance...")
+print("==> [4/7] Verifying Logos blocks balance...")
 for root, _, files in os.walk(SOURCES):
     for f in files:
         if f.endswith(".x"):
@@ -107,7 +108,7 @@ for root, _, files in os.walk(SOURCES):
                 log_error(f"Logos block mismatch in {rel}: {opens} opening directives vs {closes} %end")
 
 # 5. Preprocessor Balance Check (#if / #ifdef / #ifndef vs #endif)
-print("==> [5/6] Checking preprocessor #if / #endif balance...")
+print("==> [5/7] Checking preprocessor #if / #endif balance...")
 for root, _, files in os.walk(SOURCES):
     for f in files:
         if f.endswith((".x", ".m", ".h")):
@@ -122,7 +123,7 @@ for root, _, files in os.walk(SOURCES):
                 log_error(f"Preprocessor mismatch in {rel}: {ifs} #if vs {endifs} #endif")
 
 # 6. Static Function Declaration Ordering Check
-print("==> [6/6] Checking static function declarations and prototypes...")
+print("==> [6/7] Checking static function declarations and prototypes...")
 func_def_re = re.compile(
     r"^\s*static\s+([A-Za-z0-9_]+(?:\s*\*+)?)\s+([A-Za-z0-9_]+)\s*\([^;)]*\)[^;{]*\{",
     re.M,
@@ -159,6 +160,22 @@ for root, _, files in os.walk(SOURCES):
                     log_error(
                         f"In {rel}: static function '{func_name}' is called before definition without forward declaration: {valid_calls[0]}"
                     )
+
+# 7. Clang @available Grammar Check
+print("==> [7/7] Checking @available guard syntax...")
+available_invalid_re = re.compile(
+    r"(@available\s*\([^)]+\)\s*(?:&&|\|\||\?)|(?:&&|\|\||=)\s*@available\s*\([^)]+\))"
+)
+for root, _, files in os.walk(SOURCES):
+    for f in files:
+        if f.endswith((".x", ".m", ".h")):
+            p = os.path.join(root, f)
+            rel = os.path.relpath(p, ROOT)
+            with open(p, "r", encoding="utf-8", errors="ignore") as fp:
+                raw = fp.read()
+            cleaned = strip_comments_and_strings(raw)
+            for m in available_invalid_re.finditer(cleaned):
+                log_error(f"Invalid @available usage in {rel}: '{m.group(1)}' cannot be combined with operators")
 
 if errors:
     print(f"\n[FAIL] Pre-flight checks failed with {len(errors)} error(s).")
