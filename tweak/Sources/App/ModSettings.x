@@ -356,7 +356,26 @@ static void placeRow(UICollectionView *list, SGModSettingsRow *row) {
     SGAdoptFonts(list, row);
     CGFloat bottom = list.contentSize.height;
     row.hidden = !row.drawer && bottom <= 0;
-    row.frame = CGRectMake(0, row.drawer ? -kRowHeight : bottom, list.bounds.size.width, kRowHeight);
+    CGFloat rowX = 0;
+    CGFloat rowWidth = list.bounds.size.width;
+    if (!row.drawer) {
+        for (UICollectionViewCell *cell in list.visibleCells) {
+            CGRect cellFrame = [list convertRect:cell.bounds fromView:cell];
+            if (cellFrame.size.width > 0 && cellFrame.size.width < rowWidth - 20) {
+                rowX = cellFrame.origin.x;
+                rowWidth = cellFrame.size.width;
+                break;
+            }
+        }
+        if (rowX == 0 && rowWidth == list.bounds.size.width) {
+            CGRect readable = list.readableContentGuide.layoutFrame;
+            if (readable.size.width > 0 && readable.size.width < rowWidth - 20) {
+                rowX = readable.origin.x;
+                rowWidth = readable.size.width;
+            }
+        }
+    }
+    row.frame = CGRectMake(rowX, row.drawer ? -kRowHeight : bottom, rowWidth, kRowHeight);
 
     UIEdgeInsets inset = list.contentInset;
     NSValue *applied = objc_getAssociatedObject(list, &kInsetKey);

@@ -107,6 +107,7 @@ static void restartRest(void);
     _cover.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [_thumb addSubview:_cover];
     _stage = [[UIView alloc] initWithFrame:CGRectZero];
+    _stage.clipsToBounds = YES;
     _noLyrics = [[UILabel alloc] initWithFrame:CGRectZero];
     _noLyrics.text = @"No lyrics found";
     _noLyrics.textColor = [UIColor colorWithWhite:1 alpha:0.6];
@@ -209,7 +210,9 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     l.lift = top - CGRectGetMinY(row);
     l.shift = title ? kThumbSide + kThumbGap : 0;
     CGFloat lines = MAX(CGRectGetMaxY(l.thumb), top + row.size.height) + kLyricsTop;
-    l.stage = CGRectMake(0, lines, hostWidth, CGRectGetMinY(bar) - kLyricsBottom - lines);
+    CGFloat durationY = CGRectGetMinY(bar);
+    CGFloat bottomLimit = (durationY > lines + 50 && durationY < host.bounds.size.height) ? durationY : host.bounds.size.height - 200;
+    l.stage = CGRectMake(0, lines, hostWidth, MAX(0, bottomLimit - kLyricsBottom - lines));
     BOOL isPad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
     l.ok = l.stage.size.height > kLivingHeight / 2 && (isPad || l.lift < 0);
     return l;
@@ -473,22 +476,40 @@ static NSArray<UIView *> *controlViews(void) {
     if (stack) {
         for (UIView *view in stack.subviews) {
             if ([info isDescendantOfView:view] || [floating isDescendantOfView:view]) continue;
-            if (!view.hidden && view.alpha > 0.01) [views addObject:view];
+            [views addObject:view];
         }
-        return views;
     }
+    UIView *duration = sg_duration.viewIfLoaded;
+    if (duration && ![views containsObject:duration] && ![info isDescendantOfView:duration]) [views addObject:duration];
+    UIView *controls = SGRPlayerControlsHost();
+    if (controls && ![views containsObject:controls] && ![info isDescendantOfView:controls]) [views addObject:controls];
+    UIView *footer = SGRPlayerFooterHost();
+    if (footer && ![views containsObject:footer] && ![info isDescendantOfView:footer]) [views addObject:footer];
+
     static NSArray<NSString *> *names;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        names = @[@"DurationElementUnit", @"PlaybackControlsElementsUnit", @"FooterElementsUnit"];
+        names = @[@"DurationElementUnit", @"DurationElementsUnit",
+                  @"PlaybackControlsElementsUnit", @"FooterElementsUnit",
+                  @"ReinventFreePlaybackControlsElementsUnit", @"ReinventFreeFooterElementsUnit",
+                  @"ReinventFreeDurationElementsUnit"];
     });
-    // A unit's view answers to its controller as its next responder, wherever the unit sits in the tree.
     SGForEachView(sg_host, ^(UIView *view) {
         UIResponder *owner = view.nextResponder;
-        if (![owner isKindOfClass:UIViewController.class] || ((UIViewController *)owner).viewIfLoaded != view) return;
-        NSString *name = NSStringFromClass(owner.class);
-        for (NSString *unit in names) {
-            if ([name hasSuffix:unit] && !view.hidden && view.alpha > 0.01) [views addObject:view];
+        if ([owner isKindOfClass:UIViewController.class]) {
+            NSString *name = NSStringFromClass(owner.class);
+            for (NSString *unit in names) {
+                if ([name containsString:unit]) {
+                    UIView *unitView = ((UIViewController *)owner).viewIfLoaded ?: view;
+                    if (![views containsObject:unitView] && ![info isDescendantOfView:unitView] && ![floating isDescendantOfView:unitView]) {
+                        [views addObject:unitView];
+                    }
+                    break;
+                }
+            }
+        }
+        if ([view isKindOfClass:UIPageControl.class] && ![views containsObject:view]) {
+            [views addObject:view];
         }
     });
     return views;
@@ -844,6 +865,11 @@ static void replace(void) {
     SGRPlayerLyricsOverlay *overlay = objc_getAssociatedObject(host, &kOverlayKey);
     if (!overlay.superview) return;
     if (overlay.superview == host && host.subviews.lastObject != overlay) [host bringSubviewToFront:overlay];
+    SGForEachView(host, ^(UIView *view) {
+        if ([view isKindOfClass:UIPageControl.class]) {
+            view.alpha = sg_open ? 0 : 1;
+        }
+    });
     if (sg_alone) {
         l.stage = aloneStage(host, l);
         fadeControls(YES);
@@ -910,6 +936,8 @@ static void replace(void) {
 - (void)viewDidLayoutSubviews {
     %orig;
     sg_duration = (UIViewController *)self;
+    UIView *host = ((UIViewController *)self).viewIfLoaded;
+    if (host && SGRLyricsFadedView(host)) host.alpha = 0;
     replace();
 }
 %end

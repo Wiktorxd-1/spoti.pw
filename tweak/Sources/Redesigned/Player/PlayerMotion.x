@@ -273,10 +273,13 @@ static UIViewPropertyAnimator *setBlurIntensity(UIVisualEffectView *view, UIView
     _lyricsBlur.frame = bounds;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    _still.frame = CGRectMake(0, 0, width, height);
+    CGFloat y = height > total ? round((total - height) / 2.0) : 0;
+    _still.frame = CGRectMake(0, y, width, height);
     _clip.frame = _still.bounds;
     _clipMask.frame = _still.bounds;
-    _foot.frame = CGRectMake(0, seam, width, MAX(0, total - seam));
+    CGFloat stillBottom = CGRectGetMaxY(_still.frame);
+    CGFloat footY = MIN(stillBottom, y + seam);
+    _foot.frame = CGRectMake(0, footY, width, MAX(0, total - footY));
     _dim.frame = bounds;
     _seamMask.frame = bounds;
     _seamMask.locations = @[@(MIN(1, blurFrom / total)), @(MIN(1, (blurFrom + kBlurRamp) / total))];
@@ -435,7 +438,8 @@ static void layOut(void) {
     if (!sg_motion || !field) return;
     if (sg_motion.superview != field) [field addSubview:sg_motion];
     CGSize size = field.bounds.size;
-    CGFloat screen = field.window.bounds.size.height ?: size.height;
+    BOOL isPad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
+    CGFloat screen = (isPad || !field.window) ? size.height : (field.window.bounds.size.height ?: size.height);
     CGRect frame = CGRectMake(0, 0, size.width, MAX(size.height, screen) + field.bleed.bottom);
     if (!CGRectEqualToRect(sg_motion.frame, frame)) sg_motion.frame = frame;
     sg_motion.screenHeight = screen;

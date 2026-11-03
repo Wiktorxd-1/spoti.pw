@@ -76,6 +76,9 @@ BOOL SGRPlayerPlaceVolume(UIView *stack, UIView *controls, UIView *row, CGFloat 
 // the lyrics own that view's alpha and the player's own layout passes leave it be.
 BOOL SGRLyricsFadedView(UIView *view);
 
+UIView *SGRPlayerControlsHost(void);
+UIView *SGRPlayerFooterHost(void);
+
 // The cover's color may tint the player's controls.
 #define SGRKeyPlayerFollowsCover @"spotifyglass.redesign.player.followsCover"
 BOOL SGRPlayerFollowsCover(void);

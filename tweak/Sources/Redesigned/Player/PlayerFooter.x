@@ -49,6 +49,10 @@ static const CGFloat kVolumeLift = 10;
 static char kConnectKey, kShareKey, kTrimmerKey, kSharedByKey, kQueueKey, kLyricsGlyphKey, kReachKey;
 static __weak SGRGlyphButton *sg_lyricsGlyph;
 static __weak UIView *sg_footerHost;
+
+UIView *SGRPlayerFooterHost(void) {
+    return sg_footerHost;
+}
 static BOOL sg_playerIsVisible;
 
 static void refreshFooter(void) {
@@ -290,6 +294,7 @@ static void lowerRow(UIView *row) {
     %orig;
     UIView *host = ((UIViewController *)self).viewIfLoaded;
     if (!host) return;
+    if (SGRLyricsFadedView(host)) host.alpha = 0;
     sg_footerHost = host;
     // The unit lays out before its row does, and the moves are measured from where the row put things.
     [SGRowIn(host) layoutIfNeeded];

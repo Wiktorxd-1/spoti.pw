@@ -39,6 +39,10 @@ static BOOL sg_tappedPaused;
 static __weak SGRGlyphView *sg_playGlyph;
 static __weak UIView *sg_controlsHost;
 
+UIView *SGRPlayerControlsHost(void) {
+    return sg_controlsHost;
+}
+
 void SGRPlayerVanish(UIView *view) {
     if (!view) return;
     if (view.alpha != 0) view.alpha = 0;
@@ -180,6 +184,7 @@ static void playGlyph(UIView *host) {
     %orig;
     UIView *host = ((UIViewController *)self).viewIfLoaded;
     if (!host) return;
+    if (SGRLyricsFadedView(host)) host.alpha = 0;
     // The unit lays out before its row does, and the glyphs are centered on the buttons in it.
     [SGRowIn(host) layoutIfNeeded];
     sg_controlsHost = host;
