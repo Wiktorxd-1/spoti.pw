@@ -7,6 +7,7 @@
 #import "Shared/Player/NowPlayingExtras.h"
 #import "Shared/Player/PlayerEvents.h"
 #import "Shared/Player/PlayerState.h"
+#import "Shared/Duo/SGDuo.h"
 #import "Redesigned/Player/Player.h"
 #import "NowPlayingBar.h"
 #import <objc/message.h>
@@ -547,7 +548,7 @@ static void styleNowPlayingBar(UIViewController *container) {
     frame.size.height = MIN(frame.size.height, 80);
     if (frame.size.height < 30 || frame.size.width < 100) return;
 
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad || SGIsDuoDevice() || frame.size.width > 560) {
         CGFloat maxWidth = MIN(container.view.bounds.size.width - 40, 560);
         if (frame.size.width > maxWidth) {
             frame.origin.x = round((container.view.bounds.size.width - maxWidth) / 2.0);

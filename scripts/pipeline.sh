@@ -147,6 +147,20 @@ rm -f "$ROOT/out/.info.plist"
 cyan -i "$IN" -o "$OUT" -f "${FILES[@]}" -l "$ROOT/out/.injection.plist" ${BUNDLE_ID:+-b "$BUNDLE_ID"} ${NAME:+-n "$NAME"} ${ICON:+-k "$ICON"} -w -s --overwrite
 rm -f "$ROOT/out/.injection.plist"
 
+echo "==> patching main executable SDK version to iOS 27.2 for iPhone Duo edge-to-edge support"
+MAIN_EXE="$(basename "${APP_DIR%/}" .app)"
+MAIN_BIN="${APP_DIR}${MAIN_EXE}"
+if unzip -l "$OUT" "$MAIN_BIN" >/dev/null 2>&1; then
+  PATCH="$(mktemp -d)"
+  unzip -q "$OUT" "$MAIN_BIN" -d "$PATCH"
+  python3 "$ROOT/scripts/patch-macho-sdk.py" "$PATCH/$MAIN_BIN" 27 2 0
+  ldid -e "$PATCH/$MAIN_BIN" > "$PATCH/ents.plist"
+  ldid -S"$PATCH/ents.plist" "$PATCH/$MAIN_BIN"
+  OUT_ABS="$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")"
+  (cd "$PATCH" && zip -q "$OUT_ABS" "$MAIN_BIN")
+  rm -rf "$PATCH"
+fi
+
 echo "==> loading the App Group shim in the home screen widget"
 WIDGET_BIN="${APP_DIR}PlugIns/WidgetExtension.appex/WidgetExtension"
 if unzip -l "$OUT" "$WIDGET_BIN" >/dev/null 2>&1; then
