@@ -5,6 +5,7 @@
 #define SGRKeyHideAlbumArtists @"spotifyglass.redesign.hideAlbumArtists"
 #define SGRKeyHideAllAlbumArtists @"spotifyglass.redesign.hideAllAlbumArtists"
 #define SGRKeyHideExplicitAlbumTags @"spotifyglass.redesign.hideExplicitAlbumTags"
+#define SGRKeyAlbumTrackPreview @"spotifyglass.redesign.album.trackPreview"
 
 UIViewController *SGRAlbumSettingsPage(void);
 

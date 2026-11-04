@@ -49,7 +49,7 @@ UIViewController *SGHomeSettingsPage(void) {
         SGSection(nil, @[
             SGWithSymbol(SGPageRow(@"Playlists", ^UIViewController *{ return SGPlaylistSettingsPage(); }), @"music.note.list"),
             SGWithSymbol(SGPageRow(@"Library", ^UIViewController *{ return libraryPage(); }), @"books.vertical"),
-            SGWithSymbol(SGPageRow(@"Album", ^UIViewController *{ return SGAlbumSettingsPage(); }), @"square.stack"),
+            SGWithSymbol(SGPageRow(@"Albums", ^UIViewController *{ return SGAlbumSettingsPage(); }), @"square.stack"),
             SGWithSymbol(SGPageRow(@"Artist", ^UIViewController *{ return SGArtistSettingsPage(); }), @"music.mic"),
         ]),
         SGSection(@"Home", @[

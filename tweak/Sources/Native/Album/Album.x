@@ -35,6 +35,11 @@ static NSString *keyFor(UIView *action) {
     return nil;
 }
 
+static BOOL isExploreButton(UIView *action) {
+    NSString *ident = action.subviews.firstObject.accessibilityIdentifier;
+    return [ident hasPrefix:@"Components.UI.WatchFeedEntityExplorerButton"];
+}
+
 // The buttons arrive after the page has laid out, and a row that keeps its size lays nothing else out.
 %hook UIStackView
 - (void)layoutSubviews {
@@ -45,6 +50,11 @@ static NSString *keyFor(UIView *action) {
     }
     if (!row || !albumPageOf(self)) return;
     for (UIView *action in self.subviews) {
+        if (isExploreButton(action)) {
+            BOOL show = SGFlag(SGKeyAlbumTrackPreview, YES) && !SGHidden(SGHideAlbumExplore);
+            action.hidden = !show;
+            continue;
+        }
         NSString *key = keyFor(action);
         if (key && SGHidden(key)) action.hidden = YES;
     }

@@ -6,6 +6,7 @@ UIViewController *SGRAlbumSettingsPage(void) {
     NSArray<SGModSection *> *sections = @[
         SGNotedSection(@"Header", @[
             SGSwitchRow(@"Animated cover", @"Apple Music's, where the album has one", SGRKeyAnimatedCovers),
+            SGSwitchRow(@"Show track preview", @"Show the track preview button on albums (mini clips)", SGRKeyAlbumTrackPreview),
         ], @"Apple Music gets only the artist and album name. Nothing is downloaded in Low Data or Low Power Mode."),
         SGNotedSection(@"Track list", @[
             SGHideRow(@"Hide album artists", @"Featured artists stay visible", SGRKeyHideAlbumArtists),

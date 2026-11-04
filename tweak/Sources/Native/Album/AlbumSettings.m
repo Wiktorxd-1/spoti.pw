@@ -6,9 +6,9 @@ UIViewController *SGAlbumSettingsPage(void) {
     NSArray<SGModSection *> *sections = @[
         SGSection(@"Header", @[
             SGOptionRow(@"Artwork background", nil, SGKeyAlbumBackdrop),
+            SGSwitchRow(@"Show track preview", @"Show the track preview button on albums (mini clips)", SGKeyAlbumTrackPreview),
         ]),
         SGSection(@"Hide in the header", @[
-            SGHideRow(@"Explore (video deck)", nil, SGHideAlbumExplore),
             SGHideRow(@"Add to library", nil, SGHideAlbumAddTo),
             SGHideRow(@"Download", nil, SGHideAlbumDownload),
             SGHideRow(@"More options", nil, SGHideAlbumMore),
@@ -21,5 +21,5 @@ UIViewController *SGAlbumSettingsPage(void) {
             SGHideRow(@"You might also like", nil, SGHideAlbumYouMightLike),
         ], @"Works only with Spotify in English."),
     ];
-    return [[SGModPage alloc] initWithTitle:@"Album" intro:nil sections:sections footer:nil];
+    return [[SGModPage alloc] initWithTitle:@"Albums" intro:nil sections:sections footer:nil];
 }

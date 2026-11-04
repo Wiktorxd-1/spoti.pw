@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 
 #define SGKeyAlbumBackdrop @"spotifyglass.albumBackdrop"
+#define SGKeyAlbumTrackPreview @"spotifyglass.album.trackPreview"
 
 #define SGHideAlbumExplore @"spotifyglass.hide.albumExplore"
 #define SGHideAlbumAddTo @"spotifyglass.hide.albumAddTo"
