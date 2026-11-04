@@ -204,6 +204,7 @@ jobs:
 
       - name: Upload to filebin.net
         if: inputs.upload_method != 'artifacts'
+        continue-on-error: true
         run: |
           BIN="spotifyglass-${{ github.run_id }}"
           echo "### filebin.net download" >> "$GITHUB_STEP_SUMMARY"
