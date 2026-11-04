@@ -787,6 +787,9 @@ static void syncBar(UIView *stockBar) {
     if (SGRPlayerIsPresented() && UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
         host.alpha = 0;
         host.userInteractionEnabled = NO;
+    } else {
+        host.alpha = 1;
+        host.userInteractionEnabled = YES;
     }
 
     for (UIView *sub in stockBar.subviews) {

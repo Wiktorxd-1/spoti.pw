@@ -205,6 +205,7 @@ static char kReadyContext;
         SGRAlbumHero *hero = weakSelf;
         if (!hero || ![hero->_motionFor isEqualToString:wanted]) return;
         if (!canvas) {
+            hero->_motionFor = nil;
             SGLog(@"redesign album: no animated cover for \"%@\": %@", album, note);
             return;
         }
@@ -215,6 +216,7 @@ static char kReadyContext;
                 owner->_fetch = nil;
                 SGLog(@"redesign album: animated cover for \"%@\", %@", album, fetched);
                 if (file) [owner playMotion:file];
+                else owner->_motionFor = nil;
             });
         });
     });

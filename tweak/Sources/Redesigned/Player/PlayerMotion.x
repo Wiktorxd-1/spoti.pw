@@ -269,12 +269,12 @@ static UIViewPropertyAnimator *setBlurIntensity(UIVisualEffectView *view, UIView
     if (_aspect > kCanvasAspect) height = MAX(height, screen);
     CGFloat targetWidth = width;
     CGFloat targetHeight = height;
-    if (targetHeight < total) {
-        targetHeight = total;
-        targetWidth = _aspect > 0 ? round(total / _aspect) : width;
+    if (targetHeight < screen) {
+        targetHeight = screen;
+        targetWidth = _aspect > 0 ? round(screen / _aspect) : width;
     }
     CGFloat x = round((width - targetWidth) / 2.0);
-    CGFloat y = round((total - targetHeight) / 2.0);
+    CGFloat y = round((screen - targetHeight) / 2.0);
     CGFloat effectiveHeight = MAX(height, targetHeight);
     CGFloat seam = round(effectiveHeight * kFootFrom);
     CGFloat blurFrom = MIN(seam, round(screen * kBlurByControls));

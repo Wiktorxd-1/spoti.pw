@@ -100,6 +100,13 @@ static void show(NSURL *file) {
         }
         BOOL fits = fabs(poster.size.width / poster.size.height - ratio) <= kSameShape;
         NSURL *shaped = fits ? file : SGMotionMadeFile([NSString stringWithFormat:@"cut\n%@\n%g", file.lastPathComponent, ratio]);
+        if (!fits && ![NSFileManager.defaultManager fileExistsAtPath:shaped.path]) {
+            dispatch_async(sg_queue, ^{
+                if (![NSFileManager.defaultManager fileExistsAtPath:shaped.path]) {
+                    SGMotionClipShape(file, ratio, shaped);
+                }
+            });
+        }
         MPMediaItemAnimatedArtwork *artwork = [[MPMediaItemAnimatedArtwork alloc] initWithArtworkID:shaped.lastPathComponent
             previewImageRequestHandler:^(CGSize wanted, void (^completion)(UIImage *)) { completion(filled(poster, wanted)); }
             videoAssetFileURLRequestHandler:^(CGSize wanted, void (^completion)(NSURL *)) {

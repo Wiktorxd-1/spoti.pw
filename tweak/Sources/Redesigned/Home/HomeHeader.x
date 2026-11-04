@@ -168,17 +168,27 @@ void SGRHomeProfilePhotoPreferenceChanged(void) {
     sg_face.accessibilityElementsHidden = !visible;
 }
 
+static BOOL isPillView(UIView *view) {
+    if (!view) return NO;
+    if ([view isKindOfClass:UIScrollView.class]) return YES;
+    NSString *className = NSStringFromClass(view.class);
+    if ([className containsString:@"Pill"] || [className containsString:@"FadeMask"]) return YES;
+    NSString *ident = view.accessibilityIdentifier;
+    if ([ident containsString:@"Pill"] || [ident containsString:@"Filter"]) return YES;
+    return NO;
+}
+
 static BOOL isAvatarView(UIView *view) {
     if (!view) return NO;
     static Class faceClass;
     if (!faceClass) faceClass = NSClassFromString(@"_TtC29ListeningActivity_ElementsKit21AdaptiveFaceContainer");
     if (faceClass && [view isKindOfClass:faceClass]) return YES;
     NSString *className = NSStringFromClass(view.class);
-    if ([className containsString:@"AdaptiveFace"] || [className containsString:@"SideDrawer"]) return YES;
+    if ([className containsString:@"AdaptiveFace"] || [className containsString:@"SideDrawer"] || [className containsString:@"Profile"] || [className containsString:@"Avatar"]) return YES;
     NSString *ident = view.accessibilityIdentifier;
-    if ([ident containsString:@"SideDrawerButton"] || [ident containsString:@"AdaptiveFace"] || [ident containsString:@"Profile"]) return YES;
+    if ([ident containsString:@"SideDrawerButton"] || [ident containsString:@"AdaptiveFace"] || [ident containsString:@"Profile"] || [ident containsString:@"Avatar"] || [ident containsString:@"Account"]) return YES;
     NSString *label = [view.accessibilityLabel lowercaseString];
-    if ([label containsString:@"profile"] || [label containsString:@"settings"]) return YES;
+    if ([label containsString:@"profile"] || [label containsString:@"settings"] || [label containsString:@"account"] || [label containsString:@"your profile"]) return YES;
     return NO;
 }
 
@@ -186,11 +196,11 @@ static UIView *avatarIn(UIStackView *stack) {
     __block UIView *face = SGRFindByIdentifier(stack, @"Components.UI.SideDrawerButton*", nil);
     if (face) return face;
     SGForEachView(stack, ^(UIView *v) {
-        if (!face && isAvatarView(v) && v.bounds.size.width > 1) face = v;
+        if (!face && isAvatarView(v)) face = v;
     });
     if (face) return face;
     for (UIView *part in stack.arrangedSubviews) {
-        if (![part isKindOfClass:UIScrollView.class] && ![NSStringFromClass(part.class) containsString:@"Pill"] && part.bounds.size.width <= 60 && part.bounds.size.width > 1) {
+        if (!isPillView(part) && (part.bounds.size.width <= 60 || [part isKindOfClass:UIControl.class])) {
             return part;
         }
     }
@@ -223,7 +233,14 @@ static void layoutHeader(UIViewController *page) {
             part.accessibilityElementsHidden = NO;
             continue;
         }
-        vanish(part);
+        if (isPillView(part)) {
+            vanish(part);
+        } else {
+            part.alpha = 1;
+            part.hidden = NO;
+            part.userInteractionEnabled = YES;
+            part.accessibilityElementsHidden = NO;
+        }
     }
     if (face) {
         face.alpha = 1;

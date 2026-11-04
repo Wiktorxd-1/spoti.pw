@@ -919,14 +919,16 @@ static void replace(void) {
 static BOOL sg_playerPresented;
 
 BOOL SGRPlayerIsPresented(void) {
-    if (!sg_playerPresented) return NO;
-    if (sg_player) {
-        UIViewController *presenter = sg_player.presentingViewController ?: sg_player.navigationController.presentingViewController;
-        if (!presenter) return NO;
-        if (sg_player.viewIfLoaded && (!sg_player.view.window || sg_player.view.hidden || sg_player.view.alpha < 0.01)) {
-            return NO;
-        }
+    if (!sg_player) return NO;
+    UIView *view = sg_player.viewIfLoaded;
+    if (!view || !view.window || view.hidden || view.alpha < 0.01) return NO;
+    UIWindow *window = view.window;
+    CGRect windowFrame = [view convertRect:view.bounds toView:window];
+    if (windowFrame.origin.y > 100) return NO;
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        if (windowFrame.size.width < window.bounds.size.width * 0.7) return NO;
     }
+    if (windowFrame.size.height < window.bounds.size.height * 0.6) return NO;
     return YES;
 }
 

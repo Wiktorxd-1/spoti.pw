@@ -60,8 +60,8 @@ SGRPlayerBackgroundKind SGRPlayerAnimatedFallback(void) {
         SGRPlayerBackgroundVisualiser,
         SGRPlayerBackgroundFill,
     };
-    NSInteger index = SGInt(SGRKeyPlayerAnimatedFallback, (NSInteger)(sizeof choices / sizeof *choices) - 1);
-    if (index < 0 || index >= (NSInteger)(sizeof choices / sizeof *choices)) index = (NSInteger)(sizeof choices / sizeof *choices) - 1;
+    NSInteger index = SGInt(SGRKeyPlayerAnimatedFallback, 1);
+    if (index < 0 || index >= (NSInteger)(sizeof choices / sizeof *choices)) index = 1;
     return choices[index];
 }
 

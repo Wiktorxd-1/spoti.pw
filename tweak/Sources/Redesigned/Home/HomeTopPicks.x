@@ -54,11 +54,11 @@ static BOOL isShortcutsGrid(UIView *root) {
             [NSStringFromClass(object_getClass(cell)) containsString:@"Shortcuts"]) return YES;
     }
     for (UIView *sub in root.subviews) {
-        if ([NSStringFromClass(object_getClass(sub)) containsString:@"Shortcuts"] ||
+        if ([sub.accessibilityIdentifier containsString:@"Shortcut"] ||
+            [NSStringFromClass(object_getClass(sub)) containsString:@"Shortcuts"] ||
             [NSStringFromClass(object_getClass(sub.subviews.firstObject)) containsString:@"Shortcuts"]) return YES;
     }
 
-    if (!root.accessibilityIdentifier.length) return YES;
     return NO;
 }
 
@@ -257,13 +257,13 @@ static NSDictionary<NSIndexPath *, NSValue *> *swappedFrames(UICollectionViewLay
     }
     if (page && cell.superview == page && objc_getAssociatedObject(page, &kAuraKey)) stripBase(cell, 3);
 
-    if (SGFlag(SGRKeyHomeTopPicks, NO) && !sg_shortcutsPath) {
+    if (SGFlag(SGRKeyHomeTopPicks, NO)) {
         UIView *content = cell.contentView.subviews.firstObject;
         if ([NSStringFromClass(object_getClass(content)) containsString:@"Home_EvoPageImpl13HomeStructure"]) {
             UIView *root = content.subviews.firstObject;
             if (root && isShortcutsGrid(root)) {
                 NSIndexPath *path = [page indexPathForCell:cell];
-                if (path) {
+                if (path && ![path isEqual:sg_shortcutsPath]) {
                     sg_shortcutsPath = path;
                     [page.collectionViewLayout invalidateLayout];
                 }
@@ -497,6 +497,6 @@ static void followAlbum(UICollectionView *shelf) {
 %end
 
 %ctor {
-    if (!SGRedesignedUI() || (!SGRHomeGlassStyle() && !SGFlag(SGRKeyHomeTopPicks, NO))) return;
+    if (!SGRedesignedUI()) return;
     %init;
 }
