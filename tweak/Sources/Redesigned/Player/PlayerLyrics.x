@@ -962,6 +962,7 @@ BOOL SGRPlayerIsPresented(void) {
     if (sg_open) {
         SGRPlayerLyricsChanged();
     }
+    SGRPlayerLyricsOrientationChanged();
 }
 - (void)viewDidLayoutSubviews {
     %orig;
@@ -975,6 +976,9 @@ BOOL SGRPlayerIsPresented(void) {
         v.clipsToBounds = NO;
     }
     sg_player = (UIViewController *)self;
+    if (host.window && host.bounds.size.width > host.bounds.size.height) {
+        SGRPlayerLyricsOrientationChanged();
+    }
     if (sg_host != host) {
         sg_host = host;
         [host addGestureRecognizer:[SGRPlayerTouchWatcher new]];

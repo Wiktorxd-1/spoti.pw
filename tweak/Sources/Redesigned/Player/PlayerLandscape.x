@@ -341,10 +341,7 @@ static UIInterfaceOrientationMask (*sg_origOrientations)(id, SEL, UIApplication 
 
 static UIInterfaceOrientationMask orientationsFor(id self, SEL _cmd, UIApplication *application, UIWindow *window) {
     if (window && window == sg_window) return UIInterfaceOrientationMaskLandscape;
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
-        return sg_origOrientations ? sg_origOrientations(self, _cmd, application, window) : UIInterfaceOrientationMaskAll;
-    }
-    return sg_origOrientations ? sg_origOrientations(self, _cmd, application, window) : UIInterfaceOrientationMaskPortrait;
+    return UIInterfaceOrientationMaskAllButUpsideDown;
 }
 
 // The delegate's own answer stays for every window but the landscape one; one that has none answers
@@ -380,7 +377,6 @@ static void requestOrientations(UIWindowScene *scene, UIInterfaceOrientationMask
 }
 
 void SGRPlayerShowLandscape(BOOL show) {
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) return;
     UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
     if (![scene isKindOfClass:UIWindowScene.class]) return;
     if (show && !sg_window) {
@@ -420,11 +416,17 @@ void SGRPlayerShowLandscape(BOOL show) {
 }
 
 static void orientationChanged(void) {
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) return;
+    UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
+    if (![scene isKindOfClass:UIWindowScene.class]) return;
     UIDeviceOrientation orientation = UIDevice.currentDevice.orientation;
-    if (UIDeviceOrientationIsLandscape(orientation)) {
-        if (!sg_shut && SGEnabled(SGRKeyLyricsLandscape) && (SGRPlayerLyricsOpen() || SGRPlayerCoverList().window != nil)) SGRPlayerShowLandscape(YES);
-    } else if (orientation == UIDeviceOrientationPortrait) {
+    BOOL isLandscape = UIDeviceOrientationIsLandscape(orientation)
+                    || UIInterfaceOrientationIsLandscape(scene.interfaceOrientation)
+                    || (scene.coordinateSpace.bounds.size.width > scene.coordinateSpace.bounds.size.height);
+    if (isLandscape) {
+        if (!sg_shut && SGEnabled(SGRKeyLyricsLandscape) && (SGRPlayerLyricsOpen() || SGRPlayerCoverList().window != nil || SGRPlayerIsPresented())) {
+            SGRPlayerShowLandscape(YES);
+        }
+    } else if (orientation == UIDeviceOrientationPortrait || scene.coordinateSpace.bounds.size.width <= scene.coordinateSpace.bounds.size.height) {
         sg_shut = NO;
         SGRPlayerShowLandscape(NO);
     }
