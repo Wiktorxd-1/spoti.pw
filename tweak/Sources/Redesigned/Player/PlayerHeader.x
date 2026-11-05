@@ -29,9 +29,8 @@ static void glassInside(UIViewController *unit, NSArray<NSString *> *identifiers
                 button.superview.clipsToBounds = NO;
                 host.clipsToBounds = NO;
                 if (host.superview) host.superview.clipsToBounds = NO;
-                CGFloat shiftX = -(MAX(host.window.safeAreaInsets.right, 92.0));
-                CGAffineTransform left = CGAffineTransformMakeTranslation(shiftX, 0);
-                if (!CGAffineTransformEqualToTransform(button.transform, left)) button.transform = left;
+                CGAffineTransform down = CGAffineTransformMakeTranslation(0, 320);
+                if (!CGAffineTransformEqualToTransform(button.transform, down)) button.transform = down;
             }
         }
         found++;
@@ -96,13 +95,22 @@ static void pillBehindContext(UIViewController *unit) {
     if (box.superview != parent) [parent insertSubview:box belowSubview:label];
     else if ([parent.subviews indexOfObject:box] > [parent.subviews indexOfObject:label]) [parent insertSubview:box belowSubview:label];
 
-    CGSize text = [label.text sizeWithAttributes:@{NSFontAttributeName: label.font ?: [UIFont systemFontOfSize:14]}];
-    CGFloat measuredWidth = label.bounds.size.width > 0 ? label.bounds.size.width : ceil(text.width);
-    CGFloat width = MAX(measuredWidth + 2 * kPillPadX, 160);
-    if (parent.bounds.size.width > 0) width = MIN(width, parent.bounds.size.width - 16);
-    CGFloat height = MAX(kPillMinHeight, ceil(text.height) + 16);
+    parent.clipsToBounds = NO;
+    if (parent.superview) parent.superview.clipsToBounds = NO;
+
+    CGSize textSize = [label sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
+    if (label.text.length) {
+        UIFont *font = label.font ?: [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+        CGSize attrSize = [label.text sizeWithAttributes:@{NSFontAttributeName: font}];
+        if (attrSize.width > textSize.width) textSize.width = attrSize.width;
+        if (attrSize.height > textSize.height) textSize.height = attrSize.height;
+    }
+    CGFloat width = ceil(textSize.width + 40.0);
+    CGFloat maxW = host.bounds.size.width > 0 ? host.bounds.size.width - 130.0 : 340.0;
+    if (width > maxW) width = maxW;
+    CGFloat height = MAX(34.0, ceil(textSize.height + 14.0));
     box.bounds = CGRectMake(0, 0, width, height);
-    box.center = label.center;
+    box.center = CGPointMake(CGRectGetMidX(label.bounds), CGRectGetMidY(label.bounds));
     box.hidden = label.hidden;
     box.alpha = label.alpha;
     SGRGlassCapsuleInside(box, &kPillKey, box.bounds.size, NO);

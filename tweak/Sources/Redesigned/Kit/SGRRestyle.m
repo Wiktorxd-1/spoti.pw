@@ -309,13 +309,14 @@ SGRShadowPlate *SGRShadowPlateIn(UIView *host, const void *key) {
 static const CGFloat kPaintedShare = 0.75;
 
 static void clearPaint(UIView *view, UIView *cell, CGFloat wide) {
-    BOOL full = view.bounds.size.width >= wide;
-    if (view != cell && !full && [view isKindOfClass:UICollectionViewCell.class]) return;
-    if (full) {
-        CGColorRef color = view.layer.backgroundColor;
-        if (color && SGIsBaseSurface(color)) view.backgroundColor = UIColor.clearColor;
-        if (!view.layer.mask && [NSStringFromClass(view.class) containsString:@"GradientView"]) view.layer.mask = [CALayer layer];
+    if (view.layer.backgroundColor && SGIsBaseSurface(view.layer.backgroundColor)) {
+        view.backgroundColor = UIColor.clearColor;
+        view.layer.backgroundColor = NULL;
+    } else if (view.backgroundColor && SGIsBaseSurface(view.backgroundColor.CGColor)) {
+        view.backgroundColor = UIColor.clearColor;
+        view.layer.backgroundColor = NULL;
     }
+    if (!view.layer.mask && [NSStringFromClass(view.class) containsString:@"GradientView"]) view.layer.mask = [CALayer layer];
     for (UIView *sub in view.subviews) clearPaint(sub, cell, wide);
 }
 

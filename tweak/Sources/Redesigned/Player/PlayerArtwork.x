@@ -265,17 +265,25 @@ static void watchHold(UIView *tilt) {
     SGRPlayerMotionCoverLaidOut();
     // The cover fills the tilt view (01.txt:37); bounds and center, unlike a frame, hold under the scale.
     CGRect bounds = tilt.bounds;
+    CGFloat side = MIN(bounds.size.width, bounds.size.height);
+    if (side < kCoverMinWidth) side = bounds.size.width;
+    CGSize coverSize = CGSizeMake(side, side);
     CGPoint middle = CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
-    if (!CGSizeEqualToSize(cover.bounds.size, bounds.size)) cover.bounds = (CGRect){cover.bounds.origin, bounds.size};
+    if (!CGSizeEqualToSize(cover.bounds.size, coverSize)) cover.bounds = (CGRect){CGPointZero, coverSize};
     if (!CGPointEqualToPoint(cover.center, middle)) cover.center = middle;
     // Its image is placed again for the new size (the ImageViewProxy hook below makes it fill the cover).
     for (UIView *image in cover.subviews) {
-        if (!CGRectEqualToRect(image.frame, cover.bounds)) image.bounds = image.bounds, image.center = image.center;
+        if (!CGRectEqualToRect(image.bounds, cover.bounds)) {
+            image.bounds = cover.bounds;
+            image.center = CGPointMake(CGRectGetMidX(cover.bounds), CGRectGetMidY(cover.bounds));
+        }
     }
 
     cover.layer.cornerRadius = SGRRadiusArtwork;
     cover.layer.cornerCurve = kCACornerCurveContinuous;
     cover.clipsToBounds = YES;
+    cover.backgroundColor = UIColor.clearColor;
+    cover.layer.backgroundColor = NULL;
     SGRShadowPlate *plate = SGRShadowPlateIn(tilt, &kPlateKey);
     plate.bounds = cover.bounds;
     plate.center = cover.center;
@@ -295,10 +303,26 @@ static void watchHold(UIView *tilt) {
 // preview still goes to Spotify, whose view remains the one under ours to receive it.
 static const void *kPreviewKey;
 
+%hook _TtC28NowPlaying_ContentLayersImpl16CoverArtCellImpl
+- (void)layoutSubviews {
+    %orig;
+    UIView *cell = (UIView *)self;
+    cell.backgroundColor = UIColor.clearColor;
+    cell.layer.backgroundColor = NULL;
+    cell.clipsToBounds = NO;
+    for (UIView *sub in cell.subviews) {
+        if (sub.backgroundColor && SGIsBaseSurface(sub.backgroundColor.CGColor)) sub.backgroundColor = UIColor.clearColor;
+        if (SGIsBaseSurface(sub.layer.backgroundColor)) sub.layer.backgroundColor = NULL;
+    }
+}
+%end
+
 %hook _TtC22Lyrics_NPVContainerKit19LyricsContainerView
 - (void)layoutSubviews {
     %orig;
     UIView *host = (UIView *)self;
+    host.backgroundColor = UIColor.clearColor;
+    host.layer.backgroundColor = NULL;
     CGRect bounds = host.bounds;
     if (bounds.size.width < kCoverMinWidth || bounds.size.height <= 0) return;
     SGRKaraokeView *preview = objc_getAssociatedObject(host, &kPreviewKey);
@@ -355,11 +379,10 @@ static UIView *coverOfImage(UIView *image) {
 - (void)layoutSubviews {
     %orig;
     UIView *view = (UIView *)self;
-    static Class proxyClass;
-    if (!proxyClass) proxyClass = NSClassFromString(@"_TtC22NowPlaying_ElementsKitP33_1D6A1393FEB35D7207F503DA17E7748E14ImageViewProxy");
-    if (![view.superview isKindOfClass:proxyClass] || !coverOfImage(view.superview)) return;
-    for (UIView *part in view.subviews) {
-        if (!CGRectEqualToRect(part.frame, view.bounds)) part.frame = view.bounds;
+    if (inCoverCell(view)) {
+        for (UIView *part in view.subviews) {
+            if (!CGRectEqualToRect(part.frame, view.bounds)) part.frame = view.bounds;
+        }
     }
 }
 %end

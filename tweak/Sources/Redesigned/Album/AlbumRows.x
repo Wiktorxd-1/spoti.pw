@@ -2,6 +2,7 @@
 #import "Redesigned/Kit/SGRKit.h"
 #import "Album.h"
 #import "Shared/Player/ContextMenuAlbum.h"
+#import "Shared/Duo/SGDuo.h"
 
 static const CGFloat kHairline = 0.5;
 
@@ -176,7 +177,30 @@ static UIView *trackRowInCell(UIView *cell) {
     UIView *row = trackRowInCell(cell);
     if (!row) return;
     UIView *page = SGRAlbumPageOf(cell);
-    if (page) applyRow(cell, page, row);
+    if (page) {
+        UICollectionView *cv = nil;
+        for (UIView *v = cell.superview; v; v = v.superview) {
+            if ([v isKindOfClass:UICollectionView.class]) { cv = (UICollectionView *)v; break; }
+        }
+        if (cv) {
+            CGFloat rightMargin = (SGIsDuoDevice() || (cv.window && cv.window.safeAreaInsets.right > 20))
+                ? MAX(cv.window ? cv.window.safeAreaInsets.right : 0, 92.0)
+                : SGRSideMargin;
+            CGFloat targetW = cv.bounds.size.width - rightMargin - cell.frame.origin.x;
+            if (targetW > cell.frame.size.width + 10) {
+                cell.frame = CGRectMake(cell.frame.origin.x, cell.frame.origin.y, targetW, cell.frame.size.height);
+                cell.bounds = CGRectMake(0, 0, targetW, cell.bounds.size.height);
+                cell.contentView.bounds = cell.bounds;
+                cell.contentView.frame = cell.bounds;
+                for (UIView *sub in cell.contentView.subviews) {
+                    if (sub.frame.size.width < targetW - 20) {
+                        sub.frame = CGRectMake(sub.frame.origin.x, sub.frame.origin.y, targetW - sub.frame.origin.x, sub.frame.size.height);
+                    }
+                }
+            }
+        }
+        applyRow(cell, page, row);
+    }
 }
 %end
 

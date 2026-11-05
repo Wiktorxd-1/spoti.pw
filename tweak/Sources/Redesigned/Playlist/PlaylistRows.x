@@ -1,5 +1,6 @@
 #import "Core/SGCore.h"
 #import "Redesigned/Kit/SGRKit.h"
+#import "Shared/Duo/SGDuo.h"
 #import "Playlist.h"
 
 // Under the text rather than the whole row, as the Music app draws it; the trailing end clears the page margin.
@@ -71,6 +72,30 @@ static void applyRow(UIView *cell) {
     %orig;
     UIView *cell = (UIView *)self;
     if (!SGRPlaylistHeaderOf(cell)) return;
+    UICollectionView *cv = nil;
+    for (UIView *v = cell.superview; v; v = v.superview) {
+        if ([v isKindOfClass:UICollectionView.class]) { cv = (UICollectionView *)v; break; }
+    }
+    if (cv) {
+        CGFloat rightMargin = (SGIsDuoDevice() || (cv.window && cv.window.safeAreaInsets.right > 20))
+            ? MAX(cv.window ? cv.window.safeAreaInsets.right : 0, 92.0)
+            : SGRSideMargin;
+        CGFloat targetW = cv.bounds.size.width - rightMargin - cell.frame.origin.x;
+        if (targetW > cell.frame.size.width + 10) {
+            cell.frame = CGRectMake(cell.frame.origin.x, cell.frame.origin.y, targetW, cell.frame.size.height);
+            cell.bounds = CGRectMake(0, 0, targetW, cell.bounds.size.height);
+            if ([cell respondsToSelector:@selector(contentView)]) {
+                UIView *content = ((UICollectionViewCell *)cell).contentView;
+                content.bounds = cell.bounds;
+                content.frame = cell.bounds;
+                for (UIView *sub in content.subviews) {
+                    if (sub.frame.size.width < targetW - 20) {
+                        sub.frame = CGRectMake(sub.frame.origin.x, sub.frame.origin.y, targetW - sub.frame.origin.x, sub.frame.size.height);
+                    }
+                }
+            }
+        }
+    }
     SGRClearCellPaint(cell);
     SGRPlaylistTakeCuration(cell);
     applyRow(cell);

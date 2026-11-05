@@ -191,7 +191,13 @@ static void playGlyph(UIView *host) {
     BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) || SGIsDuoDevice() || (host.bounds.size.width > 440);
     if (row && isWide && host.bounds.size.width > 440) {
         CGFloat maxRowWidth = 400;
-        CGFloat rowX = round((host.bounds.size.width - maxRowWidth) / 2.0);
+        UIWindow *window = host.window;
+        CGFloat rightInset = (SGIsDuoDevice() || (window && window.safeAreaInsets.right > 20))
+            ? MAX(window ? window.safeAreaInsets.right : 0, 92.0)
+            : (window ? window.safeAreaInsets.right : 0);
+        CGFloat leftInset = window ? window.safeAreaInsets.left : 0;
+        CGFloat usableWidth = host.bounds.size.width - leftInset - rightInset;
+        CGFloat rowX = round(leftInset + (usableWidth - maxRowWidth) / 2.0);
         CGRect rowFrame = CGRectMake(rowX, row.frame.origin.y, maxRowWidth, row.frame.size.height);
         if (!CGRectEqualToRect(row.frame, rowFrame)) row.frame = rowFrame;
     }

@@ -12,6 +12,7 @@
 #import <objc/runtime.h>
 #import "Core/SGCore.h"
 #import "Redesigned/Kit/SGRKit.h"
+#import "Redesigned/Kit/SGRRepaint.h"
 #import "Home.h"
 
 static const CGFloat kScale = 1.4, kSmallest = 120, kHeading = 40;
@@ -255,7 +256,10 @@ static NSDictionary<NSIndexPath *, NSValue *> *swappedFrames(UICollectionViewLay
             }
         }
     }
-    if (page && cell.superview == page && objc_getAssociatedObject(page, &kAuraKey)) stripBase(cell, 3);
+    if (page && cell.superview == page && objc_getAssociatedObject(page, &kAuraKey)) {
+        sgr_homeRoot = page;
+        stripBase(cell, 8);
+    }
 
     if (SGFlag(SGRKeyHomeTopPicks, NO)) {
         UIView *content = cell.contentView.subviews.firstObject;
@@ -398,10 +402,12 @@ static UIImage *coverOf(UIView *card) {
 }
 
 // Cells made or reused after the gradient came carry Spotify's black again: cleared as they lay out.
-static void stripBase(UIView *cell, NSUInteger depth) {
-    if (SGIsBaseSurface(cell.layer.backgroundColor)) cell.layer.backgroundColor = NULL;
+static void stripBase(UIView *view, NSUInteger depth) {
+    if (!view) return;
+    if (SGIsBaseSurface(view.layer.backgroundColor)) view.layer.backgroundColor = NULL;
+    if (view.backgroundColor && SGIsBaseSurface(view.backgroundColor.CGColor)) view.backgroundColor = UIColor.clearColor;
     if (depth == 0) return;
-    for (UIView *sub in cell.subviews) stripBase(sub, depth - 1);
+    for (UIView *sub in view.subviews) stripBase(sub, depth - 1);
 }
 
 static void paintAura(UICollectionView *list, UIColor *color) {
@@ -418,7 +424,8 @@ static void paintAura(UICollectionView *list, UIColor *color) {
             });
         }
     }
-    CGFloat over = 600, span = MAX(list.bounds.size.height + 400, 1000.0);
+    sgr_homeRoot = list;
+    CGFloat over = 600, span = MAX(MAX(list.bounds.size.height, list.contentSize.height) + 1200, 4000.0);
     CGRect frame = CGRectMake(0, -over - list.adjustedContentInset.top, list.bounds.size.width, over + span);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
@@ -499,4 +506,12 @@ static void followAlbum(UICollectionView *shelf) {
 %ctor {
     if (!SGRedesignedUI()) return;
     %init;
+    [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) {
+        if (sg_pageLayout.collectionView) {
+            UICollectionView *cv = sg_pageLayout.collectionView;
+            sgr_homeRoot = cv;
+            for (UIView *cell in cv.subviews) stripBase(cell, 8);
+            [cv.collectionViewLayout invalidateLayout];
+        }
+    }];
 }

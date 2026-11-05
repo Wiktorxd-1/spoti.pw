@@ -21,6 +21,7 @@
 #import "Core/SGCore.h"
 #import "Settings/SGModPage.h"
 #import "Redesigned/Kit/SGRKit.h"
+#import "Redesigned/Kit/SGRRepaint.h"
 #import "Player.h"
 
 // Past the plane's edges: above for the pull that dismisses the player, below for the bounce at the end
@@ -162,6 +163,7 @@ static SGRArtworkField *fieldIn(UIView *plane) {
         v.backgroundColor = UIColor.clearColor;
         v.clipsToBounds = NO;
     }
+    sgr_playerRoot = plane;
     SGRArtworkField *field = fieldIn(plane);
     sg_field = field;
     if (field.superview != plane) [plane addSubview:field];

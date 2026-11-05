@@ -8,3 +8,5 @@ extern __weak UIView *sgr_playlistRoot;
 extern __weak UIView *sgr_albumRoot;
 // Redesigned/Artist/ArtistField.x, the artist page, kept clear the same way and for the same reason.
 extern __weak UIView *sgr_artistRoot;
+extern __weak UIView *sgr_homeRoot;
+extern __weak UIView *sgr_playerRoot;

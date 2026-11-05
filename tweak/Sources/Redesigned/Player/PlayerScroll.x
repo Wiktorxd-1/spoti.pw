@@ -8,6 +8,7 @@
 // it lets go.
 #import "Core/SGCore.h"
 #import "Redesigned/Kit/SGRKit.h"
+#import "Redesigned/Kit/SGRRepaint.h"
 
 static NSString *const kListIdentifier = @"scrolling_npv_collection_view_accessibility_identifier";
 
@@ -51,6 +52,7 @@ static void holdAtTop(UIScrollView *list) {
     %orig;
     UIView *view = ((UIViewController *)self).viewIfLoaded;
     if (view) {
+        sgr_playerRoot = view;
         view.layer.backgroundColor = NULL;
         view.backgroundColor = UIColor.clearColor;
         view.clipsToBounds = NO;
