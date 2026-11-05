@@ -619,8 +619,8 @@ void SGRUpdateIPadBottomDock(void) {
         tabHost.userInteractionEnabled = YES;
     }
     if (containerView && (!container || !container.view.hidden)) {
-        containerView.alpha = 1;
-        containerView.userInteractionEnabled = YES;
+        containerView.alpha = sg_docked ? 0 : 1;
+        containerView.userInteractionEnabled = !sg_docked;
     }
 
     // Reset horizontal transforms so the dock acts as iOS (centered stack, no side-by-side break)

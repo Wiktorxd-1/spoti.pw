@@ -418,13 +418,13 @@ static void paintAura(UICollectionView *list, UIColor *color) {
             });
         }
     }
-    CGFloat over = 600, span = 620;
+    CGFloat over = 600, span = MAX(list.bounds.size.height + 400, 1000.0);
     CGRect frame = CGRectMake(0, -over - list.adjustedContentInset.top, list.bounds.size.width, over + span);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     if (!CGRectEqualToRect(gradient.frame, frame)) gradient.frame = frame;
     [CATransaction commit];
-    NSArray *to = @[(id)color.CGColor, (id)color.CGColor, (id)[color colorWithAlphaComponent:0].CGColor];
+    NSArray *to = @[(id)color.CGColor, (id)color.CGColor, (id)[color colorWithAlphaComponent:0.18].CGColor];
     CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"colors"];
     fade.fromValue = gradient.presentationLayer.colors ?: gradient.colors;
     fade.toValue = to;

@@ -22,6 +22,7 @@ static const CGFloat kSide = 32, kCoverGap = 16, kControlSide = 44, kColumnShare
 static UIWindow *sg_window;
 // Shut from the screen: turning the phone again does not reopen it until it has stood upright.
 static BOOL sg_shut;
+static void reveal(UIWindow *window);
 
 #pragma mark - the screen
 
@@ -218,6 +219,7 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    reveal(self.view.window ?: sg_window);
     [self restartRest];
 }
 
@@ -360,7 +362,7 @@ static void answerForOrientations(void) {
 
 // A landscape window still clear when no turn is coming to fade it in.
 static void reveal(UIWindow *window) {
-    if (window && window == sg_window && window.alpha < 1 && window.bounds.size.width > window.bounds.size.height) {
+    if (window && window == sg_window && window.alpha < 1) {
         SGRAnimate(SGRMotionFade, ^{ window.alpha = 1; }, nil);
     }
 }
@@ -385,11 +387,11 @@ void SGRPlayerShowLandscape(BOOL show) {
         sg_window.windowLevel = UIWindowLevelNormal + 1;
         // The window is the mod's own, so what it presents (Sing's alerts, a line's meanings) is dark too.
         sg_window.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
-        sg_window.alpha = 0;
+        sg_window.alpha = 1;
         sg_window.rootViewController = [SGRLandscapeLyricsController new];
         [sg_window makeKeyAndVisible];
         requestOrientations(scene, UIInterfaceOrientationMaskLandscape);
-        if (UIInterfaceOrientationIsLandscape(scene.interfaceOrientation)) reveal(sg_window);
+        reveal(sg_window);
         SGLog(@"redesign player: the lyrics turn sideways");
     } else if (!show && sg_window) {
         UIWindow *window = sg_window;
@@ -423,7 +425,7 @@ static void orientationChanged(void) {
                     || UIInterfaceOrientationIsLandscape(scene.interfaceOrientation)
                     || (scene.coordinateSpace.bounds.size.width > scene.coordinateSpace.bounds.size.height);
     if (isLandscape) {
-        if (!sg_shut && SGEnabled(SGRKeyLyricsLandscape) && (SGRPlayerLyricsOpen() || SGRPlayerCoverList().window != nil || SGRPlayerIsPresented())) {
+        if (!sg_shut && (SGRPlayerLyricsOpen() || SGRPlayerCoverList().window != nil || SGRPlayerIsPresented())) {
             SGRPlayerShowLandscape(YES);
         }
     } else if (orientation == UIDeviceOrientationPortrait || scene.coordinateSpace.bounds.size.width <= scene.coordinateSpace.bounds.size.height) {
