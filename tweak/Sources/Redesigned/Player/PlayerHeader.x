@@ -100,15 +100,15 @@ static void pillBehindContext(UIViewController *unit) {
 
     CGSize textSize = [label sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
     if (label.text.length) {
-        UIFont *font = label.font ?: [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+        UIFont *font = label.font ?: [UIFont systemFontOfSize:14];
         CGSize attrSize = [label.text sizeWithAttributes:@{NSFontAttributeName: font}];
         if (attrSize.width > textSize.width) textSize.width = attrSize.width;
         if (attrSize.height > textSize.height) textSize.height = attrSize.height;
     }
-    CGFloat width = ceil(textSize.width + 40.0);
+    CGFloat width = ceil(textSize.width + 2 * kPillPadX);
     CGFloat maxW = host.bounds.size.width > 0 ? host.bounds.size.width - 130.0 : 340.0;
     if (width > maxW) width = maxW;
-    CGFloat height = MAX(34.0, ceil(textSize.height + 14.0));
+    CGFloat height = MAX(kPillMinHeight, ceil(textSize.height + 14.0));
     box.bounds = CGRectMake(0, 0, width, height);
     box.center = CGPointMake(CGRectGetMidX(label.bounds), CGRectGetMidY(label.bounds));
     box.hidden = label.hidden;
