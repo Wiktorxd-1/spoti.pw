@@ -53,6 +53,12 @@ static void holdAtTop(UIScrollView *list) {
     if (view) {
         view.layer.backgroundColor = NULL;
         view.backgroundColor = UIColor.clearColor;
+        view.clipsToBounds = NO;
+        for (UIView *v = view; v && v != view.window; v = v.superview) {
+            v.layer.backgroundColor = NULL;
+            v.backgroundColor = UIColor.clearColor;
+            v.clipsToBounds = NO;
+        }
     }
 }
 - (void)scrollViewDidScroll:(UIScrollView *)list {

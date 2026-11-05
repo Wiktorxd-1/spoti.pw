@@ -109,9 +109,9 @@ static CGFloat progressThickness(void) {
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    CGFloat horizontalInset = 8;
+    CGFloat horizontalInset = 16;
     CGFloat width = MAX(0, self.bounds.size.width - horizontalInset * 2);
-    CGFloat fillY = self.bounds.size.height - 3 - _thickness / 2;
+    CGFloat fillY = self.bounds.size.height - 4;
     _track.frame = CGRectMake(horizontalInset, fillY, width, _thickness);
     _fill.frame = CGRectMake(horizontalInset, fillY, width * _progress, _thickness);
     _track.layer.cornerRadius = _thickness / 2;
@@ -133,9 +133,8 @@ static void updateMiniProgress(void) {
     if (!custom) return;
     BOOL transitioning = !SGIsInside(custom, sgr_nowPlayingRoot) || SGPlayerTransitionEnds() > 0;
     if (line) {
-        NSNumber *originalAlpha = objc_getAssociatedObject(line, &kProgressAlphaKey);
-        BOOL hideOriginal = !transitioning && SGIsInside(line, sgr_nowPlayingRoot);
-        if (originalAlpha) line.alpha = hideOriginal ? 0 : originalAlpha.doubleValue;
+        line.hidden = YES;
+        line.alpha = 0;
     }
     custom.hidden = transitioning || progressThickness() <= 0;
     if (transitioning) return;
@@ -558,9 +557,17 @@ static void styleNowPlayingBar(UIViewController *container) {
         }
     }
 
+    CGFloat bottomInset = container.view.window.safeAreaInsets.bottom;
+    if (bottomInset < 10) bottomInset = 10;
+    CGFloat targetY = container.view.bounds.size.height - frame.size.height - bottomInset;
+    if (targetY > 0 && targetY < container.view.bounds.size.height - 20) {
+        frame.origin.y = targetY;
+    }
+
     CGFloat radius = MIN(kCardRadius, frame.size.height / 2);
     if (card) {
         roundView(card, radius);
+        card.clipsToBounds = YES;
     }
     restyleCardContent(card ?: bar);
 
@@ -568,6 +575,7 @@ static void styleNowPlayingBar(UIViewController *container) {
     if (glass.overrideUserInterfaceStyle != UIUserInterfaceStyleDark) glass.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
     sg_cardGlass = glass;
     glass.frame = frame;
+    glass.contentView.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.85];
     SGShapeGlass(glass, radius, NO);
     glass.layer.cornerRadius = radius;
     glass.layer.cornerCurve = kCACornerCurveContinuous;

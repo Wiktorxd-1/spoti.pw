@@ -244,8 +244,12 @@ static void lowerRow(UIView *row) {
     UIWindow *window = row.window;
     if (![stack isKindOfClass:UIStackView.class] || !player || !window) return;
     // Where the stack put the row, the row's own transform left out, and where it belongs.
+    player.clipsToBounds = NO;
+    stack.clipsToBounds = NO;
+    for (UIView *v = player; v && v != window; v = v.superview) v.clipsToBounds = NO;
     CGFloat middle = [stack convertPoint:row.center toView:player].y;
-    CGFloat height = player.bounds.size.height;
+    CGFloat fullHeight = [player convertRect:window.bounds fromView:nil].size.height;
+    CGFloat height = MAX(player.bounds.size.height, fullHeight);
     CGFloat target = height - MAX(window.safeAreaInsets.bottom + kRowAboveSafeArea, kRowMinBottom);
     CGFloat move = MAX(0, round(target - middle));
     CGAffineTransform down = CGAffineTransformMakeTranslation(0, move);

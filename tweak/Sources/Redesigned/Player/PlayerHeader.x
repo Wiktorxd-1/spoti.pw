@@ -2,6 +2,7 @@
 #import "Redesigned/Kit/SGRKit.h"
 #import "Shared/Player/SpeedPitch.h"
 #import "Player.h"
+#import "Shared/Duo/SGDuo.h"
 
 static char kGlassKey, kCloseKey, kMoreKey, kPillKey, kPillViewKey;
 
@@ -24,6 +25,13 @@ static void glassInside(UIViewController *unit, NSArray<NSString *> *identifiers
         if ([identifiers[i] isEqualToString:@"Context menu"]) {
             SGPlayerMenuWatchMoreButton(button);
             SGRPlayerMenuWatchMoreButton(button);
+            if (SGIsDuoDevice()) {
+                button.superview.clipsToBounds = NO;
+                host.clipsToBounds = NO;
+                if (host.superview) host.superview.clipsToBounds = NO;
+                CGAffineTransform down = CGAffineTransformMakeTranslation(0, 155);
+                if (!CGAffineTransformEqualToTransform(button.transform, down)) button.transform = down;
+            }
         }
         found++;
     }
@@ -41,7 +49,7 @@ static void glassInside(UIViewController *unit, NSArray<NSString *> *identifiers
 // The header's context line ("Playing from ...") on a glass pill of its own, so it reads over any cover, the
 // sharp artwork of the fill background included. The pill is a passthrough view under the label, sized to
 // the text, so Spotify's label keeps its layout and its taps.
-static const CGFloat kPillPadX = 16, kPillMinHeight = 34;
+static const CGFloat kPillPadX = 24, kPillMinHeight = 36;
 
 static UILabel *contextLabelIn(UIView *host) {
     __block UILabel *found = nil;
@@ -74,8 +82,10 @@ static void pillBehindContext(UIViewController *unit) {
     else if ([parent.subviews indexOfObject:box] > [parent.subviews indexOfObject:label]) [parent insertSubview:box belowSubview:label];
 
     CGSize text = [label.text sizeWithAttributes:@{NSFontAttributeName: label.font ?: [UIFont systemFontOfSize:14]}];
-    CGFloat width = MIN(ceil(text.width) + 2 * kPillPadX, MAX(parent.bounds.size.width - 8, 0));
-    CGFloat height = MAX(kPillMinHeight, ceil(text.height) + 14);
+    CGFloat measuredWidth = label.bounds.size.width > 0 ? label.bounds.size.width : ceil(text.width);
+    CGFloat width = MAX(measuredWidth + 2 * kPillPadX, 160);
+    if (parent.bounds.size.width > 0) width = MIN(width, parent.bounds.size.width - 16);
+    CGFloat height = MAX(kPillMinHeight, ceil(text.height) + 16);
     box.bounds = CGRectMake(0, 0, width, height);
     box.center = label.center;
     box.hidden = label.hidden;

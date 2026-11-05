@@ -49,7 +49,7 @@ NSInteger SGRAccentRGB(void) {
 NSString *const SGRPlainCheckIdentifier = @"sg.plaincheck";
 
 UIColor *SGRNeutralField(void) {
-    return [UIColor colorWithRed:0x12 / 255.0 green:0x12 / 255.0 blue:0x12 / 255.0 alpha:1];
+    return [UIColor colorWithRed:0x1c / 255.0 green:0x20 / 255.0 blue:0x28 / 255.0 alpha:1];
 }
 
 UIColor *SGRSolidGlassFill(void) {

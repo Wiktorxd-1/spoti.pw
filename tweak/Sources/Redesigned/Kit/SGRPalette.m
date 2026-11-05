@@ -103,6 +103,14 @@ static UIColor *fieldColorFor(UIColor *color, CGFloat ceiling) {
         if (![color getWhite:&white alpha:&a]) return SGRNeutralField();
         r = g = b = white;
     }
+    CGFloat lr = toLinear(MIN(1, MAX(0, r))), lg = toLinear(MIN(1, MAX(0, g))), lb = toLinear(MIN(1, MAX(0, b)));
+    CGFloat lum = 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+    if (lum < 0.04) {
+        CGFloat boost = 0.04 / MAX(0.001, lum);
+        r = toEncoded(MIN(1, lr * boost + 0.02));
+        g = toEncoded(MIN(1, lg * boost + 0.025));
+        b = toEncoded(MIN(1, lb * boost + 0.035));
+    }
     CGFloat linear[3] = {toLinear(MIN(1, MAX(0, r))), toLinear(MIN(1, MAX(0, g))), toLinear(MIN(1, MAX(0, b)))}, lab[3];
     toOklab(linear, lab);
     CGFloat lightness = MIN(lab[0], ceiling), hue = atan2(lab[2], lab[1]);
@@ -239,7 +247,11 @@ static BOOL dominantIn(const uint8_t *px, size_t x0, size_t y0, size_t x1, size_
         int bin = (p[0] >> 5) << 6 | (p[1] >> 5) << 3 | (p[2] >> 5);
         CGFloat high = MAX(p[0], MAX(p[1], p[2])) / 255.0, low = MIN(p[0], MIN(p[1], p[2])) / 255.0;
         CGFloat saturation = high > 0 ? (high - low) / high : 0;
-        scores[bin] += (0.25 + saturation) * (high < 0.12 ? 0.3 : 1) * (low > 0.88 ? 0.3 : 1);
+        CGFloat weight = 1.0;
+        if (high < 0.15) weight = 0.01;
+        else if (high < 0.25) weight = 0.2;
+        if (low > 0.88) weight *= 0.2;
+        scores[bin] += (0.15 + saturation * 3.0) * weight;
         counts[bin]++;
         sums[bin][0] += toLinear(p[0] / 255.0), sums[bin][1] += toLinear(p[1] / 255.0), sums[bin][2] += toLinear(p[2] / 255.0);
     }
