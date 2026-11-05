@@ -6,6 +6,7 @@
 #import "SGRAccent.h"
 #import "SGRDownload.h"
 #import "SGRReveal.h"
+#import "Shared/Duo/SGDuo.h"
 
 static const CGFloat kGlyphSide = 44, kCapsuleLead = 4, kCapsuleTrail = 20;
 // The mirrored glyph, the size Spotify draws one inside a 48pt round button.
@@ -418,12 +419,15 @@ SGRMirrorButton *SGRPinnedMore(UIView *page, const void *key, UIView *source) {
 
     UIWindow *window = page.window;
     CGFloat side = SGRGlassCircleSize;
+    CGFloat rightMargin = (SGIsDuoDevice() || (window && window.safeAreaInsets.right > 20))
+        ? MAX(window ? window.safeAreaInsets.right : 0, 92.0)
+        : kCornerSide;
     CGRect frame;
     if (window) {
-        CGRect inWindow = CGRectMake(window.bounds.size.width - kCornerSide - side, window.safeAreaInsets.top, side, side);
+        CGRect inWindow = CGRectMake(window.bounds.size.width - rightMargin - side, window.safeAreaInsets.top, side, side);
         frame = [page convertRect:inWindow fromView:nil];
     } else {
-        frame = CGRectMake(page.bounds.size.width - kCornerSide - side, page.safeAreaInsets.top, side, side);
+        frame = CGRectMake(page.bounds.size.width - rightMargin - side, page.safeAreaInsets.top, side, side);
     }
     if (!CGRectIsEmpty(frame) && !CGRectEqualToRect(button.frame, frame)) button.frame = frame;
     return button;

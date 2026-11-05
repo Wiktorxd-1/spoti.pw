@@ -132,6 +132,7 @@ static CGFloat moveTo(UIView *arranged, UIView *view, CGPoint point, UIView *hos
 #pragma mark - lyrics
 
 void SGRPlayerLyricsChanged(void) {
+    SGRPlayerHeaderUpdateLyrics();
     SGRPlayerMotionLyricsChanged();
     SGRPlayerVisualiserUpdate();
     SGRGlyphButton *glyph = sg_lyricsGlyph;

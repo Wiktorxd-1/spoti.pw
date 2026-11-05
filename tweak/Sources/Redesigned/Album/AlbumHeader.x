@@ -12,7 +12,7 @@ static const CGFloat kMinHero = 120, kMinCover = 80;
 
 static char kHeaderKey, kCoverKey, kTitleKey, kParentKey, kMetaKey, kAddKey, kDownloadKey, kPlayKey, kShuffleKey;
 static char kHeroKey, kHeroHeightKey, kHeaderHeightKey, kInfoKey, kHeaderWatchedKey, kRetryKey;
-static char kExploreKey, kRowWatchedKey, kMoreKey, kPinnedMoreKey;
+static char kExploreKey, kRowWatchedKey, kMoreKey, kPinnedMoreKey, kLiquidGlassScrimKey;
 
 #pragma mark - moving Spotify's views
 
@@ -448,6 +448,7 @@ static void maskOut(UIView *view) {
 }
 
 static void applyWash(UIView *page) {
+    conceal(SGRFindByIdentifier(page, @"LiquidGlass.gradientContainer*", &kLiquidGlassScrimKey));
     for (UIView *sub in page.subviews) {
         NSString *name = NSStringFromClass(sub.class);
         if (![name containsString:@"HeaderView"] && ![name containsString:@"HeaderNavigationBar"]) continue;

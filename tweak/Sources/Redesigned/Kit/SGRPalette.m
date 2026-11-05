@@ -357,7 +357,7 @@ static UIColor *tintOf(CGImageRef image, UIColor *surface) {
             if (area.width > 0 && area.height > 0) {
                 size_t width = (size_t)kBackdropWidth, height = (size_t)MIN(kBackdropMaxHeight, round(kBackdropWidth * area.height / area.width));
                 CGImageRef blurred = newBlurred(cg, width, MAX(height, 1), kBackdropSigma);
-                if (blurred) palette.backdrop = finished(blurred, YES, request.amoled ? 0.55 : 0.45, kFadeFrom, 1, 1, 0);
+                if (blurred) palette.backdrop = finished(blurred, YES, request.amoled ? 0.55 : 0.45, kFadeFrom, 1, 1, request.amoled ? 0 : 0.75);
                 CGImageRelease(blurred);
             }
             if (request.flow) palette.flowColors = flowColorsOf(cg, flowCeiling);

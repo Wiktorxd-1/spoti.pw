@@ -212,7 +212,7 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     CGFloat stageWidth = (isWide && hostWidth > 680) ? MIN(hostWidth * 0.75, 720) : hostWidth;
     CGFloat stageX = round((hostWidth - stageWidth) / 2.0);
     CGFloat leading = (isWide && hostWidth > 680) ? stageX + 16 : (title ? CGRectGetMinX(untransformed(title, host)) : SGRSideMargin);
-    leading = MAX(SGRSideMargin, MIN(leading, hostWidth - kThumbSide - SGRSideMargin));
+    leading = MAX(72.0, MIN(leading, hostWidth - kThumbSide - SGRSideMargin));
     l.cover = cover;
     l.thumb = CGRectMake(leading, CGRectGetMinY(area) + kThumbTop, kThumbSide, kThumbSide);
     CGFloat top = title ? CGRectGetMidY(l.thumb) - row.size.height / 2 : CGRectGetMaxY(l.thumb) + SGRGrid;
@@ -778,6 +778,7 @@ static void setOpen(BOOL open, BOOL animated) {
     }
     if (!open) setAlone(NO, NO);
     sg_open = open;
+    SGRPlayerHeaderUpdateLyrics();
     SGRPlayerLyricsChanged();
 
     SGRPlayerLyricsOverlay *overlay = overlayIn(host);

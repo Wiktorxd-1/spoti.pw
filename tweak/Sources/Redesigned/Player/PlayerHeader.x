@@ -29,8 +29,9 @@ static void glassInside(UIViewController *unit, NSArray<NSString *> *identifiers
                 button.superview.clipsToBounds = NO;
                 host.clipsToBounds = NO;
                 if (host.superview) host.superview.clipsToBounds = NO;
-                CGAffineTransform down = CGAffineTransformMakeTranslation(0, 155);
-                if (!CGAffineTransformEqualToTransform(button.transform, down)) button.transform = down;
+                CGFloat shiftX = -(MAX(host.window.safeAreaInsets.right, 92.0));
+                CGAffineTransform left = CGAffineTransformMakeTranslation(shiftX, 0);
+                if (!CGAffineTransformEqualToTransform(button.transform, left)) button.transform = left;
             }
         }
         found++;
@@ -62,15 +63,29 @@ static UILabel *contextLabelIn(UIView *host) {
     return found;
 }
 
+static __weak UIViewController *sg_headerUnit;
+
+static void pillBehindContext(UIViewController *unit);
+
+void SGRPlayerHeaderUpdateLyrics(void) {
+    if (sg_headerUnit) pillBehindContext(sg_headerUnit);
+}
+
 static void pillBehindContext(UIViewController *unit) {
     UIView *host = unit.viewIfLoaded;
     if (!host) return;
     UILabel *label = contextLabelIn(host);
     UIView *box = label ? objc_getAssociatedObject(label, &kPillViewKey) : nil;
-    if (!label || !label.superview) {
-        box.hidden = YES;
+    if (SGRPlayerLyricsOpen()) {
+        if (box) box.hidden = YES;
+        if (label) label.hidden = YES;
         return;
     }
+    if (!label || !label.superview) {
+        if (box) box.hidden = YES;
+        return;
+    }
+    label.hidden = NO;
     if (!box) {
         box = [UIView new];
         box.userInteractionEnabled = NO;
@@ -96,6 +111,7 @@ static void pillBehindContext(UIViewController *unit) {
 %hook _TtC20NowPlaying_ModesImpl18HeaderElementsUnit
 - (void)viewDidLayoutSubviews {
     %orig;
+    sg_headerUnit = (UIViewController *)self;
     static const void *keys[] = {&kCloseKey, &kMoreKey};
     glassInside((UIViewController *)self, @[@"now-playing-minimize-button", @"Context menu"], keys);
     pillBehindContext((UIViewController *)self);

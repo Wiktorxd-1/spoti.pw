@@ -60,6 +60,7 @@ BOOL SGRPlayerLyricsOpen(void);
 // Shows them, or puts the cover back; does nothing when there are none to show.
 void SGRPlayerToggleLyrics(void);
 void SGRPlayerLyricsChanged(void);
+void SGRPlayerHeaderUpdateLyrics(void);
 #define SGRKeyLyricsAutoHide @"spotifyglass.redesign.lyrics.autoHide"
 #define SGRKeyLyricsLandscapeAutoHide @"spotifyglass.redesign.lyrics.landscapeAutoHide"
 #define SGRKeyPlayerAllowAutoLock @"spotifyglass.redesign.player.allowAutoLock"
