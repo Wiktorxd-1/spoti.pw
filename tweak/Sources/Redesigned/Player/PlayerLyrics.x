@@ -28,6 +28,7 @@
 #import "Core/SGCore.h"
 #import "Redesigned/Kit/SGRKit.h"
 #import "Redesigned/Lyrics/SGRKaraokeView.h"
+#import "Shared/Duo/SGDuo.h"
 #import "Redesigned/Lyrics/SGRSingControl.h"
 #import "Settings/SGPageStyle.h"
 #import "Shared/Sing/SGSingController.h"
@@ -207,10 +208,10 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     if (CGRectIsNull(area) || CGRectIsNull(cover)) return l;
     CGRect row = untransformed(info, host), bar = untransformed(duration, host);
     CGFloat hostWidth = host.bounds.size.width;
-    BOOL isPad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
-    CGFloat stageWidth = (isPad && hostWidth > 680) ? MIN(hostWidth * 0.75, 720) : hostWidth;
+    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) || SGIsDuoDevice() || (hostWidth > 680);
+    CGFloat stageWidth = (isWide && hostWidth > 680) ? MIN(hostWidth * 0.75, 720) : hostWidth;
     CGFloat stageX = round((hostWidth - stageWidth) / 2.0);
-    CGFloat leading = (isPad && hostWidth > 680) ? stageX + 16 : (title ? CGRectGetMinX(untransformed(title, host)) : SGRSideMargin);
+    CGFloat leading = (isWide && hostWidth > 680) ? stageX + 16 : (title ? CGRectGetMinX(untransformed(title, host)) : SGRSideMargin);
     leading = MAX(SGRSideMargin, MIN(leading, hostWidth - kThumbSide - SGRSideMargin));
     l.cover = cover;
     l.thumb = CGRectMake(leading, CGRectGetMinY(area) + kThumbTop, kThumbSide, kThumbSide);
@@ -223,7 +224,7 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     CGFloat durationY = CGRectGetMinY(bar);
     CGFloat bottomLimit = (durationY > lines + 50 && durationY < host.bounds.size.height) ? durationY : host.bounds.size.height - 200;
     l.stage = CGRectMake(stageX, lines, stageWidth, MAX(0, bottomLimit - kLyricsBottom - lines));
-    l.ok = l.stage.size.height > kLivingHeight / 2 && (isPad || l.lift < 0);
+    l.ok = l.stage.size.height > kLivingHeight / 2 && (isWide || l.lift < 0);
     return l;
 }
 
@@ -919,8 +920,11 @@ static void replace(void) {
 static BOOL sg_playerPresented;
 
 BOOL SGRPlayerIsPresented(void) {
-    if (!sg_player) return NO;
-    UIView *view = sg_player.viewIfLoaded;
+    if (!sg_playerPresented || !sg_player) return NO;
+    UIViewController *p = sg_player;
+    if (!p.isBeingPresented && !p.viewIfLoaded.window) return NO;
+    if (!p.presentingViewController && !p.navigationController && !p.parentViewController) return NO;
+    UIView *view = p.viewIfLoaded;
     if (!view || !view.window || view.hidden || view.alpha < 0.01) return NO;
     UIWindow *window = view.window;
     CGRect windowFrame = [view convertRect:view.bounds toView:window];
@@ -965,9 +969,10 @@ BOOL SGRPlayerIsPresented(void) {
     if (!host || host.bounds.size.height < kLivingHeight) return;
     host.layer.backgroundColor = NULL;
     host.backgroundColor = UIColor.clearColor;
-    if (host.superview) {
-        host.superview.layer.backgroundColor = NULL;
-        host.superview.backgroundColor = UIColor.clearColor;
+    for (UIView *v = host; v && v != host.window; v = v.superview) {
+        v.layer.backgroundColor = NULL;
+        v.backgroundColor = UIColor.clearColor;
+        v.clipsToBounds = NO;
     }
     sg_player = (UIViewController *)self;
     if (sg_host != host) {

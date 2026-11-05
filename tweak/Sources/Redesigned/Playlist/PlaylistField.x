@@ -5,7 +5,7 @@
 NSString *const SGRPlaylistListIdentifier = @"SPTFreeTierPlaylistTableView";
 
 // Above for the bounce at the top of the list, below for the one at the end of it.
-static const UIEdgeInsets kBleed = {600, 0, 600, 0};
+static const UIEdgeInsets kBleed = {600, 800, 800, 800};
 
 static char kFieldKey;
 
@@ -50,7 +50,10 @@ static SGRArtworkField *fieldIn(UIView *page) {
     SGRArtworkField *field = fieldIn(page);
     if (field.superview != page) [page insertSubview:field atIndex:0];
     else if (page.subviews.firstObject != field) [page sendSubviewToBack:field];
-    if (!CGRectEqualToRect(field.frame, page.bounds)) field.frame = page.bounds;
+    CGRect windowBounds = page.window ? page.window.bounds : [UIScreen mainScreen].bounds;
+    CGRect fullBounds = [page convertRect:windowBounds fromView:nil];
+    CGRect target = CGRectUnion(page.bounds, fullBounds);
+    if (!CGRectEqualToRect(field.frame, target)) field.frame = target;
 }
 
 - (void)viewWillAppear:(BOOL)animated {

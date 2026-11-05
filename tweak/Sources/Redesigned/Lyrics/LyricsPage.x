@@ -5,9 +5,10 @@ static char kPageGlassKey;
 
 static UIView *clearAncestors(UIView *view) {
     UIView *top = view;
-    for (UIView *v = view; v && ![v isKindOfClass:UIWindow.class]
-            && ![NSStringFromClass(v.class) hasPrefix:@"UITransition"]; v = v.superview) {
+    for (UIView *v = view; v && ![v isKindOfClass:UIWindow.class]; v = v.superview) {
         v.layer.backgroundColor = NULL;
+        v.backgroundColor = UIColor.clearColor;
+        v.clipsToBounds = NO;
         top = v;
     }
     return top;
@@ -27,6 +28,7 @@ static UIView *clearAncestors(UIView *view) {
     if (page.bounds.size.height < 200) return;
 
     page.layer.backgroundColor = NULL;
+    page.backgroundColor = UIColor.clearColor;
     sgr_lyricsPageRoot = clearAncestors(page);
 
     UIVisualEffectView *glass = SGGlassFor(page, &kPageGlassKey);

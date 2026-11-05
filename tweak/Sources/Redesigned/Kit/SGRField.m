@@ -107,7 +107,7 @@ static const CGFloat kLyricsBlur = 0.3;
 
     _black = [CAGradientLayer layer];
     _black.actions = noActions();
-    _black.colors = @[(id)[UIColor colorWithWhite:0 alpha:0].CGColor, (id)UIColor.blackColor.CGColor];
+    _black.colors = @[(id)[UIColor colorWithWhite:0 alpha:0].CGColor, (id)[UIColor colorWithWhite:0 alpha:0.65].CGColor];
     [self.layer addSublayer:_black];
 
     _backdrop = [CALayer layer];
@@ -191,16 +191,16 @@ static const CGFloat kLyricsBlur = 0.3;
     CGFloat to = MAX(from + 1, height * kBlackTo + bleed.top);
     _black.frame = painted;
     _black.locations = @[@(MIN(1, from / total)), @(MIN(1, to / total))];
-    _backdrop.frame = CGRectMake(0, 0, bounds.size.width, [self backdropHeightNow]);
-    CGFloat fillHeight = MIN(bounds.size.height, round(windowHeight(self) * 0.625));
+    _backdrop.frame = CGRectMake(painted.origin.x, 0, painted.size.width, [self backdropHeightNow]);
+    CGFloat fillHeight = MIN(painted.size.height, round(windowHeight(self) * 0.625));
     _fillBackground.frame = painted;
-    _fill.frame = CGRectMake(0, 0, bounds.size.width, fillHeight);
+    _fill.frame = CGRectMake(painted.origin.x, 0, painted.size.width, fillHeight);
     _fillMask.frame = _fill.bounds;
     for (NSUInteger index = 0; index < _fillBlurLayers.count; index++) {
         _fillBlurLayers[index].frame = _fill.bounds;
         _fillBlurMasks[index].frame = _fill.bounds;
     }
-    _flow.frame = CGRectMake(0, 0, bounds.size.width, [self backdropHeightNow]);
+    _flow.frame = CGRectMake(painted.origin.x, 0, painted.size.width, [self backdropHeightNow]);
     _fluidLayer.frame = painted;
     // The screen's part of it, so the copies turn about it and the shade ends at the screen's foot.
     _fluidLayer.visibleRect = CGRectMake(bleed.left, bleed.top, bounds.size.width, height);
@@ -381,9 +381,11 @@ static const CGFloat kLyricsBlur = 0.3;
     CALayer *shown = _solid.presentationLayer ?: _solid;
     id from = (__bridge id)shown.backgroundColor;
     _color = color;
+    UIColor *deepTint = [color colorWithAlphaComponent:0.65];
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _solid.backgroundColor = color.CGColor;
+    _black.colors = @[(id)[UIColor colorWithWhite:0 alpha:0].CGColor, (id)deepTint.CGColor];
     [CATransaction commit];
     if (animated && from) {
         CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"backgroundColor"];

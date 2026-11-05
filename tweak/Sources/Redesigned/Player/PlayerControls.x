@@ -22,6 +22,7 @@
 #import "Shared/Haptics/Haptics.h"
 #import "Shared/Lyrics/Lyrics.h"
 #import "Player.h"
+#import "Shared/Duo/SGDuo.h"
 
 static const CGFloat kSkipGlyphSize = 32, kPlayGlyphSize = 44;
 // A spinner that is still up this long after a state change is buffering, not a track starting.
@@ -187,7 +188,8 @@ static void playGlyph(UIView *host) {
     if (SGRLyricsFadedView(host)) host.alpha = 0;
     // The unit lays out before its row does, and the glyphs are centered on the buttons in it.
     UIStackView *row = SGRowIn(host);
-    if (row && UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && host.bounds.size.width > 440) {
+    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) || SGIsDuoDevice() || (host.bounds.size.width > 440);
+    if (row && isWide && host.bounds.size.width > 440) {
         CGFloat maxRowWidth = 400;
         CGFloat rowX = round((host.bounds.size.width - maxRowWidth) / 2.0);
         CGRect rowFrame = CGRectMake(rowX, row.frame.origin.y, maxRowWidth, row.frame.size.height);

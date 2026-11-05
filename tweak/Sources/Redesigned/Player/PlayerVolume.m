@@ -13,6 +13,7 @@
 #import "Core/SGCore.h"
 #import "Redesigned/Kit/SGRKit.h"
 #import "Player.h"
+#import "Shared/Duo/SGDuo.h"
 
 // The row's height (the touch area) and the glyphs' point size and gap to the track.
 static const CGFloat kRowHeight = 32, kGlyphSize = 13, kGlyphGap = 10;
@@ -338,7 +339,8 @@ BOOL SGRPlayerPlaceVolume(UIView *stack, UIView *controls, UIView *row, CGFloat 
     CGFloat height = kRowHeight, room = below - above;
     CGFloat stackWidth = stack.bounds.size.width;
     CGFloat volumeWidth = MAX(0, stackWidth - 2 * margin);
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && volumeWidth > 520) {
+    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) || SGIsDuoDevice() || (volumeWidth > 520);
+    if (isWide && volumeWidth > 520) {
         volumeWidth = 520;
     }
     CGFloat volumeX = round((stackWidth - volumeWidth) / 2.0);

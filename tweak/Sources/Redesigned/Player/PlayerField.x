@@ -25,7 +25,7 @@
 
 // Past the plane's edges: above for the pull that dismisses the player, below for the bounce at the end
 // of the cards.
-static const UIEdgeInsets kBleed = {200, 0, 600, 0};
+static const UIEdgeInsets kBleed = {400, 800, 800, 800};
 // A cover this narrow is a placeholder glyph or the bar's, not the player's.
 static const CGFloat kCoverMinWidth = 200;
 
@@ -157,15 +157,19 @@ static SGRArtworkField *fieldIn(UIView *plane) {
     if (!plane || plane.bounds.size.height < 200) return;
     plane.layer.backgroundColor = NULL;
     plane.backgroundColor = UIColor.clearColor;
-    if (plane.superview) {
-        plane.superview.layer.backgroundColor = NULL;
-        plane.superview.backgroundColor = UIColor.clearColor;
+    for (UIView *v = plane; v && v != plane.window; v = v.superview) {
+        v.layer.backgroundColor = NULL;
+        v.backgroundColor = UIColor.clearColor;
+        v.clipsToBounds = NO;
     }
     SGRArtworkField *field = fieldIn(plane);
     sg_field = field;
     if (field.superview != plane) [plane addSubview:field];
     else if (plane.subviews.lastObject != field) [plane bringSubviewToFront:field];
-    if (!CGRectEqualToRect(field.frame, plane.bounds)) field.frame = plane.bounds;
+    CGRect windowBounds = plane.window ? plane.window.bounds : [UIScreen mainScreen].bounds;
+    CGRect fullBounds = [plane convertRect:windowBounds fromView:nil];
+    CGRect target = CGRectUnion(plane.bounds, fullBounds);
+    if (!CGRectEqualToRect(field.frame, target)) field.frame = target;
     SGRPlayerMotionFieldLaidOut();
     SGRPlayerVisualiserUpdate();
 }

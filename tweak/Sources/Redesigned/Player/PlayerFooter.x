@@ -25,6 +25,7 @@
 #import "Redesigned/Kit/SGRKit.h"
 #import "Shared/Player/PlayerState.h"
 #import "Player.h"
+#import "Shared/Duo/SGDuo.h"
 
 static const CGFloat kLyricsGlyphSize = 20;
 // Filled and at full strength while the lyrics are up, the way the Music app marks the control that is on.
@@ -316,7 +317,8 @@ static void lowerRow(UIView *row) {
     SGRPlayerVanish(arrangedAround(sharedBy, host));
 
     CGFloat middleX = round(width * 0.5);
-    CGFloat spread = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) ? MIN(width * 0.3, 140) : round(width * 0.3);
+    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) || SGIsDuoDevice() || (width > 440);
+    CGFloat spread = isWide ? MIN(width * 0.3, 140) : round(width * 0.3);
     CGFloat leftX = middleX - spread, rightX = middleX + spread;
     CGFloat leadingX = rtl ? rightX : leftX;
     CGFloat trailingX = rtl ? leftX : rightX;

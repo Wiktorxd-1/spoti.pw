@@ -41,6 +41,7 @@
 #import "Shared/Player/PlayerState.h"
 #import "Shared/Player/SGLastTrack.h"
 #import "Shared/Player/SpeedPitch.h"
+#import "Shared/Duo/SGDuo.h"
 #import "Player.h"
 
 NSNotificationName const SGRPlayerBlurOpacityDidChangeNotification = @"spotifyglass.redesign.player.blurOpacityDidChange";
@@ -455,8 +456,8 @@ static void layOut(void) {
     if (!sg_motion || !field) return;
     if (sg_motion.superview != field) [field addSubview:sg_motion];
     CGSize size = field.bounds.size;
-    BOOL isPad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
-    CGFloat screen = (isPad || !field.window) ? size.height : (field.window.bounds.size.height ?: size.height);
+    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) || SGIsDuoDevice();
+    CGFloat screen = (isWide || !field.window) ? size.height : (field.window.bounds.size.height ?: size.height);
     CGRect frame = CGRectMake(0, 0, size.width, MAX(size.height, screen) + field.bleed.bottom);
     if (!CGRectEqualToRect(sg_motion.frame, frame)) sg_motion.frame = frame;
     sg_motion.screenHeight = screen;

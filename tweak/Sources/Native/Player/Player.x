@@ -100,6 +100,18 @@ static UIView *backdropIn(UIView *plane) {
         if (sub != backdrop) SGStripBackgrounds(sub);
     }
     plane.layer.backgroundColor = NULL;
+    plane.backgroundColor = UIColor.clearColor;
+    CGRect windowBounds = plane.window ? plane.window.bounds : [UIScreen mainScreen].bounds;
+    CGRect fullBounds = [plane convertRect:windowBounds fromView:nil];
+    CGRect target = CGRectInset(CGRectUnion(plane.bounds, fullBounds), -200, -200);
+    backdrop.frame = target;
+    for (UIView *v = plane; v != nil; v = v.superview) {
+        v.clipsToBounds = NO;
+        if (v != plane.window) {
+            v.backgroundColor = UIColor.clearColor;
+            v.layer.backgroundColor = NULL;
+        }
+    }
     if (backdrop.superview != plane) [plane insertSubview:backdrop atIndex:0];
 }
 %end

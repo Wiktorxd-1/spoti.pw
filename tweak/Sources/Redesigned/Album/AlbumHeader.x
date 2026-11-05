@@ -5,6 +5,7 @@
 #import "Shared/LockScreenArtwork/SGArtworkFile.h"
 #import "Shared/LockScreenArtwork/SGCanvas.h"
 #import "Album.h"
+#import "Shared/Duo/SGDuo.h"
 
 static const CGFloat kDissolve = 0.46, kTopScrim = 140, kTopScrimAlpha = 0.28;
 static const CGFloat kMinHero = 120, kMinCover = 80;
@@ -160,7 +161,7 @@ static char kReadyContext;
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGRect bounds = self.bounds;
-    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && bounds.size.width > 360) || (bounds.size.width > bounds.size.height * 1.35 && bounds.size.width > 440);
+    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && bounds.size.width > 360) || SGIsDuoDevice() || (bounds.size.width > bounds.size.height * 1.35 && bounds.size.width > 440);
     _ambientBlur.frame = bounds;
     _ambientBlur.alpha = isWide ? 1 : 0;
     _card.hidden = !isWide;

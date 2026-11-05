@@ -1,6 +1,7 @@
 #import "Core/SGCore.h"
 #import "Redesigned/Kit/SGRKit.h"
 #import "Playlist.h"
+#import "Shared/Duo/SGDuo.h"
 #import <objc/message.h>
 
 static const CGFloat kDissolve = 0.46, kTopScrim = 140, kTopScrimAlpha = 0.28;
@@ -109,7 +110,7 @@ static UIView *firstOfClass(UIView *root, Class wanted) {
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGRect bounds = self.bounds;
-    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && bounds.size.width > 360) || (bounds.size.width > bounds.size.height * 1.35 && bounds.size.width > 440);
+    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && bounds.size.width > 360) || SGIsDuoDevice() || (bounds.size.width > bounds.size.height * 1.35 && bounds.size.width > 440);
     _ambientBlur.frame = bounds;
     _ambientBlur.alpha = isWide ? 1 : 0;
     _card.hidden = !isWide;

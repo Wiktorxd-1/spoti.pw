@@ -82,7 +82,7 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = UIColor.blackColor;
+    self.view.backgroundColor = UIColor.clearColor;
 
     // The player's own field behind the screen, so the colors carry over from the portrait player.
     _field = [[SGRArtworkField alloc] initWithFrame:self.view.bounds];
