@@ -193,6 +193,10 @@ if [ -n "$DOWNLOADS_DYLIB" ]; then
   python3 "$ROOT/extension/Downloads/tools/verify_downloads.py" "$OUT"
 fi
 
+if [ -f "$OUT" ]; then
+  python3 "$ROOT/scripts/generate-source.py" "$OUT" || true
+fi
+
 echo "==> done: $OUT"
 [ "$INSTALL" = 1 ] && exec bash "$ROOT/scripts/install.sh" "$OUT"
 exit 0

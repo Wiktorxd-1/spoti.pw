@@ -122,75 +122,16 @@ jobs:
             gh release upload "$TAG" "$IPA_FILE" --clobber
           fi
 
-      - name: Generate apps.json for SideStore
+      - name: Generate apps.json and sidestore.json
         run: |
           IPA_FILE=$(ls out/Taurus*.ipa out/*.ipa 2>/dev/null | head -n 1)
-          IPA_SIZE=$(stat -f%z "$IPA_FILE" 2>/dev/null || stat -c%s "$IPA_FILE")
-          SPOTIFY_VERSION=$(python3 -c "
-          import zipfile, plistlib, sys
-          try:
-            with zipfile.ZipFile('$IPA_FILE', 'r') as z:
-              for name in z.namelist():
-                if name.endswith('Spotify.app/Info.plist'):
-                  plist = plistlib.loads(z.read(name))
-                  print(plist.get('CFBundleShortVersionString', '9.1.90'))
-                  sys.exit(0)
-          except Exception:
-            pass
-          print('9.1.90')
-          ")
-          VERSION="${SPOTIFY_VERSION}.${{ github.run_number }}"
-          TAG="v${SPOTIFY_VERSION}"
-          TODAY=$(date -u +"%Y-%m-%d")
-          
-          python3 -c "
-          import json, os, glob
-          repo = os.environ.get('GITHUB_REPOSITORY', 'Wiktorxd-1/spoti.pw')
-          ipa_files = glob.glob('out/Taurus*.ipa') + glob.glob('out/*.ipa')
-          ipa_name = os.path.basename(ipa_files[0]) if ipa_files else 'Taurus.ipa'
-          download_url = f'https://github.com/{repo}/releases/download/${TAG}/{ipa_name}'
-          data = {
-            'name': 'Taurus',
-            'identifier': 'pw.spoti.source',
-            'subtitle': 'Liquid Glass UI for Spotify',
-            'description': 'Liquid Glass UI for the decrypted Spotify iOS app with real-time synced lyrics, Sing vocal control, and Live Activity support.',
-            'iconURL': 'https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png',
-            'website': 'https://spoti.pw',
-            'tintColor': '1ED760',
-            'apps': [
-              {
-                'name': 'Spotify',
-                'bundleIdentifier': 'com.spotify.client',
-                'developerName': 'Spotify & spoti.pw',
-                'subtitle': 'Liquid Glass UI & Lyrics',
-                'version': '${VERSION}',
-                'versionDate': '${TODAY}',
-                'versionDescription': 'Spotify ${VERSION} with Taurus Liquid Glass UI, real-time Live Activity lyrics, Quick Sing karaoke toggle, and scrubbing haptics.',
-                'downloadURL': download_url,
-                'localizedDescription': 'A complete Liquid Glass redesign for the Spotify iOS app. Includes Apple Music style real-time synced lyrics, Live Activity support in Dynamic Island & Lock Screen, vocal volume control (Sing), AMOLED dark mode, and seamless physical haptics.',
-                'iconURL': 'https://raw.githubusercontent.com/Wiktorxd-1/spoti.pw/main/docs/icon.png',
-                'tintColor': '1ED760',
-                'size': int('${IPA_SIZE}')
-              }
-            ],
-            'news': [
-              {
-                'appID': 'com.spotify.client',
-                'title': 'Taurus ${VERSION}',
-                'identifier': f'spoti-pw-${VERSION}-release',
-                'caption': 'Spotify ${VERSION} Support & Live Activity Lyrics',
-                'date': '${TODAY}',
-                'tintColor': '1ED760',
-                'notify': True,
-                'url': 'https://github.com/Wiktorxd-1/spoti.pw'
-              }
-            ]
-          }
-          with open('apps.json', 'w') as f:
-            json.dump(data, f, indent=2)
-          with open('sidestore.json', 'w') as f:
-            json.dump(data, f, indent=2)
-          "
+          python3 scripts/generate-source.py "$IPA_FILE"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps.json sidestore.json 2>/dev/null || true
+          VERSION=$(python3 -c "import json; data=json.load(open('apps.json')); print(data['apps'][0]['versions'][0]['version'])")
+          git diff --staged --quiet || (git commit -m "chore(actions): update source to $VERSION" && git push origin HEAD:main)
 
       - uses: actions/upload-artifact@v5
         if: inputs.upload_method != 'filebin'

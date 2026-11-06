@@ -19,6 +19,4 @@ harness/*/build/
 vendor/*/build/
 /video
 
-apps.json
-sidestore.json
 scratch/
