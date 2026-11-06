@@ -13,7 +13,7 @@ __weak UIView *sgr_landscapeRoot = nil;
 
 %hook CALayer
 - (void)setBackgroundColor:(CGColorRef)color {
-    if (color && (sgr_nowPlayingRoot || sgr_lyricsPageRoot || sgr_playlistRoot || sgr_albumRoot || sgr_artistRoot || sgr_playerRoot || sgr_landscapeRoot)) {
+    if (color && (sgr_nowPlayingRoot || sgr_lyricsPageRoot || sgr_playlistRoot || sgr_albumRoot || sgr_artistRoot || sgr_homeRoot || sgr_playerRoot || sgr_landscapeRoot)) {
         UIView *view = (UIView *)self.delegate;
         if ([view isKindOfClass:UIView.class] && view.layer == self && !SGKeepsColor(view)) {
             if (SGIsInside(view, sgr_nowPlayingRoot)) {
@@ -25,7 +25,7 @@ __weak UIView *sgr_landscapeRoot = nil;
                 color = NULL;
             } else if (SGIsInside(view, sgr_lyricsPageRoot)) {
                 color = NULL;
-            } else if (SGIsBaseSurface(color) && (SGIsInside(view, sgr_playlistRoot) || SGIsInside(view, sgr_albumRoot) || SGIsInside(view, sgr_artistRoot) || SGIsInside(view, sgr_playerRoot) || SGIsInside(view, sgr_landscapeRoot))) {
+            } else if (SGIsBaseSurface(color) && (SGIsInside(view, sgr_playlistRoot) || SGIsInside(view, sgr_albumRoot) || SGIsInside(view, sgr_artistRoot) || SGIsInside(view, sgr_playerRoot) || SGIsInside(view, sgr_landscapeRoot) || SGIsInside(view, sgr_homeRoot))) {
                 color = NULL;
             }
         }

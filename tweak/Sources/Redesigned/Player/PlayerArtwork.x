@@ -288,6 +288,15 @@ static void watchHold(UIView *tilt) {
         }
     }
 
+    tilt.backgroundColor = UIColor.clearColor;
+    tilt.layer.backgroundColor = NULL;
+    tilt.clipsToBounds = NO;
+    for (UIView *v = tilt.superview; v && ![v isKindOfClass:UICollectionView.class]; v = v.superview) {
+        v.backgroundColor = UIColor.clearColor;
+        v.layer.backgroundColor = NULL;
+        v.clipsToBounds = NO;
+    }
+
     cover.layer.cornerRadius = SGRRadiusArtwork;
     cover.layer.cornerCurve = kCACornerCurveContinuous;
     cover.clipsToBounds = YES;
@@ -319,10 +328,12 @@ static const void *kPreviewKey;
     cell.backgroundColor = UIColor.clearColor;
     cell.layer.backgroundColor = NULL;
     cell.clipsToBounds = NO;
-    for (UIView *sub in cell.subviews) {
-        if (sub.backgroundColor && SGIsBaseSurface(sub.backgroundColor.CGColor)) sub.backgroundColor = UIColor.clearColor;
-        if (SGIsBaseSurface(sub.layer.backgroundColor)) sub.layer.backgroundColor = NULL;
-    }
+    SGForEachView(cell, ^(UIView *v) {
+        if (![v isKindOfClass:UIImageView.class] && ![v isKindOfClass:UILabel.class] && ![v isKindOfClass:SGRShadowPlate.class]) {
+            if (v.backgroundColor && SGIsBaseSurface(v.backgroundColor.CGColor)) v.backgroundColor = UIColor.clearColor;
+            if (SGIsBaseSurface(v.layer.backgroundColor)) v.layer.backgroundColor = NULL;
+        }
+    });
 }
 %end
 

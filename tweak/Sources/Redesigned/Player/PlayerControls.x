@@ -189,15 +189,20 @@ static void playGlyph(UIView *host) {
     // The unit lays out before its row does, and the glyphs are centered on the buttons in it.
     UIStackView *row = SGRowIn(host);
     if (row) {
+        [row layoutIfNeeded];
+        UIEdgeInsets insets = host.safeAreaInsets;
+        CGFloat usableW = host.bounds.size.width - insets.left - insets.right;
+        if (usableW <= 0) usableW = host.bounds.size.width;
+        CGFloat targetCenterX = insets.left + usableW / 2.0;
         CGFloat rowW = row.bounds.size.width;
         if (rowW <= 0) rowW = row.frame.size.width;
-        if (rowW > 0 && rowW < host.bounds.size.width) {
-            CGFloat targetX = round((host.bounds.size.width - rowW) / 2.0);
-            CGRect rowFrame = CGRectMake(targetX, row.frame.origin.y, rowW, row.frame.size.height);
+        if (rowW > 0) {
+            CGFloat rowX = round(targetCenterX - rowW / 2.0);
+            CGRect rowFrame = CGRectMake(rowX, row.frame.origin.y, rowW, row.frame.size.height);
             if (!CGRectEqualToRect(row.frame, rowFrame)) row.frame = rowFrame;
+            row.center = CGPointMake(targetCenterX, row.center.y);
         }
     }
-    [row layoutIfNeeded];
     sg_controlsHost = host;
     skipGlyph(host, @"SPTNowPlayingPreviousTrackButton", &kPreviousKey, @"backward.fill");
     skipGlyph(host, @"SPTNowPlayingNextTrackButton", &kNextKey, @"forward.fill");

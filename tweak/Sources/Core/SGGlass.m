@@ -68,14 +68,13 @@ void SGShapeGlass(UIView *glass, CGFloat radius, BOOL capsule) {
             }
         }
     }
+    CGFloat h = glass.bounds.size.height;
+    CGFloat r = capsule ? (h > 0 ? h / 2.0 : (radius > 0 ? radius : 24.0)) : (radius > 0 ? radius : 24.0);
+    glass.layer.cornerRadius = r;
+    glass.layer.cornerCurve = kCACornerCurveContinuous;
     if (shape) {
         [glass setCornerConfiguration:shape];
-        glass.clipsToBounds = NO;
-    } else {
-        CGFloat h = glass.bounds.size.height;
-        CGFloat r = capsule ? (h > 0 ? h / 2.0 : (radius > 0 ? radius : 24.0)) : (radius > 0 ? radius : 24.0);
-        glass.layer.cornerRadius = r;
-        glass.layer.cornerCurve = kCACornerCurveContinuous;
-        glass.clipsToBounds = YES;
     }
+    glass.clipsToBounds = YES;
+    glass.layer.masksToBounds = YES;
 }

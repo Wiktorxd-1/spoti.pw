@@ -1,8 +1,22 @@
 #import <UIKit/UIKit.h>
+#import <sys/utsname.h>
 #import "Core/SGCore.h"
 #import "SGDuo.h"
 
 BOOL SGIsDuoDevice(void) {
+    static BOOL isDuo = NO;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        struct utsname systemInfo;
+        if (uname(&systemInfo) == 0) {
+            if (strstr(systemInfo.machine, "iPhone19,") != NULL) {
+                isDuo = YES;
+                return;
+            }
+        }
+    });
+    if (isDuo) return YES;
+
     UIScreen *screen = [UIScreen mainScreen];
     CGFloat scale = screen.scale ?: 1.0;
     if (scale <= 0) return NO;

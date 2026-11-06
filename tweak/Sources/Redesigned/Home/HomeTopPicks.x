@@ -266,6 +266,15 @@ static NSDictionary<NSIndexPath *, NSValue *> *swappedFrames(UICollectionViewLay
         if ([NSStringFromClass(object_getClass(content)) containsString:@"Home_EvoPageImpl13HomeStructure"]) {
             UIView *root = content.subviews.firstObject;
             if (root && isShortcutsGrid(root)) {
+                root.backgroundColor = UIColor.clearColor;
+                root.layer.backgroundColor = NULL;
+                cell.backgroundColor = UIColor.clearColor;
+                cell.contentView.backgroundColor = UIColor.clearColor;
+                cell.layer.backgroundColor = NULL;
+                cell.contentView.layer.backgroundColor = NULL;
+                content.backgroundColor = UIColor.clearColor;
+                content.layer.backgroundColor = NULL;
+                stripBase(cell, 8);
                 NSIndexPath *path = [page indexPathForCell:cell];
                 if (path && ![path isEqual:sg_shortcutsPath]) {
                     sg_shortcutsPath = path;
@@ -404,7 +413,6 @@ static UIImage *coverOf(UIView *card) {
 // Cells made or reused after the gradient came carry Spotify's black again: cleared as they lay out.
 static void stripBase(UIView *view, NSUInteger depth) {
     if (!view) return;
-    if (view.frame.origin.y > 650.0) return;
     if (SGIsBaseSurface(view.layer.backgroundColor)) view.layer.backgroundColor = NULL;
     if (view.backgroundColor && SGIsBaseSurface(view.backgroundColor.CGColor)) view.backgroundColor = UIColor.clearColor;
     if (depth == 0) return;

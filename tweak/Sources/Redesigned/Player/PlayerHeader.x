@@ -29,7 +29,7 @@ static void glassInside(UIViewController *unit, NSArray<NSString *> *identifiers
                 button.superview.clipsToBounds = NO;
                 host.clipsToBounds = NO;
                 if (host.superview) host.superview.clipsToBounds = NO;
-                CGAffineTransform down = CGAffineTransformMakeTranslation(0, 75);
+                CGAffineTransform down = CGAffineTransformMakeTranslation(0, 138.0);
                 if (!CGAffineTransformEqualToTransform(button.transform, down)) button.transform = down;
             } else {
                 if (!CGAffineTransformIsIdentity(button.transform)) button.transform = CGAffineTransformIdentity;
@@ -51,17 +51,33 @@ static void glassInside(UIViewController *unit, NSArray<NSString *> *identifiers
 // The header's context line ("Playing from ...") on a glass pill of its own, so it reads over any cover, the
 // sharp artwork of the fill background included. The pill is a passthrough view under the label, sized to
 // the text, so Spotify's label keeps its layout and its taps.
-static const CGFloat kPillPadX = 24, kPillMinHeight = 36;
-
 static UILabel *contextLabelIn(UIView *host) {
-    __block UILabel *found = nil;
+    NSMutableArray<UILabel *> *labels = [NSMutableArray array];
     SGForEachView(host, ^(UIView *view) {
-        if (found || ![view isKindOfClass:UILabel.class]) return;
+        if (![view isKindOfClass:UILabel.class]) return;
         UILabel *label = (UILabel *)view;
         if (!label.text.length) return;
-        found = label;
+        [labels addObject:label];
     });
-    return found;
+    if (!labels.count) return nil;
+    if (labels.count == 1) return labels.firstObject;
+
+    UILabel *titleLabel = nil;
+    UILabel *subtitleLabel = nil;
+    for (UILabel *l in labels) {
+        CGFloat pt = l.font.pointSize;
+        if (pt > 12.0) {
+            titleLabel = l;
+        } else {
+            subtitleLabel = l;
+        }
+    }
+    if (!titleLabel) titleLabel = labels.lastObject;
+    if (subtitleLabel && subtitleLabel != titleLabel) {
+        subtitleLabel.hidden = YES;
+        subtitleLabel.alpha = 0.0;
+    }
+    return titleLabel;
 }
 
 static __weak UIViewController *sg_headerUnit;
@@ -86,10 +102,6 @@ static void pillBehindContext(UIViewController *unit) {
         if (box) box.hidden = YES;
         return;
     }
-    label.hidden = NO;
-    label.alpha = 1.0;
-    label.lineBreakMode = NSLineBreakByTruncatingTail;
-    label.textAlignment = NSTextAlignmentCenter;
 
     if (!box) {
         UIVisualEffectView *glass = [[UIVisualEffectView alloc] initWithEffect:SGGlassEffect()];
@@ -106,25 +118,43 @@ static void pillBehindContext(UIViewController *unit) {
     parent.clipsToBounds = NO;
     if (parent.superview) parent.superview.clipsToBounds = NO;
 
-    CGSize textSize = [label sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
-    if (label.text.length) {
-        UIFont *font = label.font ?: [UIFont systemFontOfSize:14];
-        CGSize attrSize = [label.text sizeWithAttributes:@{NSFontAttributeName: font}];
-        if (attrSize.width > textSize.width) textSize.width = attrSize.width;
-        if (attrSize.height > textSize.height) textSize.height = attrSize.height;
-    }
-    CGFloat width = ceil(textSize.width + 2 * kPillPadX);
-    CGFloat maxW = host.bounds.size.width > 0 ? host.bounds.size.width - 140.0 : 320.0;
-    if (width > maxW) width = maxW;
-    CGFloat height = MAX(kPillMinHeight, ceil(textSize.height + 12.0));
+    UIEdgeInsets insets = host.safeAreaInsets;
+    CGFloat usableW = host.bounds.size.width - insets.left - insets.right;
+    if (usableW <= 0) usableW = host.bounds.size.width;
+    CGFloat centerX = insets.left + usableW / 2.0;
+    CGFloat centerY = host.bounds.size.height / 2.0;
+    CGPoint targetCenter = [host convertPoint:CGPointMake(centerX, centerY) toView:parent];
+
+    UIFont *font = label.font ?: [UIFont boldSystemFontOfSize:14];
+    CGSize attrSize = [label.text sizeWithAttributes:@{NSFontAttributeName: font}];
+    CGSize fitSize = [label sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
+    CGFloat textW = ceil(MAX(attrSize.width, fitSize.width));
+
+    CGFloat maxW = MAX(80.0, usableW - 120.0);
+    CGFloat padX = 18.0;
+    CGFloat width = MIN(textW + 2 * padX, maxW);
+    CGFloat height = 34.0;
+
     box.bounds = CGRectMake(0, 0, width, height);
-    box.center = label.center;
+    box.center = targetCenter;
     box.layer.cornerRadius = height / 2.0;
     box.layer.cornerCurve = kCACornerCurveContinuous;
     box.clipsToBounds = YES;
+    box.layer.masksToBounds = YES;
     SGShapeGlass(box, height / 2.0, YES);
+    box.layer.cornerRadius = height / 2.0;
+    box.layer.cornerCurve = kCACornerCurveContinuous;
+    box.clipsToBounds = YES;
+    box.layer.masksToBounds = YES;
     box.hidden = NO;
     box.alpha = 1.0;
+
+    label.bounds = CGRectMake(0, 0, width - 2 * padX, height);
+    label.center = targetCenter;
+    label.lineBreakMode = NSLineBreakByTruncatingTail;
+    label.textAlignment = NSTextAlignmentCenter;
+    label.hidden = NO;
+    label.alpha = 1.0;
 }
 
 %hook _TtC20NowPlaying_ModesImpl18HeaderElementsUnit
