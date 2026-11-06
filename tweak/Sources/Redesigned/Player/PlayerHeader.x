@@ -4,7 +4,7 @@
 #import "Player.h"
 #import "Shared/Duo/SGDuo.h"
 
-static char kGlassKey, kCloseKey, kMoreKey, kPillKey, kPillViewKey;
+static char kGlassKey, kCloseKey, kMoreKey, kPillViewKey;
 
 static void glassInside(UIViewController *unit, NSArray<NSString *> *identifiers, const void **findKeys) {
     UIView *host = unit.viewIfLoaded;

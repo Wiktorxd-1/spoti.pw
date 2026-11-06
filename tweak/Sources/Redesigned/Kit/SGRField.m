@@ -163,6 +163,10 @@ static const CGFloat kLyricsBlur = 0.3;
     return _color;
 }
 
+- (UIImage *)image {
+    return _image;
+}
+
 - (CGFloat)backdropHeightNow {
     return _backdropHeight > 0 ? _backdropHeight : windowHeight(self);
 }

@@ -24,7 +24,9 @@ extern NSNotificationName const SGRFieldColorDidChangeNotification;
 @property (nonatomic) CGFloat backdropHeight;
 // SGRNeutralField until a colour arrives.
 @property (nonatomic, readonly) UIColor *fieldColor;
+@property (nonatomic, readonly) UIImage *image;
 
+- (void)applyColor:(UIColor *)color animated:(BOOL)animated;
 - (void)setProvisionalColor:(UIColor *)color;
 - (void)setPreferredColor:(UIColor *)color;
 - (void)setArtwork:(UIImage *)image identity:(NSString *)identity animated:(BOOL)animated;
