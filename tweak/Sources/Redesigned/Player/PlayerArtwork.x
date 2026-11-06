@@ -325,6 +325,13 @@ static const void *kPreviewKey;
 - (void)layoutSubviews {
     %orig;
     UIView *cell = (UIView *)self;
+    if (SGRPlayerLyricsOpen()) {
+        cell.alpha = 0;
+        cell.hidden = YES;
+        return;
+    }
+    cell.alpha = 1.0;
+    cell.hidden = NO;
     cell.backgroundColor = UIColor.clearColor;
     cell.layer.backgroundColor = NULL;
     cell.clipsToBounds = NO;
@@ -341,6 +348,13 @@ static const void *kPreviewKey;
 - (void)layoutSubviews {
     %orig;
     UIView *host = (UIView *)self;
+    if (SGRPlayerLyricsOpen()) {
+        host.alpha = 0;
+        host.hidden = YES;
+        return;
+    }
+    host.alpha = 1.0;
+    host.hidden = NO;
     host.backgroundColor = UIColor.clearColor;
     host.layer.backgroundColor = NULL;
     CGRect bounds = host.bounds;

@@ -252,7 +252,7 @@ static CGFloat trailingEdgeIn(UIView *info) {
     CGFloat titleLeft = CGRectGetMinX(untransformed(title, info));
     CGFloat limit = CGRectGetMaxX(SGFrameIn(row, info));
     for (UIView *view in row.subviews) {
-        if (view == title || view.hidden || view.alpha < 0.01 || view.bounds.size.width < 1) continue;
+        if (view == title || view.hidden || view.alpha < 0.01 || view.bounds.size.width < 10) continue;
         CGFloat x = CGRectGetMinX(SGFrameIn(view, info));
         if (x > titleLeft && x < limit) limit = x;
     }
@@ -302,7 +302,14 @@ static void placeTitleRow(SGRLyricsLayout l) {
     if (!CGAffineTransformEqualToTransform(title.transform, slide)) title.transform = slide;
     // Closed it reaches as far as Spotify meant it to; moved, only as far as the controls it moved toward.
     CGFloat room = CGFLOAT_MAX;
-    if (sg_open) room = trailingEdgeIn(info) - kTitleGap - (CGRectGetMinX(untransformed(title, info)) + shift);
+    if (sg_open) {
+        CGFloat minTitleRight = CGRectGetMinX(untransformed(title, info)) + shift;
+        CGFloat maxRight = trailingEdgeIn(info);
+        if (maxRight <= minTitleRight + 60.0 || maxRight > info.bounds.size.width) {
+            maxRight = info.bounds.size.width - 50.0;
+        }
+        room = MAX(120.0, maxRight - kTitleGap - minTitleRight);
+    }
     clipTitle(title, room);
 }
 
@@ -1041,9 +1048,28 @@ BOOL SGRPlayerIsPresented(void) {
     UIView *host = unit.viewIfLoaded;
     // The title and the artist are two labels of one arranged element view, which is what moves.
     UIView *label = SGRFindByIdentifier(host, @"now-playing-title-label", &kTitleKey);
+    if (!label) {
+        SGForEachView(host, ^(UIView *v) {
+            if (!label && [v isKindOfClass:UILabel.class]) {
+                UILabel *l = (UILabel *)v;
+                if (l.text.length > 0) label = l;
+            }
+        });
+    }
     UIView *element = nil;
     for (UIView *v = label; v && v != host; v = v.superview) {
         if ([v.superview isKindOfClass:UIStackView.class]) { element = v; break; }
+    }
+    if (!element) {
+        UIStackView *row = SGRowIn(host);
+        if (row && row.arrangedSubviews.count > 0) element = row.arrangedSubviews.firstObject;
+    }
+    if (!element && label) {
+        UIView *v = label;
+        while (v.superview && v.superview != host && ![v.superview isKindOfClass:UIStackView.class]) {
+            v = v.superview;
+        }
+        element = v;
     }
     if (element && sg_titleElement != element) {
         sg_titleElement = element;
