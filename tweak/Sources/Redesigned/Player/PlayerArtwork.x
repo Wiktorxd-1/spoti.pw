@@ -17,6 +17,7 @@
 #import "Redesigned/Lyrics/SGRKaraokeView.h"
 #import "Shared/Haptics/Haptics.h"
 #import "Shared/Player/SpeedPitch.h"
+#import "Shared/Duo/SGDuo.h"
 #import "Player.h"
 #import <objc/runtime.h>
 
