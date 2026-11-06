@@ -127,6 +127,47 @@ jobs:
           IPA_FILE=$(ls out/Taurus*.ipa out/*.ipa 2>/dev/null | head -n 1)
           python3 scripts/generate-source.py "$IPA_FILE"
 
+      - name: Merge remote upstream Taurus app
+        run: |
+          python3 -c "
+          import json, urllib.request, os
+
+          remote_url = 'https://r.wiktorxd-1.dev/taurus.json'
+
+          try:
+              req = urllib.request.Request(remote_url, headers={'User-Agent': 'Mozilla/5.0'})
+              with urllib.request.urlopen(req) as resp:
+                  remote_data = json.loads(resp.read().decode('utf-8'))
+          except Exception as e:
+              print(f'::warning::Failed to fetch remote source {remote_url}: {e}')
+              remote_data = None
+
+          for file_name in ['apps.json', 'sidestore.json']:
+              if not os.path.exists(file_name):
+                  continue
+
+              with open(file_name, 'r', encoding='utf-8') as f:
+                  data = json.load(f)
+
+              apps = data.get('apps', [])
+              if apps:
+                  apps[0]['name'] = 'Spotify [Alpha]'
+
+              if remote_data and 'apps' in remote_data and len(remote_data['apps']) > 0:
+                  remote_app = remote_data['apps'][0].copy()
+                  remote_app['name'] = 'Spotify'
+
+                  existing_idx = next((i for i, a in enumerate(apps) if a.get('name') == 'Spotify'), None)
+                  if existing_idx is not None:
+                      apps[existing_idx] = remote_app
+                  else:
+                      apps.append(remote_app)
+
+              data['apps'] = apps
+              with open(file_name, 'w', encoding='utf-8') as f:
+                  json.dump(data, f, indent=2, ensure_ascii=False)
+          "
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add apps.json sidestore.json 2>/dev/null || true
@@ -154,4 +195,3 @@ jobs:
             echo "- https://filebin.net/$BIN/$(basename "$f")" >> "$GITHUB_STEP_SUMMARY"
           done
           echo "- _filebin deletes bins after a few days of inactivity, download promptly._" >> "$GITHUB_STEP_SUMMARY"
-
