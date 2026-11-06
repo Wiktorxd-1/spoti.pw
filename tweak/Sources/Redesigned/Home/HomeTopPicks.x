@@ -428,13 +428,17 @@ static void paintAura(UICollectionView *list, UIColor *color) {
         }
     }
     sgr_homeRoot = list;
-    CGFloat over = 600, span = 650.0;
-    CGRect frame = CGRectMake(0, -over - list.adjustedContentInset.top, list.bounds.size.width, over + span);
+    CGFloat over = 400.0;
+    BOOL isLandscape = list.bounds.size.width > list.bounds.size.height;
+    CGFloat span = isLandscape ? 240.0 : 340.0;
+    CGFloat total = over + span;
+    CGRect frame = CGRectMake(0, -over - list.adjustedContentInset.top, list.bounds.size.width, total);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     if (!CGRectEqualToRect(gradient.frame, frame)) gradient.frame = frame;
+    gradient.locations = @[@0, @(over / total), @1.0];
     [CATransaction commit];
-    NSArray *to = @[(id)color.CGColor, (id)color.CGColor, (id)[color colorWithAlphaComponent:0.0].CGColor];
+    NSArray *to = @[(id)color.CGColor, (id)[color colorWithAlphaComponent:0.65].CGColor, (id)[color colorWithAlphaComponent:0.0].CGColor];
     CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"colors"];
     fade.fromValue = gradient.presentationLayer.colors ?: gradient.colors;
     fade.toValue = to;

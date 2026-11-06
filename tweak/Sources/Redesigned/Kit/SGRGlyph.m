@@ -93,9 +93,7 @@ static const CGFloat kMinTouch = 44, kPressAlpha = 0.5, kPressScale = 0.9, kDisa
 
 // However small the frame it is given, a touch 44pt around its centre counts.
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
-    CGRect bounds = self.bounds;
-    CGFloat dx = MAX(0, (kMinTouch - bounds.size.width) / 2), dy = MAX(0, (kMinTouch - bounds.size.height) / 2);
-    return CGRectContainsPoint(CGRectInset(bounds, -dx, -dy), point);
+    return CGRectContainsPoint(CGRectInset(self.bounds, -15, -15), point);
 }
 
 - (void)setHighlighted:(BOOL)highlighted {

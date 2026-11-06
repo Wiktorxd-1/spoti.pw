@@ -189,6 +189,8 @@ static const CGFloat kLyricsBlur = 0.3;
     CGFloat height = windowHeight(self), total = MAX(1, painted.size.height);
     CGFloat from = height * kBlackFrom + bleed.top;
     CGFloat to = MAX(from + 1, height * kBlackTo + bleed.top);
+    BOOL isLandscape = bounds.size.width > bounds.size.height;
+    _black.hidden = isLandscape;
     _black.frame = painted;
     _black.locations = @[@(MIN(1, from / total)), @(MIN(1, to / total))];
     _backdrop.frame = CGRectMake(painted.origin.x, 0, painted.size.width, [self backdropHeightNow]);

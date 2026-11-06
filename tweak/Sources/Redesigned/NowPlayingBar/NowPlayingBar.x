@@ -547,14 +547,12 @@ static void styleNowPlayingBar(UIViewController *container) {
     frame.size.height = MIN(frame.size.height, 80);
     if (frame.size.height < 30 || frame.size.width < 100) return;
 
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad || (SGIsDuoUnfolded() && frame.size.width > 560) || frame.size.width > 560) {
+    if (card) {
+        frame = SGFrameIn(card, container.view);
+    } else if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad || (SGIsDuoUnfolded() && container.view.bounds.size.width > 560)) {
         CGFloat maxWidth = MIN(container.view.bounds.size.width - 40, 560);
-        if (frame.size.width > maxWidth) {
-            frame.origin.x = round((container.view.bounds.size.width - maxWidth) / 2.0);
-            frame.size.width = maxWidth;
-        } else {
-            frame.origin.x = round((container.view.bounds.size.width - frame.size.width) / 2.0);
-        }
+        frame.size.width = maxWidth;
+        frame.origin.x = round((container.view.bounds.size.width - maxWidth) / 2.0);
     }
 
     CGFloat bottomInset = container.view.window.safeAreaInsets.bottom;

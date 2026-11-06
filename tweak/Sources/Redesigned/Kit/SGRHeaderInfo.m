@@ -41,6 +41,7 @@ static BOOL setText(UILabel *label, NSString *text) {
     SGRPlayCapsule *_play;
     UIScrollView *_albumControls;
     SGRMirrorButton *_albumDownload;
+    UIView *_preview;
     __weak UIView *_creatorLink;
     NSUInteger _playerRefreshGeneration;
 }
@@ -232,6 +233,11 @@ static BOOL setText(UILabel *label, NSString *text) {
 
 - (void)showAlbumShuffle:(UIView *)shuffle play:(UIView *)play download:(UIView *)download
                     add:(UIView *)add playColor:(UIColor *)playColor {
+    [self showAlbumShuffle:shuffle play:play download:download add:add preview:nil playColor:playColor];
+}
+
+- (void)showAlbumShuffle:(UIView *)shuffle play:(UIView *)play download:(UIView *)download
+                    add:(UIView *)add preview:(UIView *)preview playColor:(UIColor *)playColor {
     if (!_albumControls) {
         _albumControls = [UIScrollView new];
         _albumControls.showsHorizontalScrollIndicator = NO;
@@ -248,6 +254,13 @@ static BOOL setText(UILabel *label, NSString *text) {
         _albumDownload.accessibilityIdentifier = @"Taurus.Album.Download";
         [_albumControls addSubview:_albumDownload];
         [_albumControls addSubview:_trailing];
+    }
+    _preview = preview;
+    if (preview) {
+        if (preview.superview != _albumControls) [_albumControls addSubview:preview];
+        preview.hidden = NO;
+        preview.alpha = 1.0;
+        [_albumControls bringSubviewToFront:preview];
     }
     [self showShuffle:shuffle play:play trailing:add
      trailingFallback:[UIImage systemImageNamed:@"plus"] playColor:playColor];
@@ -324,7 +337,8 @@ static BOOL setText(UILabel *label, NSString *text) {
         CGFloat playWidth = MIN(MAX(kPlayWidth, [_play sgr_width]), MAX(0, text - side - kRowSpacing));
         BOOL rtl = self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
         CGFloat x = 0;
-        for (UIView *button in @[_shuffle, _albumDownload, _trailing]) {
+        NSArray<UIView *> *group = _preview ? @[_preview, _shuffle, _albumDownload, _trailing] : @[_shuffle, _albumDownload, _trailing];
+        for (UIView *button in group) {
             if (button.hidden) continue;
             button.frame = CGRectMake(x, 0, side, side);
             x += side + 12;

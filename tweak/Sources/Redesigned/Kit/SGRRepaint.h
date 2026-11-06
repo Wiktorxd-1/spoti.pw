@@ -10,3 +10,4 @@ extern __weak UIView *sgr_albumRoot;
 extern __weak UIView *sgr_artistRoot;
 extern __weak UIView *sgr_homeRoot;
 extern __weak UIView *sgr_playerRoot;
+extern __weak UIView *sgr_landscapeRoot;

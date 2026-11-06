@@ -115,7 +115,7 @@ static UIImage *blurred(UIImage *image, BOOL contrast, CGFloat radius, CGFloat s
 - (instancetype)init {
     if (!(self = [super init])) return nil;
     self.masksToBounds = YES;
-    self.backgroundColor = UIColor.blackColor.CGColor;
+    self.backgroundColor = UIColor.clearColor.CGColor;
     for (int i = 0; i < kCopies; i++) {
         _copies[i] = [CALayer layer];
         _copies[i].contentsGravity = kCAGravityResizeAspectFill;
@@ -186,6 +186,8 @@ static UIImage *blurred(UIImage *image, BOOL contrast, CGFloat radius, CGFloat s
     CGFloat total = MAX(1, bounds.size.height);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
+    BOOL isLandscape = visible.size.width > visible.size.height;
+    _shade.hidden = isLandscape;
     _shade.frame = bounds;
     _shade.locations = @[@(MIN(1, (CGRectGetMinY(visible) + visible.size.height * kShadeFrom) / total)),
                          @(MIN(1, CGRectGetMaxY(visible) / total))];

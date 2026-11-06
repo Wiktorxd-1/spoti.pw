@@ -386,9 +386,11 @@ static SGRHeaderInfo *applyInfo(UIView *header, UIView *page) {
     if (info.superview != header) [header addSubview:info];
     else if (header.subviews.lastObject != info) [header bringSubviewToFront:info];
     SGRAlbumHero *hero = objc_getAssociatedObject(header, &kHeroKey);
+    UIView *preview = SGRFindByIdentifier(header, @"Components.UI.WatchFeedEntityExplorerButton", &kExploreKey);
     for (UIView *sub in header.subviews) {
-        if (sub != info && sub != hero) blank(sub);
+        if (sub != info && sub != hero && sub != preview) blank(sub);
     }
+    if (preview) { preview.alpha = 1.0; preview.hidden = NO; }
     setFrame(info, header.bounds);
 
     UIView *title = SGRFindByIdentifier(header, @"CreativeWorkPlatform.Components.UI.TitleRow", &kTitleKey);
@@ -416,7 +418,7 @@ static SGRHeaderInfo *applyInfo(UIView *header, UIView *page) {
     UIView *shuffle = floatingIn(page, @"Components.UI.ShuffleButton", &kShuffleKey);
     UIView *add = SGRFindByIdentifier(header, @"Components.UI.AddToButton", &kAddKey);
     UIView *download = SGRFindByIdentifier(header, @"DownloadButton.Granular*", &kDownloadKey);
-    [info showAlbumShuffle:shuffle play:play download:download add:add playColor:SGRAlbumFieldColor(header)];
+    [info showAlbumShuffle:shuffle play:play download:download add:add preview:preview playColor:SGRAlbumFieldColor(header)];
     // Only what the two floating buttons draw goes: a concealed layer still sends the actions the row fires.
     if (play) conceal(wrapperFor(play, page));
     if (shuffle) conceal(wrapperFor(shuffle, page));

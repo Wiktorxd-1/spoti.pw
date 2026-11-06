@@ -188,21 +188,14 @@ static void playGlyph(UIView *host) {
     if (SGRLyricsFadedView(host)) host.alpha = 0;
     // The unit lays out before its row does, and the glyphs are centered on the buttons in it.
     UIStackView *row = SGRowIn(host);
-    BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) || SGIsDuoUnfolded() || (host.bounds.size.width > 440);
-    if (row && isWide && host.bounds.size.width > 440) {
-        CGFloat maxRowWidth = 400;
-        UIWindow *window = host.window;
-        CGFloat rightInset = (SGIsDuoUnfolded() || (window && window.safeAreaInsets.right > 20))
-            ? MAX(window ? window.safeAreaInsets.right : 0, 92.0)
-            : (window ? window.safeAreaInsets.right : 0);
-        CGFloat leftInset = window ? window.safeAreaInsets.left : 0;
-        CGFloat usableWidth = window ? (window.bounds.size.width - leftInset - rightInset) : host.bounds.size.width;
-        CGFloat targetCenterInWindow = leftInset + usableWidth / 2.0;
-        CGRect hostInWin = window ? [window convertRect:host.bounds fromView:host] : host.bounds;
-        CGFloat targetCenterInHost = targetCenterInWindow - hostInWin.origin.x;
-        CGFloat rowX = round(targetCenterInHost - maxRowWidth / 2.0);
-        CGRect rowFrame = CGRectMake(rowX, row.frame.origin.y, maxRowWidth, row.frame.size.height);
-        if (!CGRectEqualToRect(row.frame, rowFrame)) row.frame = rowFrame;
+    if (row) {
+        CGFloat rowW = row.bounds.size.width;
+        if (rowW <= 0) rowW = row.frame.size.width;
+        if (rowW > 0 && rowW < host.bounds.size.width) {
+            CGFloat targetX = round((host.bounds.size.width - rowW) / 2.0);
+            CGRect rowFrame = CGRectMake(targetX, row.frame.origin.y, rowW, row.frame.size.height);
+            if (!CGRectEqualToRect(row.frame, rowFrame)) row.frame = rowFrame;
+        }
     }
     [row layoutIfNeeded];
     sg_controlsHost = host;

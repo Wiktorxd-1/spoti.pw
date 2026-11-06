@@ -423,10 +423,11 @@ SGRMirrorButton *SGRPinnedMore(UIView *page, const void *key, UIView *source) {
         ? MAX(window ? window.safeAreaInsets.right : 0, 92.0)
         : kCornerSide;
     CGRect frame;
-    if (SGIsDuoUnfolded()) {
+    if (SGIsDuoDevice()) {
         CGFloat winW = window ? window.bounds.size.width : page.bounds.size.width;
-        CGFloat x = winW - rightMargin + (rightMargin - side) / 2.0;
-        CGRect inWindow = CGRectMake(round(x), 345.0, side, side);
+        CGFloat x = winW - rightMargin - side;
+        CGFloat topInset = (window && window.safeAreaInsets.top > 0) ? window.safeAreaInsets.top : 44.0;
+        CGRect inWindow = CGRectMake(round(x), topInset + 56.0, side, side);
         frame = window ? [page convertRect:inWindow fromView:nil] : inWindow;
     } else if (window) {
         CGRect inWindow = CGRectMake(window.bounds.size.width - rightMargin - side, window.safeAreaInsets.top, side, side);

@@ -161,6 +161,7 @@ static SGRGlyphButton *lyricsGlyphIn(UIView *host) {
         objc_setAssociatedObject(host, &kLyricsGlyphKey, glyph, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     if (glyph.superview != host) [host addSubview:glyph];
+    [host bringSubviewToFront:glyph];
     sg_lyricsGlyph = glyph;
     return glyph;
 }
@@ -329,6 +330,7 @@ static void lowerRow(UIView *row) {
     CGFloat trailingX = rtl ? leftX : rightX;
 
     SGRGlyphButton *lyrics = lyricsGlyphIn(host);
+    [host bringSubviewToFront:lyrics];
     lyrics.bounds = CGRectMake(0, 0, 44, 44);
     lyrics.center = CGPointMake(leadingX, middleY);
     SGRPlayerLyricsChanged();

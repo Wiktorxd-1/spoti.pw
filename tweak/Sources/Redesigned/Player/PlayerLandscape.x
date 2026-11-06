@@ -15,6 +15,7 @@
 #import "Redesigned/Lyrics/SGRKaraokeView.h"
 #import "Shared/Lyrics/Lyrics.h"
 #import "Shared/Player/PlayerState.h"
+#import "Redesigned/Kit/SGRRepaint.h"
 #import "Player.h"
 
 static const CGFloat kSide = 32, kCoverGap = 16, kControlSide = 44, kColumnShare = 0.38;
@@ -89,10 +90,18 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
     _field = [[SGRArtworkField alloc] initWithFrame:self.view.bounds];
     _field.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     _field.showsBackdrop = YES;
-    _field.fluid = YES;
+    SGRPlayerApplyBackgroundToField(_field, SGRPlayerBackground());
+    SGRArtworkField *portrait = SGRPlayerField();
+    if (portrait && portrait.fieldColor) {
+        [_field setProvisionalColor:portrait.fieldColor];
+        [_field applyColor:portrait.fieldColor animated:NO];
+    }
     NSString *identity = nil;
-    UIImage *art = SGRNowPlayingArtwork(NULL, &identity);
-    if (art) [_field setArtwork:art identity:identity animated:NO];
+    UIImage *art = SGRNowPlayingArtwork(NULL, &identity) ?: (portrait ? portrait.image : nil);
+    if (art) {
+        [_field setArtwork:art identity:identity animated:NO];
+        _cover.image = art;
+    }
     [self.view addSubview:_field];
 
     _cover = [UIImageView new];
@@ -224,8 +233,21 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
     }
 }
 
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    sgr_landscapeRoot = self.view;
+    SGRArtworkField *portrait = SGRPlayerField();
+    if (portrait && portrait.fieldColor) {
+        [_field setProvisionalColor:portrait.fieldColor];
+        [_field applyColor:portrait.fieldColor animated:NO];
+    }
+    SGRPlayerApplyBackgroundToField(_field, SGRPlayerBackground());
+    [self artworkChanged];
+}
+
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    sgr_landscapeRoot = self.view;
     reveal(self.view.window ?: sg_window);
     [self restartRest];
 }
@@ -262,6 +284,10 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
 - (void)artworkChanged {
     NSString *identity = nil;
     UIImage *art = SGRNowPlayingArtwork(NULL, &identity);
+    if (!art) {
+        SGRArtworkField *portrait = SGRPlayerField();
+        if (portrait && portrait.image) art = portrait.image;
+    }
     if (!art) return;
     // On the field's clock, so the cover and the colors behind it change as one.
     UIImageView *cover = _cover;

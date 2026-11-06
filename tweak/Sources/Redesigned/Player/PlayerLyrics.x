@@ -85,9 +85,11 @@ static void restartRest(void);
 @property (nonatomic, readonly) UIView *stage;       // holds the lines' view alone
 @property (nonatomic, readonly) SGRKaraokeView *lyrics;
 @property (nonatomic, readonly) UILabel *noLyrics;
+@property (nonatomic, readonly) UIVisualEffectView *backdropBlur;
 @end
 
 @implementation SGRPlayerLyricsOverlay {
+    UIVisualEffectView *_backdropBlur;
     UIView *_thumb, *_stage;
     UIImageView *_cover;
     SGRKaraokeView *_lyrics;
@@ -110,6 +112,13 @@ static void restartRest(void);
     _cover.layer.cornerCurve = kCACornerCurveContinuous;
     _cover.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [_thumb addSubview:_cover];
+    _backdropBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark]];
+    _backdropBlur.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+    _backdropBlur.userInteractionEnabled = NO;
+    _backdropBlur.alpha = 0.0;
+    _backdropBlur.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self addSubview:_backdropBlur];
+
     _stage = [[UIView alloc] initWithFrame:CGRectZero];
     _stage.backgroundColor = UIColor.clearColor;
     _stage.layer.backgroundColor = NULL;
@@ -134,6 +143,11 @@ static void restartRest(void);
 - (UIImageView *)cover { return _cover; }
 - (UIView *)stage { return _stage; }
 - (UILabel *)noLyrics { return _noLyrics; }
+- (UIVisualEffectView *)backdropBlur { return _backdropBlur; }
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (_backdropBlur) _backdropBlur.frame = self.bounds;
+}
 
 // The lines seek when they are tapped and the thumbnail brings the player back, so everywhere else the
 // overlay would only swallow touches: a view that takes them does, even with nothing on it.
@@ -212,7 +226,7 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     CGFloat stageWidth = (isWide && hostWidth > 680) ? MIN(hostWidth * 0.75, 720) : hostWidth;
     CGFloat stageX = round((hostWidth - stageWidth) / 2.0);
     CGFloat leading = (isWide && hostWidth > 680) ? stageX + 16 : (title ? CGRectGetMinX(untransformed(title, host)) : SGRSideMargin);
-    leading = MAX(72.0, MIN(leading, hostWidth - kThumbSide - SGRSideMargin));
+    leading = MAX(SGRSideMargin, MIN(leading, hostWidth - kThumbSide - SGRSideMargin));
     l.cover = cover;
     l.thumb = CGRectMake(leading, CGRectGetMinY(area) + kThumbTop, kThumbSide, kThumbSide);
     CGFloat top = title ? CGRectGetMidY(l.thumb) - row.size.height / 2 : CGRectGetMaxY(l.thumb) + SGRGrid;
@@ -772,9 +786,9 @@ static void setOpen(BOOL open, BOOL animated) {
     // The thumbnail is the Kit's picture drawn again, and Spotify's cover goes as it appears: without a
     // picture there would be a hole where the cover was, so the cover stays and the lyrics wait.
     UIImage *picture = SGRNowPlayingArtwork(NULL, NULL);
-    if (open && !picture) {
-        SGLog(@"redesign player: no artwork read yet, the lyrics stay down");
-        return;
+    if (!picture) {
+        SGRArtworkField *pf = SGRPlayerField();
+        if (pf && pf.image) picture = pf.image;
     }
     if (!open) setAlone(NO, NO);
     sg_open = open;
@@ -823,6 +837,7 @@ static void setOpen(BOOL open, BOOL animated) {
     // Moves and fades apart, as in setAlone: Reduce Motion takes the move and keeps the thumbnail's fade over
     // an animated artwork and the chips'.
     void (^move)(void) = ^{
+        if (overlay.backdropBlur) overlay.backdropBlur.alpha = open ? 1.0 : 0.0;
         overlay.thumb.transform = open || fades ? away : CGAffineTransformIdentity;
         overlay.cover.layer.cornerRadius = thumbRadius(l, open || fades);
         placeTitleRow(l);

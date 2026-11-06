@@ -25,11 +25,11 @@ static void glassInside(UIViewController *unit, NSArray<NSString *> *identifiers
         if ([identifiers[i] isEqualToString:@"Context menu"]) {
             SGPlayerMenuWatchMoreButton(button);
             SGRPlayerMenuWatchMoreButton(button);
-            if (SGIsDuoUnfolded()) {
+            if (SGIsDuoDevice()) {
                 button.superview.clipsToBounds = NO;
                 host.clipsToBounds = NO;
                 if (host.superview) host.superview.clipsToBounds = NO;
-                CGAffineTransform down = CGAffineTransformMakeTranslation(0, 320);
+                CGAffineTransform down = CGAffineTransformMakeTranslation(0, 75);
                 if (!CGAffineTransformEqualToTransform(button.transform, down)) button.transform = down;
             } else {
                 if (!CGAffineTransformIsIdentity(button.transform)) button.transform = CGAffineTransformIdentity;
@@ -58,7 +58,7 @@ static UILabel *contextLabelIn(UIView *host) {
     SGForEachView(host, ^(UIView *view) {
         if (found || ![view isKindOfClass:UILabel.class]) return;
         UILabel *label = (UILabel *)view;
-        if (label.hidden || label.alpha < 0.01 || !label.text.length || label.bounds.size.width < 60) return;
+        if (!label.text.length) return;
         found = label;
     });
     return found;
@@ -87,10 +87,16 @@ static void pillBehindContext(UIViewController *unit) {
         return;
     }
     label.hidden = NO;
+    label.alpha = 1.0;
+    label.lineBreakMode = NSLineBreakByTruncatingTail;
+    label.textAlignment = NSTextAlignmentCenter;
+
     if (!box) {
-        box = [UIView new];
-        box.userInteractionEnabled = NO;
-        box.accessibilityElementsHidden = YES;
+        UIVisualEffectView *glass = [[UIVisualEffectView alloc] initWithEffect:SGGlassEffect()];
+        glass.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+        glass.userInteractionEnabled = NO;
+        glass.accessibilityElementsHidden = YES;
+        box = glass;
         objc_setAssociatedObject(label, &kPillViewKey, box, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     UIView *parent = label.superview;
@@ -108,18 +114,17 @@ static void pillBehindContext(UIViewController *unit) {
         if (attrSize.height > textSize.height) textSize.height = attrSize.height;
     }
     CGFloat width = ceil(textSize.width + 2 * kPillPadX);
-    CGFloat maxW = host.bounds.size.width > 0 ? host.bounds.size.width - 130.0 : 340.0;
+    CGFloat maxW = host.bounds.size.width > 0 ? host.bounds.size.width - 140.0 : 320.0;
     if (width > maxW) width = maxW;
-    CGFloat height = MAX(kPillMinHeight, ceil(textSize.height + 14.0));
+    CGFloat height = MAX(kPillMinHeight, ceil(textSize.height + 12.0));
     box.bounds = CGRectMake(0, 0, width, height);
-    box.center = CGPointMake(CGRectGetMidX(label.bounds), CGRectGetMidY(label.bounds));
+    box.center = label.center;
     box.layer.cornerRadius = height / 2.0;
     box.layer.cornerCurve = kCACornerCurveContinuous;
     box.clipsToBounds = YES;
     SGShapeGlass(box, height / 2.0, YES);
-    box.hidden = label.hidden;
-    box.alpha = label.alpha;
-    SGRGlassCapsuleInside(box, &kPillKey, box.bounds.size, NO);
+    box.hidden = NO;
+    box.alpha = 1.0;
 }
 
 %hook _TtC20NowPlaying_ModesImpl18HeaderElementsUnit

@@ -76,10 +76,10 @@ static void applyRow(UIView *cell) {
     for (UIView *v = cell.superview; v; v = v.superview) {
         if ([v isKindOfClass:UICollectionView.class]) { cv = (UICollectionView *)v; break; }
     }
-    if (cv && SGIsDuoUnfolded()) {
-        CGFloat rightMargin = (cv.window && cv.window.safeAreaInsets.right > 20)
-            ? MAX(cv.window.safeAreaInsets.right, 92.0)
-            : 92.0;
+    if (cv) {
+        CGFloat rightMargin = (SGIsDuoUnfolded() || (cv.window && cv.window.safeAreaInsets.right > 20))
+            ? MAX(cv.window ? cv.window.safeAreaInsets.right : 0, 92.0)
+            : SGRSideMargin;
         CGFloat targetW = cv.bounds.size.width - rightMargin - cell.frame.origin.x;
         if (targetW > cell.frame.size.width + 10) {
             cell.frame = CGRectMake(cell.frame.origin.x, cell.frame.origin.y, targetW, cell.frame.size.height);
