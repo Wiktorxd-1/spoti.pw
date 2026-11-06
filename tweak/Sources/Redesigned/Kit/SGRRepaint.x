@@ -25,8 +25,14 @@ __weak UIView *sgr_landscapeRoot = nil;
                 color = NULL;
             } else if (SGIsInside(view, sgr_lyricsPageRoot)) {
                 color = NULL;
-            } else if (SGIsBaseSurface(color) && (SGIsInside(view, sgr_playlistRoot) || SGIsInside(view, sgr_albumRoot) || SGIsInside(view, sgr_artistRoot) || SGIsInside(view, sgr_playerRoot) || SGIsInside(view, sgr_landscapeRoot) || SGIsInside(view, sgr_homeRoot))) {
+            } else if (SGIsBaseSurface(color) && (SGIsInside(view, sgr_playlistRoot) || SGIsInside(view, sgr_albumRoot) || SGIsInside(view, sgr_artistRoot) || SGIsInside(view, sgr_playerRoot) || SGIsInside(view, sgr_landscapeRoot))) {
                 color = NULL;
+            } else if (SGIsBaseSurface(color) && sgr_homeRoot && SGIsInside(view, sgr_homeRoot)) {
+                // Only strip base-surface backgrounds from views within the aura gradient band
+                // (~650 pt from the top of the page list), so cells further down keep their
+                // own backgrounds and the entire home page doesn't turn transparent.
+                CGRect frameInHome = [view convertRect:view.bounds toView:sgr_homeRoot];
+                if (CGRectGetMinY(frameInHome) < 650.0) color = NULL;
             }
         }
     }

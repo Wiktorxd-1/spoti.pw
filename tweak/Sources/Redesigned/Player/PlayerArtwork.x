@@ -326,8 +326,11 @@ static const void *kPreviewKey;
     %orig;
     UIView *cell = (UIView *)self;
     if (SGRPlayerLyricsOpen()) {
+        // Keep hidden = NO so showingTilt() can still find the cover cell for measurements
+        // (SGRPlayerArtworkAreaIn / SGRPlayerCoverFrameIn). Only alpha-hide it so it is
+        // invisible while the lyrics overlay is up.
         cell.alpha = 0;
-        cell.hidden = YES;
+        cell.hidden = NO;
         return;
     }
     cell.alpha = 1.0;
@@ -349,8 +352,10 @@ static const void *kPreviewKey;
     %orig;
     UIView *host = (UIView *)self;
     if (SGRPlayerLyricsOpen()) {
+        // Keep hidden = NO (same reason as CoverArtCellImpl above: layout must remain
+        // measurable). Alpha-0 hides it; the redesign's overlay sits on top anyway.
         host.alpha = 0;
-        host.hidden = YES;
+        host.hidden = NO;
         return;
     }
     host.alpha = 1.0;
