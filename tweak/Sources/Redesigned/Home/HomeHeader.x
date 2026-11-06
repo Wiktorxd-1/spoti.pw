@@ -23,6 +23,7 @@
 #import "Core/SGCore.h"
 #import "Redesigned/Kit/SGRKit.h"
 #import "Redesigned/Navbar/Navbar.h"
+#import "Shared/Duo/SGDuo.h"
 #import "Home.h"
 
 // Tries at finding the tab's name before settling for the English one: a miss walks the window.
@@ -277,7 +278,11 @@ static void layoutHeader(UIViewController *page) {
     if (wrapper && SGRHomeGlassStyle()) {
         UIVisualEffectView *bar = barIn(wrapper);
         CGFloat bottom = CGRectGetMaxY([header convertRect:header.bounds toView:view]) + 28;
-        CGRect barFrame = [view convertRect:CGRectMake(0, 0, view.bounds.size.width, bottom) toView:wrapper];
+        CGFloat rightMargin = (SGIsDuoUnfolded() || (view.window && view.window.safeAreaInsets.right > 20))
+            ? MAX(view.window ? view.window.safeAreaInsets.right : 0, 92.0)
+            : 0;
+        CGFloat barWidth = MAX(0, view.bounds.size.width - rightMargin);
+        CGRect barFrame = [view convertRect:CGRectMake(0, 0, barWidth, bottom) toView:wrapper];
         if (bar.superview != wrapper) [wrapper insertSubview:bar belowSubview:header];
         if (!CGRectEqualToRect(bar.frame, barFrame)) bar.frame = barFrame;
         [CATransaction begin];

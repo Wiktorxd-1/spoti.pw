@@ -547,16 +547,14 @@ static void styleNowPlayingBar(UIViewController *container) {
     frame.size.height = MIN(frame.size.height, 80);
     if (frame.size.height < 30 || frame.size.width < 100) return;
 
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad || SGIsDuoDevice() || frame.size.width > 560) {
-        UIWindow *w = container.view.window;
-        CGFloat rightInset = (SGIsDuoDevice() || (w && w.safeAreaInsets.right > 20))
-            ? MAX(w ? w.safeAreaInsets.right : 0, 92.0)
-            : (w ? w.safeAreaInsets.right : 0);
-        CGFloat leftInset = w ? w.safeAreaInsets.left : 0;
-        CGFloat usable = container.view.bounds.size.width - leftInset - rightInset;
-        CGFloat maxWidth = MIN(usable - 24, 540);
-        frame.size.width = maxWidth;
-        frame.origin.x = round(leftInset + (usable - maxWidth) / 2.0);
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad || (SGIsDuoUnfolded() && frame.size.width > 560) || frame.size.width > 560) {
+        CGFloat maxWidth = MIN(container.view.bounds.size.width - 40, 560);
+        if (frame.size.width > maxWidth) {
+            frame.origin.x = round((container.view.bounds.size.width - maxWidth) / 2.0);
+            frame.size.width = maxWidth;
+        } else {
+            frame.origin.x = round((container.view.bounds.size.width - frame.size.width) / 2.0);
+        }
     }
 
     CGFloat bottomInset = container.view.window.safeAreaInsets.bottom;

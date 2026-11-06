@@ -52,7 +52,7 @@ static void holdAtTop(UIScrollView *list) {
     %orig;
     UIView *view = ((UIViewController *)self).viewIfLoaded;
     if (view) {
-        sgr_playerRoot = view;
+        sgr_playerRoot = view.superview ?: view;
         view.layer.backgroundColor = NULL;
         view.backgroundColor = UIColor.clearColor;
         view.clipsToBounds = NO;

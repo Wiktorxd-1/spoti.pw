@@ -163,7 +163,13 @@ static SGRArtworkField *fieldIn(UIView *plane) {
         v.backgroundColor = UIColor.clearColor;
         v.clipsToBounds = NO;
     }
-    sgr_playerRoot = plane;
+    for (UIView *sub in plane.subviews) {
+        if (sub != fieldIn(plane)) {
+            sub.layer.backgroundColor = NULL;
+            sub.backgroundColor = UIColor.clearColor;
+            sub.hidden = YES;
+        }
+    }
     SGRArtworkField *field = fieldIn(plane);
     sg_field = field;
     if (field.superview != plane) [plane addSubview:field];

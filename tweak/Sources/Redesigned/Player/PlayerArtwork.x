@@ -265,17 +265,25 @@ static void watchHold(UIView *tilt) {
     SGRPlayerMotionCoverLaidOut();
     // The cover fills the tilt view (01.txt:37); bounds and center, unlike a frame, hold under the scale.
     CGRect bounds = tilt.bounds;
-    CGFloat side = MIN(bounds.size.width, bounds.size.height);
-    if (side < kCoverMinWidth) side = bounds.size.width;
-    CGSize coverSize = CGSizeMake(side, side);
-    CGPoint middle = CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
-    if (!CGSizeEqualToSize(cover.bounds.size, coverSize)) cover.bounds = (CGRect){CGPointZero, coverSize};
-    if (!CGPointEqualToPoint(cover.center, middle)) cover.center = middle;
-    // Its image is placed again for the new size (the ImageViewProxy hook below makes it fill the cover).
-    for (UIView *image in cover.subviews) {
-        if (!CGRectEqualToRect(image.bounds, cover.bounds)) {
-            image.bounds = cover.bounds;
-            image.center = CGPointMake(CGRectGetMidX(cover.bounds), CGRectGetMidY(cover.bounds));
+    if (SGIsDuoUnfolded()) {
+        CGFloat side = MIN(bounds.size.width, bounds.size.height);
+        if (side < kCoverMinWidth) side = bounds.size.width;
+        CGSize coverSize = CGSizeMake(side, side);
+        CGPoint middle = CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
+        if (!CGSizeEqualToSize(cover.bounds.size, coverSize)) cover.bounds = (CGRect){CGPointZero, coverSize};
+        if (!CGPointEqualToPoint(cover.center, middle)) cover.center = middle;
+        for (UIView *image in cover.subviews) {
+            if (!CGRectEqualToRect(image.bounds, cover.bounds)) {
+                image.bounds = cover.bounds;
+                image.center = CGPointMake(CGRectGetMidX(cover.bounds), CGRectGetMidY(cover.bounds));
+            }
+        }
+    } else {
+        CGPoint middle = CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
+        if (!CGSizeEqualToSize(cover.bounds.size, bounds.size)) cover.bounds = (CGRect){cover.bounds.origin, bounds.size};
+        if (!CGPointEqualToPoint(cover.center, middle)) cover.center = middle;
+        for (UIView *image in cover.subviews) {
+            if (!CGRectEqualToRect(image.frame, cover.bounds)) image.bounds = image.bounds, image.center = image.center;
         }
     }
 

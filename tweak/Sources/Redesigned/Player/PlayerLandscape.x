@@ -171,6 +171,13 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     if (self.view.bounds.size.width <= self.view.bounds.size.height) return;
+    if (_field && !CGRectEqualToRect(_field.frame, self.view.bounds)) {
+        _field.frame = self.view.bounds;
+        [_field setNeedsLayout];
+        [_field layoutIfNeeded];
+    }
+    _stage.backgroundColor = UIColor.clearColor;
+    _stage.layer.backgroundColor = NULL;
     CGRect safe = UIEdgeInsetsInsetRect(self.view.bounds, self.view.safeAreaInsets);
     BOOL hasLyrics = SGRPlayerLyricsAvailable();
     if (!hasLyrics) {
@@ -235,10 +242,20 @@ static UIButton *controlButton(NSString *symbol, CGFloat size, NSString *label, 
         } else {
             window.alpha = 0.0;
         }
+        if (self->_field) {
+            self->_field.frame = (CGRect){CGPointZero, size};
+            [self->_field setNeedsLayout];
+            [self->_field layoutIfNeeded];
+        }
         [self.view setNeedsLayout];
         [self.view layoutIfNeeded];
     } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
         self->_transitioning = NO;
+        if (self->_field) {
+            self->_field.frame = self.view.bounds;
+            [self->_field setNeedsLayout];
+            [self->_field layoutIfNeeded];
+        }
     }];
 }
 

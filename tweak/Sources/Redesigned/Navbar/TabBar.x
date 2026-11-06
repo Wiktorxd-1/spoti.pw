@@ -365,24 +365,43 @@ static CGRect pillIn(UIView *host, UITabBar *bar) {
         }
     });
     UIWindow *window = host.window;
-    CGFloat rightInset = (SGIsDuoDevice() || (window && window.safeAreaInsets.right > 20))
-        ? MAX(window ? window.safeAreaInsets.right : 0, 92.0)
-        : (window ? window.safeAreaInsets.right : 0);
-    CGFloat leftInset = window ? window.safeAreaInsets.left : 0;
-    CGFloat usable = host.bounds.size.width - leftInset - rightInset;
-    CGFloat maxW = MIN(usable - 24, 540);
+    if (SGIsDuoUnfolded()) {
+        CGFloat rightInset = (window && window.safeAreaInsets.right > 20)
+            ? MAX(window.safeAreaInsets.right, 92.0)
+            : 92.0;
+        CGFloat leftInset = window ? window.safeAreaInsets.left : 0;
+        CGFloat usable = host.bounds.size.width - leftInset - rightInset;
+        CGFloat maxW = MIN(usable - 24, 540);
+
+        if (!CGRectIsNull(best)) {
+            if (best.size.width > maxW) {
+                best.size.width = maxW;
+            }
+            best.origin.x = round(leftInset + (usable - best.size.width) / 2.0);
+            return best;
+        }
+        CGFloat bottom = window ? window.safeAreaInsets.bottom : 0;
+        CGFloat height = 62;
+        CGFloat width = MIN(host.bounds.size.width - 40, maxW);
+        CGFloat x = round(leftInset + (usable - width) / 2.0);
+        return CGRectMake(x, host.bounds.size.height - bottom - height, width, height);
+    }
 
     if (!CGRectIsNull(best)) {
-        if (best.size.width > maxW) {
-            best.size.width = maxW;
+        if (best.size.width > 560) {
+            best.origin.x = round((host.bounds.size.width - 560) / 2.0);
+            best.size.width = 560;
         }
-        best.origin.x = round(leftInset + (usable - best.size.width) / 2.0);
         return best;
     }
-    CGFloat bottom = window ? window.safeAreaInsets.bottom : 0;
+    CGFloat bottom = host.window.safeAreaInsets.bottom;
     CGFloat height = 62;
-    CGFloat width = MIN(host.bounds.size.width - 40, maxW);
-    CGFloat x = round(leftInset + (usable - width) / 2.0);
+    CGFloat width = host.bounds.size.width - 40;
+    CGFloat x = 20;
+    if (width > 560) {
+        width = 560;
+        x = (host.bounds.size.width - width) / 2.0;
+    }
     return CGRectMake(x, host.bounds.size.height - bottom - height, width, height);
 }
 

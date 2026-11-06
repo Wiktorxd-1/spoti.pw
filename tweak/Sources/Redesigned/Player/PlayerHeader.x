@@ -25,12 +25,14 @@ static void glassInside(UIViewController *unit, NSArray<NSString *> *identifiers
         if ([identifiers[i] isEqualToString:@"Context menu"]) {
             SGPlayerMenuWatchMoreButton(button);
             SGRPlayerMenuWatchMoreButton(button);
-            if (SGIsDuoDevice()) {
+            if (SGIsDuoUnfolded()) {
                 button.superview.clipsToBounds = NO;
                 host.clipsToBounds = NO;
                 if (host.superview) host.superview.clipsToBounds = NO;
                 CGAffineTransform down = CGAffineTransformMakeTranslation(0, 320);
                 if (!CGAffineTransformEqualToTransform(button.transform, down)) button.transform = down;
+            } else {
+                if (!CGAffineTransformIsIdentity(button.transform)) button.transform = CGAffineTransformIdentity;
             }
         }
         found++;
@@ -111,6 +113,10 @@ static void pillBehindContext(UIViewController *unit) {
     CGFloat height = MAX(kPillMinHeight, ceil(textSize.height + 14.0));
     box.bounds = CGRectMake(0, 0, width, height);
     box.center = CGPointMake(CGRectGetMidX(label.bounds), CGRectGetMidY(label.bounds));
+    box.layer.cornerRadius = height / 2.0;
+    box.layer.cornerCurve = kCACornerCurveContinuous;
+    box.clipsToBounds = YES;
+    SGShapeGlass(box, height / 2.0, YES);
     box.hidden = label.hidden;
     box.alpha = label.alpha;
     SGRGlassCapsuleInside(box, &kPillKey, box.bounds.size, NO);

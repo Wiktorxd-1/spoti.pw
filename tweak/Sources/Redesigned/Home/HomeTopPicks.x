@@ -404,6 +404,7 @@ static UIImage *coverOf(UIView *card) {
 // Cells made or reused after the gradient came carry Spotify's black again: cleared as they lay out.
 static void stripBase(UIView *view, NSUInteger depth) {
     if (!view) return;
+    if (view.frame.origin.y > 650.0) return;
     if (SGIsBaseSurface(view.layer.backgroundColor)) view.layer.backgroundColor = NULL;
     if (view.backgroundColor && SGIsBaseSurface(view.backgroundColor.CGColor)) view.backgroundColor = UIColor.clearColor;
     if (depth == 0) return;
@@ -419,19 +420,21 @@ static void paintAura(UICollectionView *list, UIColor *color) {
         objc_setAssociatedObject(list, &kAuraKey, gradient, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         [list.layer insertSublayer:gradient atIndex:0];
         for (UIView *cell in list.subviews) {
-            SGForEachView(cell, ^(UIView *v) {
-                if (SGIsBaseSurface(v.layer.backgroundColor)) v.layer.backgroundColor = NULL;
-            });
+            if (cell.frame.origin.y < 650.0) {
+                SGForEachView(cell, ^(UIView *v) {
+                    if (SGIsBaseSurface(v.layer.backgroundColor)) v.layer.backgroundColor = NULL;
+                });
+            }
         }
     }
     sgr_homeRoot = list;
-    CGFloat over = 600, span = MAX(MAX(list.bounds.size.height, list.contentSize.height) + 1200, 4000.0);
+    CGFloat over = 600, span = 650.0;
     CGRect frame = CGRectMake(0, -over - list.adjustedContentInset.top, list.bounds.size.width, over + span);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     if (!CGRectEqualToRect(gradient.frame, frame)) gradient.frame = frame;
     [CATransaction commit];
-    NSArray *to = @[(id)color.CGColor, (id)color.CGColor, (id)[color colorWithAlphaComponent:0.18].CGColor];
+    NSArray *to = @[(id)color.CGColor, (id)color.CGColor, (id)[color colorWithAlphaComponent:0.0].CGColor];
     CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"colors"];
     fade.fromValue = gradient.presentationLayer.colors ?: gradient.colors;
     fade.toValue = to;
