@@ -1047,7 +1047,7 @@ BOOL SGRPlayerIsPresented(void) {
     sg_info = unit;
     UIView *host = unit.viewIfLoaded;
     // The title and the artist are two labels of one arranged element view, which is what moves.
-    UIView *label = SGRFindByIdentifier(host, @"now-playing-title-label", &kTitleKey);
+    __block UIView *label = SGRFindByIdentifier(host, @"now-playing-title-label", &kTitleKey);
     if (!label) {
         SGForEachView(host, ^(UIView *v) {
             if (!label && [v isKindOfClass:UILabel.class]) {
