@@ -18,6 +18,7 @@
 #import "Shared/Haptics/Haptics.h"
 #import "Shared/Player/SpeedPitch.h"
 #import "Shared/Duo/SGDuo.h"
+#import "Redesigned/Kit/SGRRepaint.h"
 #import "Player.h"
 #import <objc/runtime.h>
 
@@ -320,6 +321,48 @@ static void watchHold(UIView *tilt) {
 // time, or one with no lyrics at all, leaves it hidden and Spotify's line is back. A tap on the
 // preview still goes to Spotify, whose view remains the one under ours to receive it.
 static const void *kPreviewKey;
+static __weak UIView *sg_inlineLyricsView;
+
+void SGRPlayerUpdateInlineLyrics(void) {
+    UIView *lyricsView = sg_inlineLyricsView;
+    if (!lyricsView) return;
+    BOOL open = SGRPlayerLyricsOpen();
+    BOOL hasLyrics = !lyricsView.hidden && lyricsView.alpha > 0.01 && lyricsView.bounds.size.height > 10;
+    CGFloat shift = (hasLyrics && !open) ? round(MIN(MAX(36.0, lyricsView.bounds.size.height), 52.0)) : 0.0;
+
+    UIView *tilt = showingTilt();
+    if (tilt) {
+        CGAffineTransform tiltTransform = shift > 0 ? CGAffineTransformMakeTranslation(0, -shift) : CGAffineTransformIdentity;
+        if (!CGAffineTransformEqualToTransform(tilt.transform, tiltTransform)) {
+            tilt.transform = tiltTransform;
+        }
+    }
+
+    CGAffineTransform lyricsTransform = shift > 0 ? CGAffineTransformMakeTranslation(0, -shift) : CGAffineTransformIdentity;
+    if (!CGAffineTransformEqualToTransform(lyricsView.transform, lyricsTransform)) {
+        lyricsView.transform = lyricsTransform;
+    }
+
+    UIView *player = sgr_playerRoot;
+    if (!player) {
+        for (UIView *v = lyricsView.superview; v; v = v.superview) {
+            if ([v.accessibilityIdentifier isEqualToString:@"SPTNowPlayingView"] || [NSStringFromClass(v.class) containsString:@"NowPlayingView"]) {
+                player = v;
+                break;
+            }
+        }
+    }
+    if (player) {
+        static char kBottomStackKey;
+        UIView *stack = SGRFindByIdentifier(player, @"npv.bottomStackView", &kBottomStackKey);
+        if (stack) {
+            CGAffineTransform stackTransform = shift > 0 ? CGAffineTransformMakeTranslation(0, -shift) : CGAffineTransformIdentity;
+            if (!CGAffineTransformEqualToTransform(stack.transform, stackTransform)) {
+                stack.transform = stackTransform;
+            }
+        }
+    }
+}
 
 %hook _TtC28NowPlaying_ContentLayersImpl16CoverArtCellImpl
 - (void)layoutSubviews {
@@ -344,6 +387,18 @@ static const void *kPreviewKey;
             if (SGIsBaseSurface(v.layer.backgroundColor)) v.layer.backgroundColor = NULL;
         }
     });
+    static Class lyricsClass;
+    if (!lyricsClass) lyricsClass = NSClassFromString(@"_TtC22Lyrics_NPVContainerKit19LyricsContainerView");
+    if (lyricsClass) {
+        __block UIView *lyrics = nil;
+        SGForEachView(cell, ^(UIView *v) {
+            if (!lyrics && [v isKindOfClass:lyricsClass]) lyrics = v;
+        });
+        if (lyrics) {
+            sg_inlineLyricsView = lyrics;
+            SGRPlayerUpdateInlineLyrics();
+        }
+    }
 }
 %end
 
@@ -377,6 +432,8 @@ static const void *kPreviewKey;
     // One line reads at about half the room's height; a room that grows or shrinks takes the font with it.
     [preview useCompactFontSize:MAX(13, MIN(22, bounds.size.height * 0.5))];
     [preview syncSiblings];   // a line Spotify puts in after ours was built is dimmed too
+    sg_inlineLyricsView = host;
+    SGRPlayerUpdateInlineLyrics();
 }
 %end
 

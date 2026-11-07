@@ -734,6 +734,7 @@ void SGRPlayerMotionLyricsChanged(void) {
     [sg_motion setBlurred:blurred animated:sg_motion.window != nil];
     SGRArtworkField *field = SGRPlayerField();
     [field setLyricsBlurred:blurred animated:field.window != nil];
+    SGRPlayerLyricsUpdateBlur();
 }
 
 static void videoSurface(id unit, BOOL attached) {

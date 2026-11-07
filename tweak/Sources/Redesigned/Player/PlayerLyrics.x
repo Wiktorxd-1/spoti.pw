@@ -260,7 +260,7 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     CGFloat durationY = CGRectGetMinY(bar);
     CGFloat bottomLimit = (durationY > lines + 50 && durationY < host.bounds.size.height) ? durationY : host.bounds.size.height - 200;
     l.stage = CGRectMake(stageX, lines, stageWidth, MAX(0, bottomLimit - kLyricsBottom - lines));
-    l.ok = l.stage.size.height > kLivingHeight / 2 && (isWide || l.lift < 0);
+    l.ok = l.stage.size.height > 80;
     return l;
 }
 
@@ -835,6 +835,7 @@ static void setOpen(BOOL open, BOOL animated) {
     }
     if (!open) setAlone(NO, NO);
     sg_open = open;
+    SGRPlayerUpdateInlineLyrics();
     SGRPlayerHeaderUpdateLyrics();
     SGRPlayerLyricsChanged();
 
@@ -885,8 +886,9 @@ static void setOpen(BOOL open, BOOL animated) {
         placeTitleRow(l);
     };
     UIVisualEffectView *blur = backdropBlurIn(host);
+    BOOL blurEnabled = open && SGRPlayerMotionLyricsBlurEnabled();
     void (^fade)(void) = ^{
-        if (blur) blur.alpha = open ? 1.0 : 0.0;
+        if (blur) blur.alpha = blurEnabled ? 1.0 : 0.0;
         overlay.thumb.alpha = !open && fades ? 0 : 1;
         sg_floating.viewIfLoaded.alpha = open ? 0 : 1;
         SGForEachView(host, ^(UIView *view) {
@@ -945,13 +947,26 @@ void SGRPlayerToggleLyrics(void) {
 
 // A layout pass, a new track or a turn of the phone: the state is put back where it belongs without
 // animating, since the frames it is measured from have just changed.
+void SGRPlayerLyricsUpdateBlur(void) {
+    UIView *host = sg_host;
+    if (!host) return;
+    UIVisualEffectView *blur = backdropBlurIn(host);
+    if (blur) {
+        BOOL blurEnabled = sg_open && SGRPlayerMotionLyricsBlurEnabled();
+        [UIView animateWithDuration:0.2 animations:^{
+            blur.alpha = blurEnabled ? 1.0 : 0.0;
+        }];
+    }
+}
+
 static void replace(void) {
     UIView *host = sg_host;
     if (!host || sg_moving) return;   // a pass in the middle of the transition would cut it short
     UIVisualEffectView *blur = backdropBlurIn(host);
     if (blur) {
         blur.frame = host.bounds;
-        blur.alpha = sg_open ? 1.0 : 0.0;
+        BOOL blurEnabled = sg_open && SGRPlayerMotionLyricsBlurEnabled();
+        blur.alpha = blurEnabled ? 1.0 : 0.0;
     }
     SGRLyricsLayout l = layoutIn(host);
     if (sg_open && !l.ok) return;
