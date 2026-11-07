@@ -58,7 +58,35 @@ static const CGFloat kLivingHeight = 200;
 // The lines on their own: the controls under them fade after this long without a touch.
 static const NSTimeInterval kRest = 4;
 
-static char kOverlayKey, kPlateKey, kTitleKey, kStackKey;
+static char kOverlayKey, kPlateKey, kTitleKey, kStackKey, kHostBlurKey;
+
+static UIVisualEffectView *backdropBlurIn(UIView *host) {
+    if (!host) return nil;
+    UIVisualEffectView *blur = objc_getAssociatedObject(host, &kHostBlurKey);
+    if (!blur) {
+        blur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark]];
+        blur.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+        blur.userInteractionEnabled = NO;
+        blur.accessibilityElementsHidden = YES;
+        blur.alpha = 0.0;
+        blur.frame = host.bounds;
+        blur.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        objc_setAssociatedObject(host, &kHostBlurKey, blur, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    UIView *stack = SGRFindByIdentifier(host, @"npv.bottomStackView", &kStackKey);
+    if (blur.superview != host) {
+        if (stack && [host.subviews containsObject:stack]) {
+            [host insertSubview:blur belowSubview:stack];
+        } else {
+            [host insertSubview:blur atIndex:0];
+        }
+    } else if (stack && [host.subviews containsObject:stack]) {
+        NSInteger blurIdx = [host.subviews indexOfObject:blur];
+        NSInteger stackIdx = [host.subviews indexOfObject:stack];
+        if (blurIdx > stackIdx) [host insertSubview:blur belowSubview:stack];
+    }
+    return blur;
+}
 static BOOL sg_open;
 static BOOL sg_moving;                      // the transition is in flight, so no layout pass may re-place it
 static BOOL sg_graceOver;
@@ -209,7 +237,11 @@ static SGRLyricsLayout layoutIn(UIView *host) {
     UIView *info = sg_info.viewIfLoaded, *duration = sg_duration.viewIfLoaded, *title = sg_titleElement;
     if (!host || host.bounds.size.height < kLivingHeight || !info || !duration) return l;
     CGRect area = SGRPlayerArtworkAreaIn(host), cover = SGRPlayerCoverFrameIn(host);
-    if (CGRectIsNull(area) || CGRectIsNull(cover)) return l;
+    static CGRect lastArea, lastCover;
+    if (!CGRectIsNull(area)) lastArea = area;
+    if (!CGRectIsNull(cover)) lastCover = cover;
+    if (CGRectIsNull(cover)) cover = !CGRectIsNull(lastCover) ? lastCover : CGRectMake(SGRSideMargin, 110, host.bounds.size.width - 2 * SGRSideMargin, host.bounds.size.width - 2 * SGRSideMargin);
+    if (CGRectIsNull(area)) area = !CGRectIsNull(lastArea) ? lastArea : CGRectMake(0, 110, host.bounds.size.width, host.bounds.size.width);
     CGRect row = untransformed(info, host), bar = untransformed(duration, host);
     CGFloat hostWidth = host.bounds.size.width;
     BOOL isWide = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) || SGIsDuoDevice() || (hostWidth > 680);
@@ -256,7 +288,7 @@ static CGFloat trailingEdgeIn(UIView *info) {
 // own fade would have been rather than cutting it.
 static void clipTitle(UIView *element, CGFloat width) {
     CGRect bounds = element.bounds;
-    if (width >= bounds.size.width - 0.5 || bounds.size.height < 1) {
+    if (width >= bounds.size.width - 0.5 || bounds.size.height < 1 || width <= 10.0) {
         element.layer.mask = nil;
         return;
     }
@@ -838,7 +870,9 @@ static void setOpen(BOOL open, BOOL animated) {
         overlay.cover.layer.cornerRadius = thumbRadius(l, open || fades);
         placeTitleRow(l);
     };
+    UIVisualEffectView *blur = backdropBlurIn(host);
     void (^fade)(void) = ^{
+        if (blur) blur.alpha = open ? 1.0 : 0.0;
         overlay.thumb.alpha = !open && fades ? 0 : 1;
         sg_floating.viewIfLoaded.alpha = open ? 0 : 1;
         SGForEachView(host, ^(UIView *view) {
@@ -854,6 +888,7 @@ static void setOpen(BOOL open, BOOL animated) {
     void (^settled)(BOOL) = ^(BOOL finished) {
         sg_moving = NO;
         if (sg_open) return;   // opened again while it was going away
+        if (blur) blur.alpha = 0.0;
         SGRSingControlRemoveForPage(overlay.stage);
         SGRPlayerCoverList().alpha = 1;
         [overlay removeFromSuperview];
@@ -903,8 +938,14 @@ static void replace(void) {
     if (sg_open && !l.ok) return;
     placeTitleRow(l);
     sg_floating.viewIfLoaded.alpha = sg_open ? 0 : 1;
+    UIVisualEffectView *blur = backdropBlurIn(host);
+    if (blur) {
+        blur.frame = host.bounds;
+        blur.alpha = sg_open ? 1.0 : 0.0;
+    }
     if (!sg_open) return;
     SGRPlayerLyricsOverlay *overlay = objc_getAssociatedObject(host, &kOverlayKey);
+    overlay.cover.image = SGRNowPlayingArtwork(NULL, NULL);
     if (!overlay.superview) return;
     if (overlay.superview == host && host.subviews.lastObject != overlay) [host bringSubviewToFront:overlay];
     SGForEachView(host, ^(UIView *view) {
@@ -1154,9 +1195,12 @@ BOOL SGRPlayerIsPresented(void) {
     }
     SGRPlayerLyricsChanged();
     // Playback state and the lyrics cache can publish a track on adjacent callbacks.
-    for (NSNumber *wait in @[@0.25, @1]) {
+    for (NSNumber *wait in @[@0.05, @0.15, @0.3, @0.6, @1.0]) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(wait.doubleValue * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            if ([self->_track isEqualToString:track]) SGRPlayerLyricsChanged();
+            if ([self->_track isEqualToString:track]) {
+                replace();
+                SGRPlayerLyricsChanged();
+            }
         });
     }
     // The lines already up wait out a grace for the new track's before they go, a track after it its own.

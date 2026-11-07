@@ -336,69 +336,45 @@ static BOOL setText(UILabel *label, NSString *text) {
     if (_albumControls) {
         CGFloat playWidth = MIN(MAX(kPlayWidth, [_play sgr_width]), MAX(0, text - side - kRowSpacing));
         BOOL rtl = self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
-        CGFloat x = 0;
-        NSArray<UIView *> *group = _preview ? @[_preview, _shuffle, _albumDownload, _trailing] : @[_shuffle, _albumDownload, _trailing];
-        for (UIView *button in group) {
-            if (button.hidden) continue;
-            button.frame = CGRectMake(x, 0, side, side);
-            x += side + 12;
-        }
-        CGSize size = CGSizeMake(MAX(0, x - 12), side);
-        if (!CGSizeEqualToSize(_albumControls.contentSize, size)) _albumControls.contentSize = size;
 
-        if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
-            CGFloat playX = round((width - playWidth) / 2.0);
-            _play.frame = CGRectMake(playX, y, playWidth, side);
+        if (_play.superview != _albumControls) {
+            [_albumControls addSubview:_play];
+        }
+
+        NSMutableArray<UIView *> *orderedButtons = [NSMutableArray arrayWithCapacity:5];
+        if (_preview && !_preview.hidden) [orderedButtons addObject:_preview];
+        if (_shuffle && !_shuffle.hidden) [orderedButtons addObject:_shuffle];
+        if (_play && !_play.hidden) [orderedButtons addObject:_play];
+        if (!_albumDownload.hidden) [orderedButtons addObject:_albumDownload];
+        if (_trailing && !_trailing.hidden) [orderedButtons addObject:_trailing];
+
+        CGFloat totalWidth = 0;
+        for (NSUInteger i = 0; i < orderedButtons.count; i++) {
+            UIView *b = orderedButtons[i];
+            CGFloat bWidth = (b == _play) ? playWidth : side;
+            totalWidth += bWidth;
+            if (i + 1 < orderedButtons.count) totalWidth += kRowSpacing;
+        }
+
+        CGFloat startX = 0;
+        if (totalWidth <= width - 2 * kSide) {
+            startX = round((width - totalWidth) / 2.0);
             _albumControls.frame = CGRectMake(0, y, width, side);
             _albumControls.contentSize = CGSizeMake(width, side);
             _albumControls.scrollEnabled = NO;
-
-            if (rtl) {
-                CGFloat leftX = playX + playWidth + kRowSpacing;
-                _shuffle.frame = CGRectMake(leftX, 0, side, side);
-                if (_preview && !_preview.hidden) {
-                    _preview.frame = CGRectMake(leftX + side + kRowSpacing, 0, side, side);
-                }
-                CGFloat rightX = playX - kRowSpacing - side;
-                _trailing.frame = CGRectMake(rightX, 0, side, side);
-                if (!_albumDownload.hidden) {
-                    rightX -= (side + kRowSpacing);
-                    _albumDownload.frame = CGRectMake(rightX, 0, side, side);
-                }
-            } else {
-                _shuffle.frame = CGRectMake(playX - kRowSpacing - side, 0, side, side);
-                if (_preview && !_preview.hidden) {
-                    _preview.frame = CGRectMake(playX - 2 * kRowSpacing - 2 * side, 0, side, side);
-                }
-                CGFloat rightX = playX + playWidth + kRowSpacing;
-                if (!_albumDownload.hidden) {
-                    _albumDownload.frame = CGRectMake(rightX, 0, side, side);
-                    rightX += side + kRowSpacing;
-                }
-                _trailing.frame = CGRectMake(rightX, 0, side, side);
-            }
         } else {
-            CGFloat cluster = size.width + kRowSpacing + playWidth;
-            if (width > 440 && cluster <= text) {
-                CGFloat startX = round((width - cluster) / 2.0);
-                if (rtl) {
-                    _play.frame = CGRectMake(startX + size.width + kRowSpacing, y, playWidth, side);
-                    _albumControls.frame = CGRectMake(startX, y, size.width, side);
-                } else {
-                    _play.frame = CGRectMake(startX, y, playWidth, side);
-                    _albumControls.frame = CGRectMake(startX + playWidth + kRowSpacing, y, size.width, side);
-                }
-                _albumControls.scrollEnabled = NO;
-            } else {
-                CGFloat playX = rtl ? kSide : width - kSide - playWidth;
-                _play.frame = CGRectMake(playX, y, playWidth, side);
-                CGFloat groupWidth = MAX(0, text - playWidth - kRowSpacing);
-                _albumControls.frame = CGRectMake(rtl ? CGRectGetMaxX(_play.frame) + kRowSpacing : kSide,
-                                                  y, groupWidth, side);
-                _albumControls.scrollEnabled = size.width > groupWidth + 0.5;
-                CGFloat limit = MAX(0, size.width - groupWidth);
-                if (_albumControls.contentOffset.x > limit) _albumControls.contentOffset = CGPointMake(limit, 0);
-            }
+            startX = kSide;
+            _albumControls.frame = CGRectMake(0, y, width, side);
+            _albumControls.contentSize = CGSizeMake(totalWidth + 2 * kSide, side);
+            _albumControls.scrollEnabled = YES;
+        }
+
+        NSArray<UIView *> *layoutList = rtl ? [[orderedButtons reverseObjectEnumerator] allObjects] : orderedButtons;
+        CGFloat curX = startX;
+        for (UIView *b in layoutList) {
+            CGFloat bWidth = (b == _play) ? playWidth : side;
+            b.frame = CGRectMake(curX, 0, bWidth, side);
+            curX += bWidth + kRowSpacing;
         }
     } else {
         CGFloat playWidth = MAX(kPlayWidth, [_play sgr_width]);
