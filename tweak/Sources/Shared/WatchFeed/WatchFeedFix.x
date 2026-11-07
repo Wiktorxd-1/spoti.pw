@@ -1,5 +1,6 @@
 #import <UIKit/UIKit.h>
 #import "Core/SGCore.h"
+#import "Settings/SGPageStyle.h"
 
 static BOOL sg_watchFeedActive = NO;
 static NSTimeInterval sg_watchFeedActivatedAt = 0;
@@ -50,9 +51,6 @@ static BOOL isWatchFeedOnScreen(void) {
         sg_watchFeedActivatedAt = [NSDate timeIntervalSinceReferenceDate];
         if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
             self.modalPresentationStyle = UIModalPresentationFullScreen;
-            UITraitCollection *compact = [UITraitCollection traitCollectionWithHorizontalSizeClass:UIUserInterfaceSizeClassCompact];
-            UITraitCollection *phone = [UITraitCollection traitCollectionWithUserInterfaceIdiom:UIUserInterfaceIdiomPhone];
-            self.overrideTraitCollection = [UITraitCollection traitCollectionWithTraitsFromCollections:@[self.traitCollection ?: [UITraitCollection currentTraitCollection], compact, phone]];
         }
     }
 }
@@ -64,6 +62,16 @@ static BOOL isWatchFeedOnScreen(void) {
             sg_watchFeedActive = NO;
         }
     }
+}
+
+- (UITraitCollection *)traitCollection {
+    UITraitCollection *traits = %orig;
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && isWatchFeedName(NSStringFromClass(self.class))) {
+        UITraitCollection *compact = [UITraitCollection traitCollectionWithHorizontalSizeClass:UIUserInterfaceSizeClassCompact];
+        UITraitCollection *phone = [UITraitCollection traitCollectionWithUserInterfaceIdiom:UIUserInterfaceIdiomPhone];
+        return [UITraitCollection traitCollectionWithTraitsFromCollections:@[traits, compact, phone]];
+    }
+    return traits;
 }
 %end
 
