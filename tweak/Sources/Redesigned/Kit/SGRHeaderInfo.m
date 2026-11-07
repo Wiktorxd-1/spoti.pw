@@ -255,6 +255,9 @@ static BOOL setText(UILabel *label, NSString *text) {
         [_albumControls addSubview:_albumDownload];
         [_albumControls addSubview:_trailing];
     }
+    if (_preview && _preview != preview) {
+        [_preview removeFromSuperview];
+    }
     _preview = preview;
     if (preview) {
         if (preview.superview != _albumControls) [_albumControls addSubview:preview];
@@ -336,6 +339,9 @@ static BOOL setText(UILabel *label, NSString *text) {
     if (_albumControls) {
         CGFloat playWidth = MIN(MAX(kPlayWidth, [_play sgr_width]), MAX(0, text - side - kRowSpacing));
         BOOL rtl = self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
+
+        _albumControls.contentInset = UIEdgeInsetsZero;
+        _albumControls.contentOffset = CGPointZero;
 
         if (_play.superview != _albumControls) {
             [_albumControls addSubview:_play];

@@ -756,6 +756,8 @@ static BOOL beginTrack(NSString *track) {
     sg_begun++;
     BOOL blurLyrics = SGRPlayerLyricsOpen() && lyricsBlurEnabledForTrack(track);
     [sg_motion setBlurred:blurLyrics animated:sg_motion.window != nil];
+    SGRArtworkField *field = SGRPlayerField();
+    [field setLyricsBlurred:blurLyrics animated:field.window != nil];
     // Read on every track, since the ⋯ menu switches it.
     BOOL wanted = SGRPlayerBackground() == SGRPlayerBackgroundAnimated && !videoShowing() && motionAllowed();
     if (wanted && [track isEqualToString:sg_shown]) return YES;

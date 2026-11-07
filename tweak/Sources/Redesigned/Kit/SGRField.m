@@ -128,9 +128,10 @@ static const CGFloat kLyricsBlur = 0.3;
     _fill.contentsGravity = kCAGravityResizeAspectFill;
     _fill.masksToBounds = YES;
     _fill.hidden = YES;
-    _fill.mask = nil;
+    _fillMask = fillRamp(0.76, 0.985, NO);
+    _fill.mask = _fillMask;
     [self.layer addSublayer:_fill];
-    static const CGFloat bands[4][2] = {{0.45, 0.65}, {0.55, 0.75}, {0.65, 0.85}, {0.75, 0.95}};
+    static const CGFloat bands[4][2] = {{0.74, 0.84}, {0.79, 0.89}, {0.84, 0.94}, {0.89, 0.985}};
     NSMutableArray<CALayer *> *blurLayers = [NSMutableArray arrayWithCapacity:4];
     NSMutableArray<CAGradientLayer *> *blurMasks = [NSMutableArray arrayWithCapacity:4];
     for (NSUInteger index = 0; index < 4; index++) {
@@ -197,9 +198,10 @@ static const CGFloat kLyricsBlur = 0.3;
     _black.frame = painted;
     _black.locations = @[@(MIN(1, from / total)), @(MIN(1, to / total))];
     _backdrop.frame = CGRectMake(painted.origin.x, 0, painted.size.width, [self backdropHeightNow]);
+    CGFloat fillHeight = MIN(painted.size.height, round(windowHeight(self) * 0.625));
     _fillBackground.frame = painted;
-    _fill.frame = painted;
-    _fill.mask = nil;
+    _fill.frame = CGRectMake(painted.origin.x, 0, painted.size.width, fillHeight);
+    _fillMask.frame = _fill.bounds;
     for (NSUInteger index = 0; index < _fillBlurLayers.count; index++) {
         _fillBlurLayers[index].frame = _fill.bounds;
         _fillBlurMasks[index].frame = _fill.bounds;
@@ -303,14 +305,10 @@ static const CGFloat kLyricsBlur = 0.3;
 - (void)setFills:(BOOL)fills {
     if (fills == _fills) return;
     _fills = fills;
-    if (fills) {
-        _fillBackground.backgroundColor = _color.CGColor;
-        [self.layer insertSublayer:_black above:_fill];
-    } else {
-        [self.layer insertSublayer:_black below:_backdrop];
-    }
+    if (fills) _fillBackground.backgroundColor = _color.CGColor;
+    _black.hidden = fills || _fluid || _flows;
     _backdrop.hidden = fills || _fluid || _flows;
-    _fillBackground.hidden = YES;
+    _fillBackground.hidden = !fills || _fluid || _flows;
     _fill.hidden = !fills || _fluid || _flows || !_image.CGImage;
     [self applyLyricsBlurAnimated:NO];
     [self setNeedsLayout];

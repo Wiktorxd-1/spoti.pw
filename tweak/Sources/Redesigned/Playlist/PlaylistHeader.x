@@ -277,8 +277,11 @@ static void showPlaylist(SGRHeaderInfo *info, UIView *block, UIView *root, id mo
     UIView *save = own ? nil : SGRFindByIdentifier(block, @"Components.UI.AddToButton", &kAddKey);
     UIView *download = SGRFindByIdentifier(block, @"DownloadButton.Granular*", &kDownloadKey);
     BOOL isPad = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad);
-    UIView *preview = isPad ? nil : (SGRFindByIdentifier(block, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey)
-                                  ?: SGRFindByIdentifier(root, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey));
+    BOOL showPreview = !isPad && SGFlag(SGRKeyAlbumTrackPreview, YES);
+    UIView *rawPreview = SGRFindByIdentifier(block, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey)
+                      ?: SGRFindByIdentifier(root, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey);
+    UIView *preview = showPreview ? rawPreview : nil;
+    if (rawPreview && !showPreview) conceal(rawPreview);
     if (preview) { preview.alpha = 1.0; preview.hidden = NO; }
     [info showAlbumShuffle:shuffle play:play download:download add:save preview:preview playColor:SGRPlaylistFieldColor(info)];
     // Only what the button draws goes: a concealed layer still sends the actions the capsule fires.
@@ -328,9 +331,14 @@ static SGRHeaderInfo *applyInfo(UIView *block, UIView *headerRoot, UIViewControl
         [block addSubview:info];
     }
     else if (block.subviews.lastObject != info) [block bringSubviewToFront:info];
+    block.clipsToBounds = NO;
+    if (block.superview) block.superview.clipsToBounds = NO;
     BOOL isPad = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad);
-    UIView *preview = isPad ? nil : (SGRFindByIdentifier(block, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey)
-                                  ?: SGRFindByIdentifier(headerRoot, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey));
+    BOOL showPreview = !isPad && SGFlag(SGRKeyAlbumTrackPreview, YES);
+    UIView *rawPreview = SGRFindByIdentifier(block, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey)
+                      ?: SGRFindByIdentifier(headerRoot, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey);
+    UIView *preview = showPreview ? rawPreview : nil;
+    if (rawPreview && !showPreview) conceal(rawPreview);
     if (preview) { preview.alpha = 1.0; preview.hidden = NO; }
     for (UIView *sub in block.subviews) {
         if (sub != info && sub != preview) conceal(sub);

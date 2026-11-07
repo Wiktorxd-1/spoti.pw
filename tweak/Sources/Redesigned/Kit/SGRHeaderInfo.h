@@ -1,6 +1,8 @@
 #import <UIKit/UIKit.h>
 #import "Shared/Player/PlayerState.h"
 
+#define SGRKeyAlbumTrackPreview @"spotifyglass.redesign.album.trackPreview"
+
 extern const CGFloat SGRHeaderInfoBottom;     // 14, under the content
 extern const CGFloat SGRHeaderInfoTitleRise;  // 56, of the content over the picture
 

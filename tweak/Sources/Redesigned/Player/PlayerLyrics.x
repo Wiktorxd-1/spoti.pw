@@ -528,22 +528,36 @@ static CGFloat thumbRadius(SGRLyricsLayout l, BOOL open) {
 // faded (sg_faded) come back, so nothing Spotify keeps hidden is shown.
 static NSHashTable<UIView *> *sg_faded;
 
+static BOOL isInfoView(UIView *view) {
+    if (!view) return NO;
+    UIView *info = sg_info.viewIfLoaded;
+    if (info && ([info isDescendantOfView:view] || [view isDescendantOfView:info] || info == view)) return YES;
+    UIResponder *r = view.nextResponder;
+    if ([r isKindOfClass:UIViewController.class] && [NSStringFromClass(r.class) containsString:@"InformationElement"]) return YES;
+    for (UIView *sub in view.subviews) {
+        UIResponder *sr = sub.nextResponder;
+        if ([sr isKindOfClass:UIViewController.class] && [NSStringFromClass(sr.class) containsString:@"InformationElement"]) return YES;
+    }
+    if (SGRFindByIdentifier(view, @"now-playing-title-label", NULL)) return YES;
+    return NO;
+}
+
 static NSArray<UIView *> *controlViews(void) {
-    UIView *info = sg_info.viewIfLoaded, *floating = sg_floating.viewIfLoaded;
+    UIView *floating = sg_floating.viewIfLoaded;
     NSMutableArray<UIView *> *views = [NSMutableArray array];
     UIView *stack = SGRFindByIdentifier(sg_host, @"npv.bottomStackView", &kStackKey);
     if (stack) {
         for (UIView *view in stack.subviews) {
-            if ([info isDescendantOfView:view] || [floating isDescendantOfView:view]) continue;
+            if (isInfoView(view) || [floating isDescendantOfView:view]) continue;
             [views addObject:view];
         }
     }
     UIView *duration = sg_duration.viewIfLoaded;
-    if (duration && ![views containsObject:duration] && ![info isDescendantOfView:duration]) [views addObject:duration];
+    if (duration && ![views containsObject:duration] && !isInfoView(duration)) [views addObject:duration];
     UIView *controls = SGRPlayerControlsHost();
-    if (controls && ![views containsObject:controls] && ![info isDescendantOfView:controls]) [views addObject:controls];
+    if (controls && ![views containsObject:controls] && !isInfoView(controls)) [views addObject:controls];
     UIView *footer = SGRPlayerFooterHost();
-    if (footer && ![views containsObject:footer] && ![info isDescendantOfView:footer]) [views addObject:footer];
+    if (footer && ![views containsObject:footer] && !isInfoView(footer)) [views addObject:footer];
 
     static NSArray<NSString *> *names;
     static dispatch_once_t once;
@@ -560,7 +574,7 @@ static NSArray<UIView *> *controlViews(void) {
             for (NSString *unit in names) {
                 if ([name containsString:unit]) {
                     UIView *unitView = ((UIViewController *)owner).viewIfLoaded ?: view;
-                    if (![views containsObject:unitView] && ![info isDescendantOfView:unitView] && ![floating isDescendantOfView:unitView]) {
+                    if (![views containsObject:unitView] && !isInfoView(unitView) && ![floating isDescendantOfView:unitView]) {
                         [views addObject:unitView];
                     }
                     break;
@@ -934,15 +948,17 @@ void SGRPlayerToggleLyrics(void) {
 static void replace(void) {
     UIView *host = sg_host;
     if (!host || sg_moving) return;   // a pass in the middle of the transition would cut it short
-    SGRLyricsLayout l = layoutIn(host);
-    if (sg_open && !l.ok) return;
-    placeTitleRow(l);
-    sg_floating.viewIfLoaded.alpha = sg_open ? 0 : 1;
     UIVisualEffectView *blur = backdropBlurIn(host);
     if (blur) {
         blur.frame = host.bounds;
         blur.alpha = sg_open ? 1.0 : 0.0;
     }
+    SGRLyricsLayout l = layoutIn(host);
+    if (sg_open && !l.ok) return;
+    placeTitleRow(l);
+    sg_floating.viewIfLoaded.alpha = sg_open ? 0 : 1;
+    UIView *info = sg_info.viewIfLoaded;
+    if (info && info.alpha == 0) info.alpha = 1.0;
     if (!sg_open) return;
     SGRPlayerLyricsOverlay *overlay = objc_getAssociatedObject(host, &kOverlayKey);
     overlay.cover.image = SGRNowPlayingArtwork(NULL, NULL);
@@ -1076,6 +1092,7 @@ BOOL SGRPlayerIsPresented(void) {
     UIViewController *unit = (UIViewController *)self;
     sg_info = unit;
     UIView *host = unit.viewIfLoaded;
+    if (sg_open && host && host.alpha == 0) host.alpha = 1.0;
     // The title and the artist are two labels of one arranged element view, which is what moves.
     __block UIView *label = SGRFindByIdentifier(host, @"now-playing-title-label", &kTitleKey);
     if (!label) {

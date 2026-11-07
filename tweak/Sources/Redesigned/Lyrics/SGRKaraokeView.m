@@ -180,7 +180,7 @@ static UIView *letterHost(NSString *text, UIFont *font, CGRect bounds, NSArray<U
     _riseEnd = word.end;
     _rightToLeft = rightToLeft;
     [self addSubview:wordLabel(word.text, font, [UIColor colorWithWhite:1 alpha:kDimAlpha], self.bounds, rightToLeft)];
-    BOOL waves = sgLetters && !rightToLeft && word.text.length > 1 && !SGKaraokeUnspacedScript(word.text);
+    BOOL waves = NO;
     NSArray<UILabel *> *letters = nil;
     _lit = waves ? letterHost(word.text, font, self.bounds, &letters) : wordLabel(word.text, font, UIColor.whiteColor, self.bounds, rightToLeft);
     _letters = letters;
