@@ -386,7 +386,8 @@ static SGRHeaderInfo *applyInfo(UIView *header, UIView *page) {
     if (info.superview != header) [header addSubview:info];
     else if (header.subviews.lastObject != info) [header bringSubviewToFront:info];
     SGRAlbumHero *hero = objc_getAssociatedObject(header, &kHeroKey);
-    UIView *preview = SGRFindByIdentifier(header, @"Components.UI.WatchFeedEntityExplorerButton", &kExploreKey);
+    BOOL isPad = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad);
+    UIView *preview = isPad ? nil : SGRFindByIdentifier(header, @"Components.UI.WatchFeedEntityExplorerButton", &kExploreKey);
     for (UIView *sub in header.subviews) {
         if (sub != info && sub != hero && sub != preview) blank(sub);
     }

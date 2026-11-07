@@ -277,8 +277,9 @@ static void showPlaylist(SGRHeaderInfo *info, UIView *block, UIView *root, id mo
     UIView *play = SGRFindByIdentifier(root, @"header-play-button", &kPlayKey);
     UIView *save = own ? nil : SGRFindByIdentifier(block, @"Components.UI.AddToButton", &kAddKey);
     UIView *download = SGRFindByIdentifier(block, @"DownloadButton.Granular*", &kDownloadKey);
-    UIView *preview = SGRFindByIdentifier(block, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey)
-                   ?: SGRFindByIdentifier(root, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey);
+    BOOL isPad = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad);
+    UIView *preview = isPad ? nil : (SGRFindByIdentifier(block, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey)
+                                  ?: SGRFindByIdentifier(root, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey));
     if (preview) { preview.alpha = 1.0; preview.hidden = NO; }
     [info showAlbumShuffle:shuffle play:play download:download add:save preview:preview playColor:SGRPlaylistFieldColor(info)];
     // Only what the button draws goes: a concealed layer still sends the actions the capsule fires.
@@ -328,8 +329,9 @@ static SGRHeaderInfo *applyInfo(UIView *block, UIView *headerRoot, UIViewControl
         [block addSubview:info];
     }
     else if (block.subviews.lastObject != info) [block bringSubviewToFront:info];
-    UIView *preview = SGRFindByIdentifier(block, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey)
-                   ?: SGRFindByIdentifier(headerRoot, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey);
+    BOOL isPad = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad);
+    UIView *preview = isPad ? nil : (SGRFindByIdentifier(block, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey)
+                                  ?: SGRFindByIdentifier(headerRoot, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey));
     if (preview) { preview.alpha = 1.0; preview.hidden = NO; }
     for (UIView *sub in block.subviews) {
         if (sub != info && sub != preview) conceal(sub);
