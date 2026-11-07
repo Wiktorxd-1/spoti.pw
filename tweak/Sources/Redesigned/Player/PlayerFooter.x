@@ -253,7 +253,7 @@ static void lowerRow(UIView *row) {
     CGFloat fullHeight = [player convertRect:window.bounds fromView:nil].size.height;
     CGFloat height = MAX(player.bounds.size.height, fullHeight);
     CGFloat target = height - MAX(window.safeAreaInsets.bottom + kRowAboveSafeArea, kRowMinBottom);
-    CGFloat move = MAX(0, round(target - middle));
+    CGFloat move = round(target - middle);
     CGAffineTransform down = CGAffineTransformMakeTranslation(0, move);
     if (!CGAffineTransformEqualToTransform(row.transform, down)) row.transform = down;
 
@@ -265,7 +265,8 @@ static void lowerRow(UIView *row) {
     // following the footer as they do without it.
     BOOL volume = SGRPlayerVolumeOn() && controls;
     CGFloat share = volume ? 0 : kControlsShare, lift = volume ? kVolumeLift : 0;
-    CGAffineTransform follow = CGAffineTransformMakeTranslation(0, controls ? round(move * share) - lift : 0);
+    CGFloat ctrlMove = (move > 0) ? (round(move * share) - lift) : round(move * 0.4);
+    CGAffineTransform follow = CGAffineTransformMakeTranslation(0, controls ? ctrlMove : 0);
     if (above && controls && !CGAffineTransformEqualToTransform(above.transform, follow)) above.transform = follow;
     SGRPlayerPaintCover(stack);
     if (volume && !SGRPlayerPlaceVolume(stack, above, row, kVolumeMargin)) {
@@ -283,10 +284,9 @@ static void lowerRow(UIView *row) {
         objc_setAssociatedObject(row, &kReachKey, reach, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     if (reach.superview != player) [player addSubview:reach];
-    CGRect stackFrame = [stack convertRect:stack.bounds toView:player];
+    [player bringSubviewToFront:reach];
     CGRect drawn = [row convertRect:row.bounds toView:player];
-    CGFloat from = CGRectGetMaxY(stackFrame);
-    CGRect band = CGRectMake(CGRectGetMinX(drawn), from, drawn.size.width, MAX(0, CGRectGetMaxY(drawn) - from));
+    CGRect band = CGRectInset(drawn, -12, -12);
     if (!CGRectEqualToRect(reach.frame, band)) reach.frame = band;
 
     static dispatch_once_t once;

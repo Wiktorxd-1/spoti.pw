@@ -116,7 +116,36 @@ static void pillBehindContext(UIViewController *unit) {
     else if ([parent.subviews indexOfObject:box] > [parent.subviews indexOfObject:label]) [parent insertSubview:box belowSubview:label];
 
     parent.clipsToBounds = NO;
-    if (parent.superview) parent.superview.clipsToBounds = NO;
+    parent.backgroundColor = UIColor.clearColor;
+    parent.layer.backgroundColor = UIColor.clearColor.CGColor;
+    parent.layer.cornerRadius = 17.0;
+    parent.layer.cornerCurve = kCACornerCurveContinuous;
+    if (parent.superview && parent.superview != host) {
+        parent.superview.clipsToBounds = NO;
+        parent.superview.backgroundColor = UIColor.clearColor;
+        parent.superview.layer.backgroundColor = UIColor.clearColor.CGColor;
+    }
+    if ([parent isKindOfClass:UIButton.class]) {
+        UIButton *btn = (UIButton *)parent;
+        if ([btn respondsToSelector:@selector(configuration)] && btn.configuration) {
+            UIButtonConfiguration *cfg = [btn.configuration copy];
+            cfg.background.backgroundColor = UIColor.clearColor;
+            cfg.background.visualEffect = nil;
+            cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+            btn.configuration = cfg;
+        }
+    }
+    for (UIView *sub in parent.subviews) {
+        if (sub != label && sub != box) {
+            if ([sub isKindOfClass:UILabel.class]) {
+                sub.hidden = YES;
+                sub.alpha = 0.0;
+            } else if (![sub isKindOfClass:UIControl.class]) {
+                sub.hidden = YES;
+                sub.alpha = 0.0;
+            }
+        }
+    }
 
     UIEdgeInsets insets = host.safeAreaInsets;
     CGFloat usableW = host.bounds.size.width - insets.left - insets.right;
@@ -134,18 +163,35 @@ static void pillBehindContext(UIViewController *unit) {
     CGFloat padX = 18.0;
     CGFloat width = MIN(textW + 2 * padX, maxW);
     CGFloat height = 34.0;
+    CGFloat radius = height / 2.0;
+
+    parent.layer.cornerRadius = radius;
 
     box.bounds = CGRectMake(0, 0, width, height);
     box.center = targetCenter;
-    box.layer.cornerRadius = height / 2.0;
+    box.layer.cornerRadius = radius;
     box.layer.cornerCurve = kCACornerCurveContinuous;
     box.clipsToBounds = YES;
     box.layer.masksToBounds = YES;
-    SGShapeGlass(box, height / 2.0, YES);
-    box.layer.cornerRadius = height / 2.0;
+    if ([box isKindOfClass:UIVisualEffectView.class]) {
+        UIView *cv = ((UIVisualEffectView *)box).contentView;
+        cv.layer.cornerRadius = radius;
+        cv.layer.cornerCurve = kCACornerCurveContinuous;
+        cv.clipsToBounds = YES;
+        cv.layer.masksToBounds = YES;
+    }
+    SGShapeGlass(box, radius, YES);
+    box.layer.cornerRadius = radius;
     box.layer.cornerCurve = kCACornerCurveContinuous;
     box.clipsToBounds = YES;
     box.layer.masksToBounds = YES;
+    if ([box isKindOfClass:UIVisualEffectView.class]) {
+        UIView *cv = ((UIVisualEffectView *)box).contentView;
+        cv.layer.cornerRadius = radius;
+        cv.layer.cornerCurve = kCACornerCurveContinuous;
+        cv.clipsToBounds = YES;
+        cv.layer.masksToBounds = YES;
+    }
     box.hidden = NO;
     box.alpha = 1.0;
 
