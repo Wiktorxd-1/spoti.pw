@@ -9,7 +9,7 @@ static const CGFloat kMinHero = 120, kMinCover = 80;
 
 static char kCoverKey, kMetaKey, kPlayKey, kLayoutKey, kToolbarKey, kScrimKey, kBarScrimKey;
 static char kIndependentActionsKey;
-static char kShuffleKey, kAddKey, kDownloadKey, kInfoKey, kBlockHeightKey, kBlockWatchedKey;
+static char kShuffleKey, kAddKey, kDownloadKey, kExploreKey, kInfoKey, kBlockHeightKey, kBlockWatchedKey;
 static char kHeroKey, kHeroHeightKey, kRestPlaneKey, kRowKey, kRowWatchedKey, kMoreKey, kCreatorKey, kPinnedMoreKey, kSortKey;
 
 #pragma mark - finding things
@@ -277,17 +277,10 @@ static void showPlaylist(SGRHeaderInfo *info, UIView *block, UIView *root, id mo
     UIView *play = SGRFindByIdentifier(root, @"header-play-button", &kPlayKey);
     UIView *save = own ? nil : SGRFindByIdentifier(block, @"Components.UI.AddToButton", &kAddKey);
     UIView *download = SGRFindByIdentifier(block, @"DownloadButton.Granular*", &kDownloadKey);
-    BOOL independent = [objc_getAssociatedObject(info, &kIndependentActionsKey) boolValue];
-    if (!independent && save && download) {
-        independent = YES;
-        objc_setAssociatedObject(info, &kIndependentActionsKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    }
-    if (independent) {
-        [info showAlbumShuffle:shuffle play:play download:download add:save playColor:SGRPlaylistFieldColor(info)];
-    } else {
-        [info showShuffle:shuffle play:play trailing:save ?: download
-         trailingFallback:[UIImage systemImageNamed:save ? @"plus" : @"arrow.down"] playColor:SGRPlaylistFieldColor(info)];
-    }
+    UIView *preview = SGRFindByIdentifier(block, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey)
+                   ?: SGRFindByIdentifier(root, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey);
+    if (preview) { preview.alpha = 1.0; preview.hidden = NO; }
+    [info showAlbumShuffle:shuffle play:play download:download add:save preview:preview playColor:SGRPlaylistFieldColor(info)];
     // Only what the button draws goes: a concealed layer still sends the actions the capsule fires.
     conceal(play);
 
@@ -335,8 +328,11 @@ static SGRHeaderInfo *applyInfo(UIView *block, UIView *headerRoot, UIViewControl
         [block addSubview:info];
     }
     else if (block.subviews.lastObject != info) [block bringSubviewToFront:info];
+    UIView *preview = SGRFindByIdentifier(block, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey)
+                   ?: SGRFindByIdentifier(headerRoot, @"Components.UI.WatchFeedEntityExplorerButton*", &kExploreKey);
+    if (preview) { preview.alpha = 1.0; preview.hidden = NO; }
     for (UIView *sub in block.subviews) {
-        if (sub != info) conceal(sub);
+        if (sub != info && sub != preview) conceal(sub);
     }
     // The page's width, centred on the screen: Spotify's block is 16pt narrower than the page (386 of 402).
     CGFloat x = -[block convertPoint:CGPointZero toView:headerRoot].x;

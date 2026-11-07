@@ -85,11 +85,9 @@ static void restartRest(void);
 @property (nonatomic, readonly) UIView *stage;       // holds the lines' view alone
 @property (nonatomic, readonly) SGRKaraokeView *lyrics;
 @property (nonatomic, readonly) UILabel *noLyrics;
-@property (nonatomic, readonly) UIVisualEffectView *backdropBlur;
 @end
 
 @implementation SGRPlayerLyricsOverlay {
-    UIVisualEffectView *_backdropBlur;
     UIView *_thumb, *_stage;
     UIImageView *_cover;
     SGRKaraokeView *_lyrics;
@@ -112,12 +110,6 @@ static void restartRest(void);
     _cover.layer.cornerCurve = kCACornerCurveContinuous;
     _cover.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [_thumb addSubview:_cover];
-    _backdropBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark]];
-    _backdropBlur.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
-    _backdropBlur.userInteractionEnabled = NO;
-    _backdropBlur.alpha = 0.0;
-    _backdropBlur.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [self addSubview:_backdropBlur];
 
     _stage = [[UIView alloc] initWithFrame:CGRectZero];
     _stage.backgroundColor = UIColor.clearColor;
@@ -143,10 +135,8 @@ static void restartRest(void);
 - (UIImageView *)cover { return _cover; }
 - (UIView *)stage { return _stage; }
 - (UILabel *)noLyrics { return _noLyrics; }
-- (UIVisualEffectView *)backdropBlur { return _backdropBlur; }
 - (void)layoutSubviews {
     [super layoutSubviews];
-    if (_backdropBlur) _backdropBlur.frame = self.bounds;
 }
 
 // The lines seek when they are tapped and the thumbnail brings the player back, so everywhere else the
@@ -844,7 +834,6 @@ static void setOpen(BOOL open, BOOL animated) {
     // Moves and fades apart, as in setAlone: Reduce Motion takes the move and keeps the thumbnail's fade over
     // an animated artwork and the chips'.
     void (^move)(void) = ^{
-        if (overlay.backdropBlur) overlay.backdropBlur.alpha = open ? 1.0 : 0.0;
         overlay.thumb.transform = open || fades ? away : CGAffineTransformIdentity;
         overlay.cover.layer.cornerRadius = thumbRadius(l, open || fades);
         placeTitleRow(l);
