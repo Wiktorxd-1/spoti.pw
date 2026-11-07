@@ -8,7 +8,6 @@ static const CGFloat kDissolve = 0.46, kTopScrim = 140, kTopScrimAlpha = 0.28;
 static const CGFloat kMinHero = 120, kMinCover = 80;
 
 static char kCoverKey, kMetaKey, kPlayKey, kLayoutKey, kToolbarKey, kScrimKey, kBarScrimKey;
-static char kIndependentActionsKey;
 static char kShuffleKey, kAddKey, kDownloadKey, kExploreKey, kInfoKey, kBlockHeightKey, kBlockWatchedKey;
 static char kHeroKey, kHeroHeightKey, kRestPlaneKey, kRowKey, kRowWatchedKey, kMoreKey, kCreatorKey, kPinnedMoreKey, kSortKey;
 
