@@ -14,16 +14,16 @@
       "localizedDescription": "Open-Sourced fork of chroma.pw with built-in Spotify Premium. The Redesigned UI requires iOS 26; the legacy UI supports iOS 16.1 and later.",
       "iconURL": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/Spotify_App_Logo.svg/960px-Spotify_App_Logo.svg.png",
       "tintColor": "0A4B00",
-      "version": "0.60.5-615-Alpha",
-      "versionDate": "2026-11-06",
+      "version": "0.60.5-620-Alpha",
+      "versionDate": "2026-11-07",
       "downloadURL": "https://github.com/Wiktorxd-1/spoti.pw/releases/download/v9.1.94/Taurus-0.60.5.ipa",
-      "size": 125164533,
+      "size": 125165869,
       "versions": [
         {
-          "version": "0.60.5-615-Alpha",
-          "date": "2026-11-06T21:50:17Z",
+          "version": "0.60.5-620-Alpha",
+          "date": "2026-11-07T10:24:32Z",
           "downloadURL": "https://github.com/Wiktorxd-1/spoti.pw/releases/download/v9.1.94/Taurus-0.60.5.ipa",
-          "size": 125164533,
+          "size": 125165869,
           "minOSVersion": "16.1"
         }
       ],
