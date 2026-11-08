@@ -14,16 +14,16 @@
       "localizedDescription": "Open-Sourced fork of chroma.pw with built-in Spotify Premium. The Redesigned UI requires iOS 26; the legacy UI supports iOS 16.1 and later.",
       "iconURL": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/Spotify_App_Logo.svg/960px-Spotify_App_Logo.svg.png",
       "tintColor": "0A4B00",
-      "version": "0.60.5-628-Alpha",
-      "versionDate": "2026-11-07",
+      "version": "0.60.5-629-Alpha",
+      "versionDate": "2026-11-08",
       "downloadURL": "https://github.com/Wiktorxd-1/spoti.pw/releases/download/v9.1.94/Taurus-0.60.5.ipa",
-      "size": 125168305,
+      "size": 125168322,
       "versions": [
         {
-          "version": "0.60.5-628-Alpha",
-          "date": "2026-11-07T22:46:27Z",
+          "version": "0.60.5-629-Alpha",
+          "date": "2026-11-08T23:41:32Z",
           "downloadURL": "https://github.com/Wiktorxd-1/spoti.pw/releases/download/v9.1.94/Taurus-0.60.5.ipa",
-          "size": 125168305,
+          "size": 125168322,
           "minOSVersion": "16.1"
         }
       ],
@@ -39,9 +39,9 @@
       "tintColor": "0A4B00",
       "versions": [
         {
-          "version": "0.60.5",
-          "date": "2026-10-24T11:38:00Z",
-          "downloadURL": "https://cdn.wiktorxd-1.dev/f/wiktor/d/nFe10LPisN5pjqma.ipa",
+          "version": "9.10.9",
+          "date": "2026-11-08T8:00:00Z",
+          "downloadURL": "https://files.catbox.moe/9tmvx3.ipa",
           "size": 132877139,
           "minOSVersion": "16.1"
         }
