@@ -286,7 +286,7 @@ static void showPlaylist(SGRHeaderInfo *info, UIView *block, UIView *root, id mo
     BOOL own = modelFlag(model, @"isOwnedBySelf", YES) || liked;
     UIView *page = SGRPlaylistPageOf(root);
     UIView *plane = objc_getAssociatedObject(page, &kRestPlaneKey);
-    SGRPlaylistHero *hero = plane ? objc_getAssociatedObject(plane, &kHeroKey) : nil;
+    __block SGRPlaylistHero *hero = plane ? objc_getAssociatedObject(plane, &kHeroKey) : nil;
     if (!hero && page) {
         SGForEachView(page, ^(UIView *v) {
             if (!hero && [v isKindOfClass:NSClassFromString(@"SGRPlaylistHero")]) hero = (SGRPlaylistHero *)v;
@@ -315,7 +315,6 @@ static void showPlaylist(SGRHeaderInfo *info, UIView *block, UIView *root, id mo
 
     [info showCreatorLink:SGRFindByIdentifier(block, @"Components.PlaylistHeader.collaboratorsButton", &kCreatorKey)];
 
-    UIView *page = SGRPlaylistPageOf(root);
     SGRPinnedMore(page, &kPinnedMoreKey, SGRFindByIdentifier(block, @"Components.UI.ContextMenuButton*", &kMoreKey));
     SGRPlaylistTakeSort(page, SGRFindByIdentifier(root, @"Components.Header.UI.Toolbar.Button", &kSortKey));
     // The name and Play are what the header waits for; the row's other buttons fade in on their own when late.
