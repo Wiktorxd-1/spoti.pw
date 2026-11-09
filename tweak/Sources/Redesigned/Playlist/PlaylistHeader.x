@@ -37,6 +37,8 @@ UIViewController *SGRPlaylistHeaderOf(UIView *view) {
 
 static void conceal(UIView *view) {
     if (!view) return;
+    view.alpha = 0;
+    view.hidden = YES;
     if (!view.layer.hidden) view.layer.hidden = YES;
     if (!view.layer.mask) view.layer.mask = [CALayer layer];
     if (view.userInteractionEnabled) view.userInteractionEnabled = NO;
@@ -56,6 +58,7 @@ static UIView *firstOfClass(UIView *root, Class wanted) {
 @interface SGRPlaylistHero : UIView
 @property (nonatomic, readonly) UIImageView *picture;
 @property (nonatomic) CGFloat coverPixels;   // the widest copy of the artwork it has been shown
+@property (nonatomic) BOOL isLikedSongs;
 - (void)followCover:(UIImageView *)source;
 @end
 
@@ -118,7 +121,11 @@ static UIView *firstOfClass(UIView *root, Class wanted) {
         CGFloat cardX = round((bounds.size.width - cardSide) / 2.0);
         CGFloat cardY = round((bounds.size.height - cardSide) / 2.0);
         _card.frame = CGRectMake(cardX, cardY, cardSide, cardSide);
-        _card.image = _picture.image;
+        _card.image = self.isLikedSongs ? nil : _picture.image;
+    }
+    if (self.isLikedSongs) {
+        _picture.image = nil;
+        _card.image = nil;
     }
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
@@ -143,10 +150,15 @@ static UIView *firstOfClass(UIView *root, Class wanted) {
     if (!image || source.bounds.size.width < kMinHero || _picture.image == image) return;
 
     self.coverPixels = image.size.width;
-    _picture.image = image;
-    _card.image = image;
-    // The page's field takes its colour from the same picture.
-    SGRPlaylistSetArtwork(self, image);
+    if (!self.isLikedSongs) {
+        _picture.image = image;
+        _card.image = image;
+        // The page's field takes its colour from the same picture.
+        SGRPlaylistSetArtwork(self, image);
+    } else {
+        _picture.image = nil;
+        _card.image = nil;
+    }
     SGRRevealMark(SGRPlaylistPageOf(self), SGRRevealPicture);
     static BOOL logged;
     if (late && !logged) {
@@ -272,6 +284,20 @@ static void showPlaylist(SGRHeaderInfo *info, UIView *block, UIView *root, id mo
 
     BOOL liked = [modelString(model, @"formatListType") isEqualToString:@"liked-songs"];
     BOOL own = modelFlag(model, @"isOwnedBySelf", YES) || liked;
+    UIView *page = SGRPlaylistPageOf(root);
+    UIView *plane = objc_getAssociatedObject(page, &kRestPlaneKey);
+    SGRPlaylistHero *hero = plane ? objc_getAssociatedObject(plane, &kHeroKey) : nil;
+    if (!hero && page) {
+        SGForEachView(page, ^(UIView *v) {
+            if (!hero && [v isKindOfClass:NSClassFromString(@"SGRPlaylistHero")]) hero = (SGRPlaylistHero *)v;
+        });
+    }
+    if (hero) {
+        hero.isLikedSongs = liked;
+        if (liked) {
+            hero.picture.image = nil;
+        }
+    }
     UIView *shuffle = SGRFindByIdentifier(block, @"Components.UI.ShuffleButton", &kShuffleKey);
     UIView *play = SGRFindByIdentifier(root, @"header-play-button", &kPlayKey);
     UIView *save = own ? nil : SGRFindByIdentifier(block, @"Components.UI.AddToButton", &kAddKey);

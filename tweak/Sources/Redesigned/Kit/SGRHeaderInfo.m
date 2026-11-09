@@ -348,11 +348,11 @@ static BOOL setText(UILabel *label, NSString *text) {
         }
 
         NSMutableArray<UIView *> *orderedButtons = [NSMutableArray arrayWithCapacity:5];
-        if (_preview && !_preview.hidden) [orderedButtons addObject:_preview];
-        if (_shuffle && !_shuffle.hidden) [orderedButtons addObject:_shuffle];
-        if (_play && !_play.hidden) [orderedButtons addObject:_play];
-        if (!_albumDownload.hidden) [orderedButtons addObject:_albumDownload];
-        if (_trailing && !_trailing.hidden) [orderedButtons addObject:_trailing];
+        if (_preview && !_preview.hidden && _preview.alpha > 0.01 && _preview.bounds.size.width > 0 && _preview.superview == _albumControls) [orderedButtons addObject:_preview];
+        if (_shuffle && !_shuffle.hidden && _shuffle.alpha > 0.01) [orderedButtons addObject:_shuffle];
+        if (_play && !_play.hidden && _play.alpha > 0.01) [orderedButtons addObject:_play];
+        if (!_albumDownload.hidden && _albumDownload.alpha > 0.01) [orderedButtons addObject:_albumDownload];
+        if (_trailing && !_trailing.hidden && _trailing.alpha > 0.01) [orderedButtons addObject:_trailing];
 
         CGFloat totalWidth = 0;
         for (NSUInteger i = 0; i < orderedButtons.count; i++) {

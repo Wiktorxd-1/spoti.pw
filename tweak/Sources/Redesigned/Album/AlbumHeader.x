@@ -26,6 +26,8 @@ static void conceal(UIView *view) {
 
 static void blank(UIView *view) {
     if (!view) return;
+    view.alpha = 0;
+    view.hidden = YES;
     if (!view.layer.mask) view.layer.mask = [CALayer layer];
     if (view.userInteractionEnabled) view.userInteractionEnabled = NO;
     view.accessibilityElementsHidden = YES;

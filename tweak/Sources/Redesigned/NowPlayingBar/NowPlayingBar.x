@@ -2,8 +2,10 @@
 #import "Redesigned/Kit/SGRRepaint.h"
 #import "Redesigned/Kit/SGRTokens.h"
 #import "Redesigned/Kit/SGRBridges.h"
+#import "Redesigned/Kit/SGRRestyle.h"
 #import "Redesigned/Navbar/Navbar.h"
 #import "Shared/Lyrics/Lyrics.h"
+#import "Shared/LocalFiles/LocalFiles.h"
 #import "Shared/Player/NowPlayingExtras.h"
 #import "Shared/Player/PlayerEvents.h"
 #import "Shared/Player/PlayerState.h"
@@ -13,8 +15,10 @@
 #import <objc/message.h>
 #import <objc/runtime.h>
 
+UIView *SGRFindByIdentifier(UIView *root, NSString *identifier, const void *cacheKey);
+
 static const CGFloat kCardRadius = 24;
-static char kGlassKey, kProgressViewKey, kProgressAlphaKey;
+static char kGlassKey, kProgressViewKey, kProgressAlphaKey, kNowPlayingBarTitleKey, kNowPlayingBarArtistKey;
 static __weak UIVisualEffectView *sg_cardGlass;
 static __weak UIView *sg_cardArtwork;
 static __weak UIView *sg_cardContent;
@@ -179,9 +183,62 @@ static void ensureMiniProgress(UIView *card) {
     }
 }
 
+static UIImage *customCardCover(void) {
+    SPTPlayerTrack *track = SGPlayerState().track;
+    NSString *uri = SGURIString(track.URI);
+    if (!uri.length) return nil;
+    NSDictionary *metadata = [track respondsToSelector:@selector(metadata)] ? track.metadata : nil;
+    NSString *albumURI = [metadata[@"album_uri"] isKindOfClass:NSString.class] ? metadata[@"album_uri"] : nil;
+    NSString *path = SGTrackArtworkCoverPath(SGTrackEditFor(uri, albumURI));
+    return path.length ? [UIImage imageWithContentsOfFile:path] : nil;
+}
+
 static void restyleCardContent(UIView *card) {
     if (!card || !SGIsInside(card, sgr_nowPlayingRoot)) return;
     sg_cardContent = card;
+    UIImage *customCover = customCardCover();
+    SPTPlayerTrack *track = SGPlayerState().track;
+    if (track) {
+        NSDictionary *metadata = [track.metadata isKindOfClass:NSDictionary.class] ? track.metadata : nil;
+        NSString *albumURI = [metadata[@"album_uri"] isKindOfClass:NSString.class] ? metadata[@"album_uri"] : nil;
+        NSDictionary *edit = SGTrackEditFor(SGURIString(track.URI), albumURI);
+        NSString *titleText = [edit[@"title"] isKindOfClass:NSString.class] && ((NSString *)edit[@"title"]).length ? edit[@"title"] : track.trackTitle;
+        NSString *artistText = [edit[@"artist"] isKindOfClass:NSString.class] && ((NSString *)edit[@"artist"]).length ? edit[@"artist"] : track.artistName;
+        UILabel *title = (UILabel *)SGRFindByIdentifier(card, @"now-playing-title-label", &kNowPlayingBarTitleKey);
+        UILabel *artist = (UILabel *)SGRFindByIdentifier(card, @"now-playing-subtitle-label", &kNowPlayingBarArtistKey);
+        if ([title isKindOfClass:UILabel.class] && titleText.length && ![title.text isEqualToString:titleText]) title.text = titleText;
+        if ([artist isKindOfClass:UILabel.class] && artistText.length && ![artist.text isEqualToString:artistText]) artist.text = artistText;
+        // Some full cards have no identifiers. They still need the title line, never an artist as the title.
+        if (!title || !artist) {
+            NSMutableArray<UILabel *> *labels = [NSMutableArray array];
+            SGForEachView(card, ^(UIView *v) {
+                if ([v isKindOfClass:UILabel.class] && v.window && ((UILabel *)v).text.length) [labels addObject:(UILabel *)v];
+            });
+            [labels sortUsingComparator:^NSComparisonResult(UILabel *a, UILabel *b) {
+                CGRect af = [a convertRect:a.bounds toView:card];
+                CGRect bf = [b convertRect:b.bounds toView:card];
+                return af.origin.y < bf.origin.y ? NSOrderedAscending : (af.origin.y > bf.origin.y ? NSOrderedDescending : NSOrderedSame);
+            }];
+            if ([title isKindOfClass:UILabel.class]) {
+                // Identified title handled above.
+            } else if (titleText.length && labels.count > 0) labels.firstObject.text = titleText;
+            if ([artist isKindOfClass:UILabel.class]) {
+                // Identified artist handled above.
+            } else if (artistText.length && labels.count > 1) labels[1].text = artistText;
+        }
+    }
+    if (customCover) {
+        SGForEachView(card, ^(UIView *v) {
+            if ([v isKindOfClass:UIImageView.class]) {
+                UIImageView *image = (UIImageView *)v;
+                if (CGRectGetWidth(image.bounds) >= 36 && CGRectGetWidth(image.bounds) <= 500) {
+                    image.image = customCover;
+                    image.contentMode = UIViewContentModeScaleAspectFill;
+                    image.clipsToBounds = YES;
+                }
+            }
+        });
+    }
     SGForEachView(card, ^(UIView *v) {
         CGSize size = v.bounds.size;
         BOOL square = size.width >= 36 && size.width <= 48 && fabs(size.width - size.height) < 1;
@@ -392,6 +449,8 @@ static UIImage *cardCover(void) {
 
 static UIImage *currentCover(void) {
     SPTPlayerState *state = SGPlayerState();
+    UIImage *custom = customCardCover();
+    if (custom) return custom;
     NSString *artworkTrack = nil;
     UIImage *artwork = SGRNowPlayingArtwork(&artworkTrack, NULL);
     if (artwork && [artworkTrack isEqualToString:SGURIString(state.track.URI)]) return artwork;
@@ -678,6 +737,10 @@ void SGRUpdateIPadBottomDock(void) {
     }];
     sg_miniWatcher = [SGRMiniPlayerWatcher new];
     SGAddPlayerStateObserver(sg_miniWatcher);
+    [NSNotificationCenter.defaultCenter addObserverForName:SGLocalFileEditsDidChangeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+        refreshMini();
+        dispatch_async(dispatch_get_main_queue(), ^{ refreshMini(); });
+    }];
     sg_artworkObserver = [NSNotificationCenter.defaultCenter addObserverForName:SGRNowPlayingArtworkDidChangeNotification
                                                                           object:nil
                                                                            queue:NSOperationQueue.mainQueue

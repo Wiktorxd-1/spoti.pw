@@ -190,6 +190,7 @@ static const CGFloat kLyricsBlur = 0.3;
     [CATransaction setDisableActions:YES];
     _solid.frame = painted;
     _lyricsBlur.frame = painted;
+    if (_lyricsBlur) [self bringSubviewToFront:_lyricsBlur];
     CGFloat height = windowHeight(self), total = MAX(1, painted.size.height);
     CGFloat from = height * kBlackFrom + bleed.top;
     CGFloat to = MAX(from + 1, height * kBlackTo + bleed.top);
@@ -211,9 +212,9 @@ static const CGFloat kLyricsBlur = 0.3;
     // The screen's part of it, so the copies turn about it and the shade ends at the screen's foot.
     _fluidLayer.visibleRect = CGRectMake(bleed.left, bleed.top, bounds.size.width, height);
     [CATransaction commit];
-    if (_lyricsBlurred && (!_lyricsBlurAnimator || _lyricsBlurAnimator.state == UIViewAnimatingStateInactive)) {
-        [self applyLyricsBlurAnimated:NO];
-    }
+    // Layout must not recreate a fractional visual effect: stopping and restarting it made the blur
+    // visibly flicker after pauses and transitions. State changes still rebuild it through setFills
+    // and setLyricsBlurred.
 }
 
 #pragma mark - the moving field

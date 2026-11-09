@@ -36,6 +36,7 @@
 #import "Shared/LyricsSources/LyricsSources.h"
 #import "Shared/LocalFiles/LocalFiles.h"
 #import "Redesigned/NowPlayingBar/NowPlayingBar.h"
+#import "Shared/Player/PlayerState.h" 
 #import "Player.h"
 
 static const CGFloat kThumbSide = 72;          // the cover once the lyrics are up
@@ -58,7 +59,7 @@ static const CGFloat kLivingHeight = 200;
 // The lines on their own: the controls under them fade after this long without a touch.
 static const NSTimeInterval kRest = 4;
 
-static char kOverlayKey, kPlateKey, kTitleKey, kStackKey, kHostBlurKey;
+static char kOverlayKey, kPlateKey, kTitleKey, kArtistKey, kStackKey, kHostBlurKey;
 
 static UIVisualEffectView *backdropBlurIn(UIView *host) {
     if (!host) return nil;
@@ -288,7 +289,7 @@ static CGFloat trailingEdgeIn(UIView *info) {
 // own fade would have been rather than cutting it.
 static void clipTitle(UIView *element, CGFloat width) {
     CGRect bounds = element.bounds;
-    if (width >= bounds.size.width - 0.5 || bounds.size.height < 1 || width <= 10.0) {
+    if (width >= bounds.size.width - 0.5 || bounds.size.height < 15 || width <= 10.0) {
         element.layer.mask = nil;
         return;
     }
@@ -945,6 +946,40 @@ void SGRPlayerToggleLyrics(void) {
     setOpen(!sg_open, YES);
 }
 
+static void refreshPlayerInfoLabels(void) {
+    UIView *host = sg_host;
+    if (!host) host = sg_info.viewIfLoaded;
+    if (!host) return;
+    SPTPlayerTrack *track = SGPlayerState().track;
+    if (!track) return;
+    NSDictionary *metadata = [track.metadata isKindOfClass:NSDictionary.class] ? track.metadata : nil;
+    NSString *albumURI = [metadata[@"album_uri"] isKindOfClass:NSString.class] ? metadata[@"album_uri"] : nil;
+    NSDictionary *edit = SGTrackEditFor(SGURIString(track.URI), albumURI);
+    NSString *titleText = [edit[@"title"] isKindOfClass:NSString.class] && ((NSString *)edit[@"title"]).length ? edit[@"title"] : track.trackTitle;
+    NSString *artistText = [edit[@"artist"] isKindOfClass:NSString.class] && ((NSString *)edit[@"artist"]).length ? edit[@"artist"] : track.artistName;
+    UILabel *title = (UILabel *)SGRFindByIdentifier(host, @"now-playing-title-label", &kTitleKey);
+    UILabel *artist = (UILabel *)SGRFindByIdentifier(host, @"now-playing-subtitle-label", &kArtistKey);
+    if ([title isKindOfClass:UILabel.class] && titleText.length && ![title.text isEqualToString:titleText]) title.text = titleText;
+    if ([artist isKindOfClass:UILabel.class] && artistText.length && ![artist.text isEqualToString:artistText]) artist.text = artistText;
+}
+
+%hook UILabel
+- (void)setText:(NSString *)text {
+    NSString *identifier = self.accessibilityIdentifier;
+    if ([identifier isEqualToString:@"now-playing-title-label"] || [identifier isEqualToString:@"now-playing-subtitle-label"] ) {
+        SPTPlayerTrack *track = SGPlayerState().track;
+        NSDictionary *metadata = [track.metadata isKindOfClass:NSDictionary.class] ? track.metadata : nil;
+        NSString *albumURI = [metadata[@"album_uri"] isKindOfClass:NSString.class] ? metadata[@"album_uri"] : nil;
+        NSDictionary *edit = track ? SGTrackEditFor(SGURIString(track.URI), albumURI) : nil;
+        NSString *custom = [identifier isEqualToString:@"now-playing-title-label"] ? edit[@"title"] : edit[@"artist"];
+        if ([custom isKindOfClass:NSString.class] && custom.length) text = custom;
+        else if ([identifier isEqualToString:@"now-playing-title-label"] && track.trackTitle.length) text = track.trackTitle;
+        else if ([identifier isEqualToString:@"now-playing-subtitle-label"] && track.artistName.length) text = track.artistName;
+    }
+    %orig(text);
+}
+%end
+
 // A layout pass, a new track or a turn of the phone: the state is put back where it belongs without
 // animating, since the frames it is measured from have just changed.
 void SGRPlayerLyricsUpdateBlur(void) {
@@ -961,6 +996,7 @@ void SGRPlayerLyricsUpdateBlur(void) {
 
 static void replace(void) {
     UIView *host = sg_host;
+    refreshPlayerInfoLabels();
     if (!host || sg_moving) return;   // a pass in the middle of the transition would cut it short
     UIVisualEffectView *blur = backdropBlurIn(host);
     if (blur) {
@@ -973,7 +1009,13 @@ static void replace(void) {
     placeTitleRow(l);
     sg_floating.viewIfLoaded.alpha = sg_open ? 0 : 1;
     UIView *info = sg_info.viewIfLoaded;
-    if (info && info.alpha == 0) info.alpha = 1.0;
+    if (info) {
+        if (info.alpha < 0.01) info.alpha = 1.0;
+        info.hidden = NO;
+        for (UIView *v = info; v && v != host; v = v.superview) {
+            v.clipsToBounds = NO;
+        }
+    }
     if (!sg_open) return;
     SGRPlayerLyricsOverlay *overlay = objc_getAssociatedObject(host, &kOverlayKey);
     overlay.cover.image = SGRNowPlayingArtwork(NULL, NULL);
@@ -1107,7 +1149,13 @@ BOOL SGRPlayerIsPresented(void) {
     UIViewController *unit = (UIViewController *)self;
     sg_info = unit;
     UIView *host = unit.viewIfLoaded;
-    if (sg_open && host && host.alpha == 0) host.alpha = 1.0;
+    if (sg_open && host) {
+        if (host.alpha < 0.01) host.alpha = 1.0;
+        host.hidden = NO;
+    }
+    for (UIView *v = host; v && v != host.window; v = v.superview) {
+        v.clipsToBounds = NO;
+    }
     // The title and the artist are two labels of one arranged element view, which is what moves.
     __block UIView *label = SGRFindByIdentifier(host, @"now-playing-title-label", &kTitleKey);
     if (!label) {
@@ -1184,7 +1232,13 @@ BOOL SGRPlayerIsPresented(void) {
 // A rename is looked up like a new track, so lines that stay up with none for the new names go once the
 // look for them ends, as a new track's do after the grace.
 - (void)editsChanged:(NSNotification *)note {
-    if (![note.object isKindOfClass:NSString.class] || ![note.object isEqualToString:_track]) return;
+    SPTPlayerState *state = SGPlayerState();
+    NSString *track = SGURIString(state.track.URI);
+    id album = state.track.metadata[@"album_uri"];
+    NSString *albumURI = [album isKindOfClass:NSString.class] ? album : nil;
+    NSString *editedTrack = [note.object isKindOfClass:NSString.class] ? note.object : nil;
+    NSString *editedAlbum = [note.userInfo[@"albumURI"] isKindOfClass:NSString.class] ? note.userInfo[@"albumURI"] : nil;
+    if (![editedTrack isEqualToString:track] && ![editedAlbum isEqualToString:albumURI]) return;
     SGRPlayerLyricsChanged();
 }
 
@@ -1207,6 +1261,8 @@ BOOL SGRPlayerIsPresented(void) {
 }
 
 - (void)playerStateDidChange:(SPTPlayerState *)state {
+    refreshPlayerInfoLabels();
+    dispatch_async(dispatch_get_main_queue(), ^{ refreshPlayerInfoLabels(); });
     // A pause brings the controls back and keeps them; playing again starts the clock.
     if (state.isPaused) {
         setAlone(NO, YES);
@@ -1253,6 +1309,10 @@ static SGRPlayerLyricsWatcher *sg_watcher;
     %init;
     sg_watcher = [SGRPlayerLyricsWatcher new];
     SGAddPlayerStateObserver(sg_watcher);
+    [NSNotificationCenter.defaultCenter addObserverForName:SGLocalFileEditsDidChangeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+        refreshPlayerInfoLabels();
+        dispatch_async(dispatch_get_main_queue(), ^{ refreshPlayerInfoLabels(); });
+    }];
     // In the background the controls stay up; back in front the clock starts again.
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationWillResignActiveNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
         setAlone(NO, NO);

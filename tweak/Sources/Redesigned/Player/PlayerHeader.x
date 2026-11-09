@@ -115,7 +115,7 @@ static void pillBehindContext(UIViewController *unit) {
     if (box.superview != parent) [parent insertSubview:box belowSubview:label];
     else if ([parent.subviews indexOfObject:box] > [parent.subviews indexOfObject:label]) [parent insertSubview:box belowSubview:label];
 
-    parent.clipsToBounds = NO;
+    parent.clipsToBounds = YES;
     parent.backgroundColor = UIColor.clearColor;
     parent.layer.backgroundColor = UIColor.clearColor.CGColor;
     parent.layer.cornerRadius = 17.0;
@@ -127,23 +127,21 @@ static void pillBehindContext(UIViewController *unit) {
     }
     if ([parent isKindOfClass:UIButton.class]) {
         UIButton *btn = (UIButton *)parent;
+        btn.backgroundColor = UIColor.clearColor;
         if ([btn respondsToSelector:@selector(configuration)] && btn.configuration) {
             UIButtonConfiguration *cfg = [btn.configuration copy];
             cfg.background.backgroundColor = UIColor.clearColor;
             cfg.background.visualEffect = nil;
+            cfg.background.customView = nil;
+            cfg.baseBackgroundColor = UIColor.clearColor;
             cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
             btn.configuration = cfg;
         }
     }
     for (UIView *sub in parent.subviews) {
         if (sub != label && sub != box) {
-            if ([sub isKindOfClass:UILabel.class]) {
-                sub.hidden = YES;
-                sub.alpha = 0.0;
-            } else if (![sub isKindOfClass:UIControl.class]) {
-                sub.hidden = YES;
-                sub.alpha = 0.0;
-            }
+            sub.hidden = YES;
+            sub.alpha = 0.0;
         }
     }
 

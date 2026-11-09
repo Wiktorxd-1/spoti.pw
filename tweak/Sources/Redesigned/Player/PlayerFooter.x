@@ -217,7 +217,13 @@ static void coverConnect(UIView *arranged, UIView *glyph) {
     UIView *row = self.row;
     if (!row.window || row.alpha < 0.01 || row.hidden) return nil;
     UIView *hit = [row hitTest:[row convertPoint:point fromView:self] withEvent:event];
-    return hit == row ? nil : hit;
+    if (hit && hit != row) return hit;
+    UIView *host = row.superview;
+    if (host && host.window && host.alpha > 0.01 && !host.hidden) {
+        UIView *hitHost = [host hitTest:[host convertPoint:point fromView:self] withEvent:event];
+        if (hitHost && hitHost != host) return hitHost;
+    }
+    return nil;
 }
 @end
 
@@ -333,6 +339,7 @@ static void lowerRow(UIView *row) {
     [host bringSubviewToFront:lyrics];
     lyrics.bounds = CGRectMake(0, 0, 44, 44);
     lyrics.center = CGPointMake(leadingX, middleY);
+    lyrics.transform = row.transform;
     SGRPlayerLyricsChanged();
 
     UIView *connect = SGRFindByIdentifier(host, @"Components.ConnectButtonOutputSwitcher", &kConnectKey);

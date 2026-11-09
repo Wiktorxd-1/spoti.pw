@@ -1,5 +1,6 @@
 #import "Core/SGCore.h"
 #import "Shared/Player/PlayerEvents.h"
+#import "Shared/LocalFiles/LocalFiles.h"
 #import "SGRBridges.h"
 #import "SGRedesign.h"
 #import "SGRRestyle.h"
@@ -142,6 +143,22 @@ static void followPlayer(void) {
     // The same track is looked at again only while its metadata has named no picture yet.
     if ([uri isEqualToString:sg_wantedURI] && ![sg_wantedKey hasPrefix:@"track:"]) return;
     sg_wantedURI = uri;
+    NSDictionary *metadata = [track respondsToSelector:@selector(metadata)] ? track.metadata : nil;
+    NSString *albumURI = [metadata[@"album_uri"] isKindOfClass:NSString.class] ? metadata[@"album_uri"] : nil;
+    NSString *coverPath = SGTrackArtworkCoverPath(SGTrackEditFor(uri, albumURI));
+    if (coverPath) {
+        UIImage *cover = [UIImage imageWithContentsOfFile:coverPath];
+        if (cover) {
+            NSString *key = [NSString stringWithFormat:@"custom:%@:%@", uri, coverPath.lastPathComponent];
+            sg_wantedKey = key;
+            [sg_fetch cancel];
+            sg_fetch = nil;
+            if ([key isEqualToString:sg_artworkKey] && sg_artworkQuality == SGRArtworkQualityExact) return;
+            publish(cover, key, SGRArtworkQualityExact);
+            return;
+        }
+        artworkLog(@"custom cover %@ could not be read; using the track's artwork", coverPath.lastPathComponent);
+    }
     NSURL *url = nil;
     // A track whose metadata names no picture is its own key: only the screens can show it then.
     NSString *key = pictureOf(track, &url) ?: [@"track:" stringByAppendingString:uri];
@@ -190,6 +207,21 @@ UIImage *SGRNowPlayingArtwork(NSString **trackURI, NSString **identity) {
 @end
 
 static SGRArtworkFollower *sg_follower;
+
+static void refreshEditedArtwork(NSNotification *note) {
+    SPTPlayerTrack *track = SGPlayerState().track;
+    NSString *uri = SGURIString(track.URI);
+    if (!uri) return;
+    NSDictionary *metadata = [track.metadata isKindOfClass:NSDictionary.class] ? track.metadata : nil;
+    NSString *albumURI = metadata[@"album_uri"];
+    if (![note.object isEqual:uri] && ![note.userInfo[@"albumURI"] isEqual:albumURI]) return;
+
+    sg_wantedURI = nil;
+    sg_wantedKey = nil;
+    [sg_fetch cancel];
+    sg_fetch = nil;
+    followPlayer();
+}
 
 static char kBarCardKey, kBarImageKey;
 static __weak UIView *sg_barView;
@@ -297,6 +329,8 @@ void SGRObservePlayerTransition(id owner, void (^began)(id owner), void (^ended)
     SGAddPlayerStateObserver(sg_follower);
     sg_barWatcher = [SGRBarArtworkWatcher new];
     SGAddPlayerStateObserver(sg_barWatcher);
+    [NSNotificationCenter.defaultCenter addObserverForName:SGLocalFileEditsDidChangeNotification object:nil
+        queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { refreshEditedArtwork(note); }];
     %init(SGRBarArtworkHooks);
     SGRequireClasses(@[@"_TtC18NowPlaying_BarImpl27NowPlayingBarViewController"]);
 }

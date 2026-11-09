@@ -245,8 +245,6 @@ static CAGradientLayer *fill(CAShapeLayer *shape) {
 - (void)disappear:(void (^)(void))done {
     SGRAnimate(SGRMotionFade, ^{
         self->_content.alpha = 0;
-        self->_lyricsRequested = NO;
-        self->_lyricsBlurAnimator = setBlurIntensity(self->_lyricsBlur, self->_lyricsBlurAnimator, 0);
     }, ^(BOOL finished) { done(); });
 }
 
@@ -268,6 +266,8 @@ static CAGradientLayer *fill(CAShapeLayer *shape) {
 #pragma mark - moving
 
 - (void)playerStateDidChange:(SPTPlayerState *)state {
+    BOOL blurred = SGRPlayerLyricsOpen() && SGRPlayerMotionLyricsBlurEnabled();
+    if (blurred != _lyricsRequested) [self setBlurred:blurred animated:NO];
     [self updateMotion];
 }
 
@@ -474,11 +474,12 @@ void SGRPlayerVisualiserUpdate(void) {
     if (made) sg_view = [[SGRVisualiserView alloc] initWithFrame:CGRectZero];
     layOut(field);
     if (made) {
-        [sg_view setBlurred:SGRPlayerLyricsOpen() animated:NO];
+        BOOL blurred = SGRPlayerLyricsOpen() && SGRPlayerMotionLyricsBlurEnabled();
+        [sg_view setBlurred:blurred animated:NO];
         [sg_view appear:field.window != nil];
         SGLog(@"redesign player: visualizer on the field");
     } else {
-        BOOL open = SGRPlayerLyricsOpen();
-        if (open != sg_view.blurred) [sg_view setBlurred:open animated:sg_view.window != nil];
+        BOOL blurred = SGRPlayerLyricsOpen() && SGRPlayerMotionLyricsBlurEnabled();
+        if (blurred != sg_view.blurred) [sg_view setBlurred:blurred animated:sg_view.window != nil];
     }
 }
