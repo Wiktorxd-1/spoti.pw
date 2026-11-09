@@ -359,11 +359,8 @@ void SGRPlayerUpdateInlineLyrics(void) {
     if (player) {
         static char kBottomStackKey;
         UIView *stack = SGRFindByIdentifier(player, @"npv.bottomStackView", &kBottomStackKey);
-        if (stack) {
-            CGAffineTransform stackTransform = shift > 0 ? CGAffineTransformMakeTranslation(0, -shift) : CGAffineTransformIdentity;
-            if (!CGAffineTransformEqualToTransform(stack.transform, stackTransform)) {
-                stack.transform = stackTransform;
-            }
+        if (stack && !CGAffineTransformIsIdentity(stack.transform)) {
+            stack.transform = CGAffineTransformIdentity;
         }
     }
 }

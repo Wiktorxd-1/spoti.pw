@@ -249,6 +249,7 @@ static BOOL setText(UILabel *label, NSString *text) {
         _albumControls.accessibilityIdentifier = @"Taurus.Album.Actions";
         [self addSubview:_albumControls];
         [_albumControls addSubview:_shuffle];
+        [_albumControls addSubview:_play];
         _albumDownload = [[SGRMirrorButton alloc] initWithFrame:CGRectZero];
         _albumDownload.fallbackGlyph = [UIImage systemImageNamed:@"arrow.down"];
         _albumDownload.accessibilityIdentifier = @"Taurus.Album.Download";

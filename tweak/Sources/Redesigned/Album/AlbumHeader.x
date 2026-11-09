@@ -420,14 +420,24 @@ static SGRHeaderInfo *applyInfo(UIView *header, UIView *page) {
     // More, pinned over the page rather than left in the header, which is blanked and scrolls away.
     SGRPinnedMore(page, &kPinnedMoreKey, SGRFindByIdentifier(header, @"Components.UI.ContextMenuButton*", &kMoreKey));
 
-    UIView *play = floatingIn(page, @"header-play-button", &kPlayKey);
-    UIView *shuffle = floatingIn(page, @"Components.UI.ShuffleButton", &kShuffleKey);
+    UIView *play = floatingIn(page, @"header-play-button", &kPlayKey)
+                ?: SGRFindByIdentifier(header, @"header-play-button", &kPlayKey)
+                ?: SGRFindByIdentifier(page, @"header-play-button", &kPlayKey);
+    UIView *shuffle = floatingIn(page, @"Components.UI.ShuffleButton", &kShuffleKey)
+                   ?: SGRFindByIdentifier(header, @"Components.UI.ShuffleButton", &kShuffleKey)
+                   ?: SGRFindByIdentifier(page, @"Components.UI.ShuffleButton", &kShuffleKey);
     UIView *add = SGRFindByIdentifier(header, @"Components.UI.AddToButton", &kAddKey);
     UIView *download = SGRFindByIdentifier(header, @"DownloadButton.Granular*", &kDownloadKey);
     [info showAlbumShuffle:shuffle play:play download:download add:add preview:preview playColor:SGRAlbumFieldColor(header)];
     // Only what the two floating buttons draw goes: a concealed layer still sends the actions the row fires.
-    if (play) conceal(wrapperFor(play, page));
-    if (shuffle) conceal(wrapperFor(shuffle, page));
+    if (play) {
+        conceal(play);
+        conceal(wrapperFor(play, page));
+    }
+    if (shuffle) {
+        conceal(shuffle);
+        conceal(wrapperFor(shuffle, page));
+    }
     // The kind and the date are waited for too: arriving late they pushed the title up by a line.
     if (name && play && length) SGRRevealMark(page, SGRRevealHeader);
 

@@ -84,7 +84,7 @@ static BOOL isAd(NSURL *url, NSString *path) {
 static BOOL isRefetch(NSString *path) {
     return has(path, @"signup/public") || has(path, @"select-ondemand-set") || has(path, @"trials-facade/start-trial")
         || has(path, @"premium-marketing/upselloffer") || (has(path, @"pendragon") && has(path, @"fetchmessagelist"))
-        || has(path, @"pushka-tokens") || has(path, @"apresolve") || has(path, @"pses/screenconfig") || isCustomize(path);
+        || has(path, @"pushka-tokens") || has(path, @"pses/screenconfig") || isCustomize(path);
 }
 
 static SGNet classify(NSURL *url) {
@@ -111,7 +111,7 @@ static NSData *blockedReply(NSString *path) {
     if (has(path, @"signup/public")) return json(@"{\"status\":1,\"country\":\"US\",\"is_country_launched\":true}");
     if (has(path, @"trials-facade")) return json(@"{\"result\":\"NOT_ELIGIBLE\"}");
     if (has(path, @"premium-marketing") || has(path, @"pses/screenconfig")) return json(@"{}");
-    if (isLogout(path) || has(path, @"apresolve")) return json(@"{\"status\":\"OK\"}");
+    if (isLogout(path)) return json(@"{\"status\":\"OK\"}");
     if (isCustomize(path) && cached()) return cached();
     return [NSData data];
 }
@@ -273,7 +273,7 @@ static void complete(id<NSURLSessionDataDelegate> delegate, NSURLSession *sessio
     NSString *host = url.host.lowercaseString ?: @"", *path = url.path.lowercaseString ?: @"";
     BOOL spotify = has(host, @"spotify") || has(host, @"spclient");
     if (spotify && elapsed() > 30 && (has(path, @"deletetoken") || has(path, @"signup/public") || has(path, @"pses/screenconfig")
-                                      || isCustomize(path) || has(host, @"apresolve"))) {
+                                      || isCustomize(path))) {
         SGAdBlockSawOne(@"Requests");
         SGAdBlockCountOne(@"Requests");
         SGLog(@"canceled %@%@ before it left", host, path);

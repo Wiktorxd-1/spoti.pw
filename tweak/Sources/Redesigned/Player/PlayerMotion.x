@@ -46,6 +46,7 @@
 
 NSNotificationName const SGRPlayerBlurOpacityDidChangeNotification = @"spotifyglass.redesign.player.blurOpacityDidChange";
 static NSString *const kLyricsBlurByTrackKey = @"spotifyglass.redesign.player.lyricsBlurByTrack";
+static NSString *const kLyricsBlurGlobalKey = @"spotifyglass.redesign.player.lyricsBlur";
 
 static BOOL lyricsBlurEnabledForTrack(NSString *track);
 static NSString *currentLyricsBlurTrack(void);
@@ -648,9 +649,12 @@ static BOOL motionAllowed(void) {
 }
 
 static BOOL lyricsBlurEnabledForTrack(NSString *track) {
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    if ([defaults objectForKey:kLyricsBlurGlobalKey]) {
+        if (![defaults boolForKey:kLyricsBlurGlobalKey]) return NO;
+    }
     if (!track.length) return YES;
-    // The absent entry is the default-on state; only per-track opt-outs need storing.
-    NSNumber *enabled = [[NSUserDefaults standardUserDefaults] dictionaryForKey:kLyricsBlurByTrackKey][track];
+    NSNumber *enabled = [defaults dictionaryForKey:kLyricsBlurByTrackKey][track];
     return !enabled || enabled.boolValue;
 }
 
@@ -659,8 +663,7 @@ static NSString *currentLyricsBlurTrack(void) {
 }
 
 static void refreshLyricsBlurForTrack(NSString *track) {
-    if (!track.length) return;
-    BOOL blurred = SGRPlayerLyricsOpen() && lyricsBlurEnabledForTrack(track);
+    BOOL blurred = SGRPlayerLyricsOpen() && lyricsBlurEnabledForTrack(track ?: currentLyricsBlurTrack());
     [sg_motion setBlurred:blurred animated:NO];
     SGRArtworkField *field = SGRPlayerField();
     [field setLyricsBlurred:blurred animated:NO];
@@ -672,16 +675,15 @@ BOOL SGRPlayerMotionLyricsBlurEnabled(void) {
 }
 
 void SGRPlayerMotionSetLyricsBlurEnabled(BOOL enabled) {
-    NSString *track = currentLyricsBlurTrack();
-    if (!track.length) {
-        SGLog(@"redesign player: cannot save lyrics blur without a track URI");
-        return;
-    }
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    NSMutableDictionary *preferences = [[defaults dictionaryForKey:kLyricsBlurByTrackKey] mutableCopy] ?: [NSMutableDictionary dictionary];
-    if (enabled) [preferences removeObjectForKey:track];
-    else preferences[track] = @NO;
-    [defaults setObject:preferences forKey:kLyricsBlurByTrackKey];
+    [defaults setBool:enabled forKey:kLyricsBlurGlobalKey];
+    NSString *track = currentLyricsBlurTrack();
+    if (track.length) {
+        NSMutableDictionary *preferences = [[defaults dictionaryForKey:kLyricsBlurByTrackKey] mutableCopy] ?: [NSMutableDictionary dictionary];
+        if (enabled) [preferences removeObjectForKey:track];
+        else preferences[track] = @NO;
+        [defaults setObject:preferences forKey:kLyricsBlurByTrackKey];
+    }
     SGRPlayerMotionLyricsChanged();
 }
 

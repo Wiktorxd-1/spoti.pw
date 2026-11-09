@@ -216,9 +216,16 @@ static void coverConnect(UIView *arranged, UIView *glyph) {
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *row = self.row;
     if (!row.window || row.alpha < 0.01 || row.hidden) return nil;
+    UIView *host = row.superview;
+    if (host && host.window && host.alpha > 0.01 && !host.hidden) {
+        SGRGlyphButton *lyrics = lyricsGlyphIn(host);
+        if (lyrics && !lyrics.hidden && lyrics.alpha > 0.01 && lyrics.userInteractionEnabled) {
+            CGPoint pLyrics = [lyrics convertPoint:point fromView:self];
+            if ([lyrics pointInside:pLyrics withEvent:event]) return lyrics;
+        }
+    }
     UIView *hit = [row hitTest:[row convertPoint:point fromView:self] withEvent:event];
     if (hit && hit != row) return hit;
-    UIView *host = row.superview;
     if (host && host.window && host.alpha > 0.01 && !host.hidden) {
         UIView *hitHost = [host hitTest:[host convertPoint:point fromView:self] withEvent:event];
         if (hitHost && hitHost != host) return hitHost;
@@ -292,6 +299,14 @@ static void lowerRow(UIView *row) {
     if (reach.superview != player) [player addSubview:reach];
     [player bringSubviewToFront:reach];
     CGRect drawn = [row convertRect:row.bounds toView:player];
+    UIView *footerHost = row.superview;
+    if (footerHost) {
+        SGRGlyphButton *lyrics = lyricsGlyphIn(footerHost);
+        if (lyrics && lyrics.superview) {
+            CGRect lyricsDrawn = [lyrics convertRect:lyrics.bounds toView:player];
+            drawn = CGRectUnion(drawn, lyricsDrawn);
+        }
+    }
     CGRect band = CGRectInset(drawn, -12, -12);
     if (!CGRectEqualToRect(reach.frame, band)) reach.frame = band;
 
@@ -310,7 +325,8 @@ static void lowerRow(UIView *row) {
     if (SGRLyricsFadedView(host)) host.alpha = 0;
     sg_footerHost = host;
     // The unit lays out before its row does, and the moves are measured from where the row put things.
-    [SGRowIn(host) layoutIfNeeded];
+    UIView *row = SGRowIn(host);
+    [row layoutIfNeeded];
     CGFloat width = host.bounds.size.width, middleY = CGRectGetMidY(host.bounds);
     BOOL rtl = host.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
 
@@ -339,7 +355,7 @@ static void lowerRow(UIView *row) {
     [host bringSubviewToFront:lyrics];
     lyrics.bounds = CGRectMake(0, 0, 44, 44);
     lyrics.center = CGPointMake(leadingX, middleY);
-    lyrics.transform = row.transform;
+    lyrics.transform = row ? row.transform : CGAffineTransformIdentity;
     SGRPlayerLyricsChanged();
 
     UIView *connect = SGRFindByIdentifier(host, @"Components.ConnectButtonOutputSwitcher", &kConnectKey);

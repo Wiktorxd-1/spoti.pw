@@ -312,6 +312,35 @@ static void clipTitle(UIView *element, CGFloat width) {
 }
 
 // The unit's row lays its arranged views out after the unit's own pass, so the transforms go on after it.
+static UIView *findTitleElement(UIView *host) {
+    if (!host) return nil;
+    __block UIView *label = SGRFindByIdentifier(host, @"now-playing-title-label", &kTitleKey);
+    if (!label) {
+        SGForEachView(host, ^(UIView *v) {
+            if (!label && [v isKindOfClass:UILabel.class]) {
+                UILabel *l = (UILabel *)v;
+                if (l.text.length > 0) label = l;
+            }
+        });
+    }
+    UIView *element = nil;
+    for (UIView *v = label; v && v != host; v = v.superview) {
+        if ([v.superview isKindOfClass:UIStackView.class]) { element = v; break; }
+    }
+    if (!element) {
+        UIStackView *row = SGRowIn(host);
+        if (row && row.arrangedSubviews.count > 0) element = row.arrangedSubviews.firstObject;
+    }
+    if (!element && label) {
+        UIView *v = label;
+        while (v.superview && v.superview != host && ![v.superview isKindOfClass:UIStackView.class]) {
+            v = v.superview;
+        }
+        element = v;
+    }
+    return element;
+}
+
 static void placeTitleRow(SGRLyricsLayout l) {
     UIView *info = sg_info.viewIfLoaded;
     if (!info) return;
@@ -319,8 +348,13 @@ static void placeTitleRow(SGRLyricsLayout l) {
     CGFloat lift = sg_open ? l.lift : 0, shift = sg_open ? l.shift : 0;
     CGAffineTransform rise = CGAffineTransformMakeTranslation(0, round(lift));
     if (!CGAffineTransformEqualToTransform(info.transform, rise)) info.transform = rise;
-    UIView *title = sg_titleElement;
+    UIView *title = sg_titleElement ?: findTitleElement(info);
+    if (title && !sg_titleElement) sg_titleElement = title;
     if (!title) return;
+    if (info.alpha < 0.01) info.alpha = 1.0;
+    info.hidden = NO;
+    if (title.alpha < 0.01) title.alpha = 1.0;
+    title.hidden = NO;
     CGAffineTransform slide = CGAffineTransformMakeTranslation(round(shift), 0);
     if (!CGAffineTransformEqualToTransform(title.transform, slide)) title.transform = slide;
     // Closed it reaches as far as Spotify meant it to; moved, only as far as the controls it moved toward.
@@ -331,7 +365,7 @@ static void placeTitleRow(SGRLyricsLayout l) {
         if (maxRight <= minTitleRight + 60.0 || maxRight > info.bounds.size.width) {
             maxRight = info.bounds.size.width - 50.0;
         }
-        room = MAX(120.0, maxRight - kTitleGap - minTitleRight);
+        room = MAX(140.0, maxRight - kTitleGap - minTitleRight);
     }
     clipTitle(title, room);
 }

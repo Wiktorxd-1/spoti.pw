@@ -115,11 +115,11 @@ static void pillBehindContext(UIViewController *unit) {
     if (box.superview != parent) [parent insertSubview:box belowSubview:label];
     else if ([parent.subviews indexOfObject:box] > [parent.subviews indexOfObject:label]) [parent insertSubview:box belowSubview:label];
 
-    parent.clipsToBounds = YES;
+    parent.clipsToBounds = NO;
     parent.backgroundColor = UIColor.clearColor;
     parent.layer.backgroundColor = UIColor.clearColor.CGColor;
     parent.layer.cornerRadius = 17.0;
-    parent.layer.cornerCurve = kCACornerCurveContinuous;
+    parent.layer.cornerCurve = kCACornerCurveCircular;
     if (parent.superview && parent.superview != host) {
         parent.superview.clipsToBounds = NO;
         parent.superview.backgroundColor = UIColor.clearColor;
@@ -168,25 +168,25 @@ static void pillBehindContext(UIViewController *unit) {
     box.bounds = CGRectMake(0, 0, width, height);
     box.center = targetCenter;
     box.layer.cornerRadius = radius;
-    box.layer.cornerCurve = kCACornerCurveContinuous;
+    box.layer.cornerCurve = kCACornerCurveCircular;
     box.clipsToBounds = YES;
     box.layer.masksToBounds = YES;
     if ([box isKindOfClass:UIVisualEffectView.class]) {
         UIView *cv = ((UIVisualEffectView *)box).contentView;
         cv.layer.cornerRadius = radius;
-        cv.layer.cornerCurve = kCACornerCurveContinuous;
+        cv.layer.cornerCurve = kCACornerCurveCircular;
         cv.clipsToBounds = YES;
         cv.layer.masksToBounds = YES;
     }
     SGShapeGlass(box, radius, YES);
     box.layer.cornerRadius = radius;
-    box.layer.cornerCurve = kCACornerCurveContinuous;
+    box.layer.cornerCurve = kCACornerCurveCircular;
     box.clipsToBounds = YES;
     box.layer.masksToBounds = YES;
     if ([box isKindOfClass:UIVisualEffectView.class]) {
         UIView *cv = ((UIVisualEffectView *)box).contentView;
         cv.layer.cornerRadius = radius;
-        cv.layer.cornerCurve = kCACornerCurveContinuous;
+        cv.layer.cornerCurve = kCACornerCurveCircular;
         cv.clipsToBounds = YES;
         cv.layer.masksToBounds = YES;
     }
